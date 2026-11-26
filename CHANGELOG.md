@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Security
+
+- Build tools updated to versions without known security issues.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added
