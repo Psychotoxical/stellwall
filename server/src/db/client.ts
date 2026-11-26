@@ -23,3 +23,12 @@ export async function openPglite(client: PGlite): Promise<Database> {
   const db = drizzle({ client, schema });
   return { db: db as unknown as Db, migrate: () => migrate(db, { migrationsFolder }), close: () => client.close() };
 }
+
+/** "pglite:memory" gives a throwaway in-process database for local runs and browser tests. */
+export async function openDatabase(url: string): Promise<Database> {
+  if (url === "pglite:memory") {
+    const { PGlite } = await import("@electric-sql/pglite");
+    return openPglite(new PGlite());
+  }
+  return openPostgres(url);
+}

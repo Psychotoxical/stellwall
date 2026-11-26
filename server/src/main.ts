@@ -1,9 +1,9 @@
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
-import { openPostgres } from "./db/client.ts";
+import { openDatabase } from "./db/client.ts";
 
 const config = loadConfig(process.env);
-const database = await openPostgres(config.databaseUrl);
+const database = await openDatabase(config.databaseUrl);
 await database.migrate();
 const app = await buildApp({ config, db: database.db });
 app.log.info("starting");

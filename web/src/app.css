@@ -81,6 +81,13 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 .row .what { min-width: 0; font-weight: 600; }
 .row .what small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 14px; }
 .row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.row-member { grid-template-columns: auto 1fr; }
+.row-member .row-actions { grid-column: 1 / -1; justify-content: flex-start; }
+@media (min-width: 700px) {
+  .row-member { grid-template-columns: auto 1fr auto; }
+  .row-member .row-actions { grid-column: auto; justify-content: flex-end; }
+}
+.legend { padding: 0; margin-bottom: 6px; }
 .chip { min-width: 26px; height: 22px; padding: 0 6px; border-radius: 6px; font-size: 12px; font-weight: 800; color: var(--chip-ink); display: inline-grid; place-items: center; }
 
 /* Forms */
