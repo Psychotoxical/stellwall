@@ -1,4 +1,4 @@
-export type Unit = "x" | "g" | "ml" | "Pck" | "Dose" | "Fl" | "Bund";
+export type Unit = "x" | "g" | "ml" | "Pck" | "Dose" | "Fl" | "Bund" | "EL" | "TL";
 
 const UNITS: Record<string, { unit: Unit; factor: number }> = {
   "": { unit: "x", factor: 1 },
@@ -23,6 +23,8 @@ const UNITS: Record<string, { unit: Unit; factor: number }> = {
   flasche: { unit: "Fl", factor: 1 },
   flaschen: { unit: "Fl", factor: 1 },
   bund: { unit: "Bund", factor: 1 },
+  el: { unit: "EL", factor: 1 },
+  tl: { unit: "TL", factor: 1 },
 };
 
 export function parseQuantity(raw: string): { value: number; unit: Unit } | null {

@@ -10,3 +10,4 @@ export * from "./todos/recurrence.ts";
 export * from "./todos/catalog.ts";
 export * from "./calendar/expand.ts";
 export * from "./calendar/birthdays.ts";
+export * from "./meals/ingredients.ts";
