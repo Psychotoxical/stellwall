@@ -6,6 +6,10 @@
 
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
+/* Nothing may push the page sideways on a phone. */
+body { overflow-x: clip; }
+/* The page behind an open sheet stays put. */
+html:has(dialog[open]) { overflow: hidden; }
 body {
   margin: 0;
   background: var(--ground);
@@ -24,7 +28,7 @@ a { color: inherit; text-underline-offset: 3px; }
 .ico { width: 24px; height: 24px; flex: none; }
 
 /* Shell */
-.shell { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
+.shell { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 1fr; }
 .rail { display: none; }
 .content { min-width: 0; }
 .main {
@@ -74,12 +78,12 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 /* Shopping */
 .shop { max-width: 680px; }
 .listbar { margin-bottom: 12px; }
-.seg button { border: 0; background: transparent; color: inherit; padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
+.seg button { border: 0; background: transparent; color: inherit; padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; min-height: 40px; }
 .seg button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
 .seg .count { font-family: var(--font-board); font-weight: 800; font-size: 13px; color: var(--ink-soft); }
 .listhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .toolist { display: flex; flex-direction: column; gap: 8px; }
-.pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rule); background: var(--surface); border-radius: 999px; padding: 7px 12px 7px 9px; font-weight: 600; font-size: 14px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid var(--rule); background: var(--surface); border-radius: 999px; padding: 7px 12px 7px 9px; font-weight: 600; font-size: 14px; }
 .pill .ico { width: 20px; height: 20px; }
 .addbox { position: relative; margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
 .addbox > label { font-weight: 600; font-size: 14px; color: var(--ink-soft); }
@@ -123,14 +127,17 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 .chips { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .tag-inline { font-size: 11px; padding: 2px 6px; margin-right: 4px; }
 fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.row2 > * { min-width: 0; }
+/* Date next to time: the date needs the wider column, or the year gets cut on small phones. */
+.row2.dt { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
+.row2.dt input { padding-inline: 10px; }
 .weekdays { display: flex; gap: 6px; flex-wrap: wrap; }
 .wd { position: relative; display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px; border-radius: var(--radius-sm); border: 1.5px solid var(--rule); background: var(--surface); font-weight: 700; cursor: pointer; }
 .wd input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .wd.on { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
 .wd:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
 .todoform { max-width: none; }
-.sheet .todoform { max-height: 75vh; overflow-y: auto; }
 
 /* Calendar */
 .calpage { max-width: 1100px; }
@@ -225,11 +232,12 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
   padding: 13px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--rule);
   background: var(--surface); font-size: 17px; min-width: 0;
 }
+.field input:not([type="checkbox"], [type="radio"]), .field select { width: 100%; }
 .field input:focus, .field select:focus { border-color: var(--primary); outline: none; }
 .field small { color: var(--ink-soft); font-size: 13px; }
 .field .field-error { color: var(--danger); }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
-.swatch { display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 8px; border-radius: 999px; border: 1.5px solid var(--rule); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 14px; }
+.swatch { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 8px; border-radius: 999px; border: 1.5px solid var(--rule); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 14px; }
 .swatch input { position: absolute; opacity: 0; pointer-events: none; }
 .swatch .dot { width: 22px; height: 22px; border-radius: 50%; }
 .swatch:has(input:checked) { border-color: var(--primary); }
@@ -257,21 +265,33 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
 .sheet {
   border: 0; padding: 18px max(18px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   background: var(--surface); color: var(--ink);
-  width: 100%; max-width: 520px; margin: auto auto 0; border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  width: 100%; max-width: 520px; margin: auto auto var(--kb, 0px); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  /* One scroll area: the sheet itself, never taller than what is visible above the keyboard. */
+  max-height: calc(var(--vvh, 100dvh) - env(safe-area-inset-top, 0px) - 8px);
+  overflow-y: auto; overscroll-behavior: contain;
 }
+/* Save and cancel stay at the bottom of the sheet while its content scrolls. */
+.sheet .actions:last-child {
+  position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom, 0px)); z-index: 2;
+  margin: 6px -18px calc(-18px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-top: 1px solid var(--rule);
+}
+/* While typing on a phone the tab bar would sit on the keyboard and eat the space. */
+body:has(:is(input:not([type="checkbox"], [type="radio"], [type="file"]), textarea):focus) .tabs { display: none; }
 .sheet::backdrop { background: rgb(10 12 16 / 0.45); }
 .sheet h2 { margin-bottom: 8px; }
 .sheet p { color: var(--ink-soft); margin: 0 0 14px; }
 
 /* Auth pages */
-.auth { min-height: 100vh; display: grid; justify-items: center; align-items: start; padding: calc(48px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+.auth { min-height: 100vh; min-height: 100dvh; display: grid; justify-items: center; align-items: start; padding: calc(48px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 @media (min-width: 700px) and (min-height: 700px) { .auth { align-items: center; padding-top: 24px; } }
 .auth-card { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 18px; }
 .auth-card .brand { font-family: var(--font-board); font-weight: 800; font-size: 22px; }
 
 @media (min-width: 900px) {
   .shell { grid-template-columns: 220px 1fr; }
-  .rail { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-right: 1px solid var(--rule); padding: 22px 12px; position: sticky; top: 0; height: 100vh; }
+  .rail { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-right: 1px solid var(--rule); padding: 22px 12px; position: sticky; top: 0; height: 100vh; height: 100dvh; }
   .rail .brand { font-family: var(--font-board); font-weight: 800; font-size: 22px; padding: 0 10px 16px; }
   .rail .navitem { flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 15px; padding: 10px; min-width: 0; }
   .rail .navitem.active { background: var(--field); }
@@ -279,7 +299,8 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
   .main { padding: 28px 36px 48px; }
   .cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
   .cols .sechead:first-child { margin-top: 0; }
-  .sheet { margin: auto; border-radius: var(--radius-sheet); }
+  .sheet { margin: auto; border-radius: var(--radius-sheet); max-height: calc(100dvh - 48px); }
+  .sheet .actions:last-child { bottom: -18px; margin-bottom: -18px; padding-bottom: 12px; border-radius: 0 0 var(--radius-sheet) var(--radius-sheet); }
   .calcols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   .mcell { min-height: 84px; align-items: stretch; padding: 6px; text-align: left; }
   .mcell .num { width: 28px; height: 28px; font-size: 16px; }
@@ -287,7 +308,6 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
   .lbls { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .lbl { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid; padding-left: 5px; }
   .mcell:hover { background: var(--field); }
-  .sheet .todoform { max-height: 80vh; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .navdot { transition: background-color 0.3s var(--ease-settle); }

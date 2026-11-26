@@ -189,7 +189,7 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
 
         <fieldset className="field plain">
           <legend className="legend">{de.calendar.from}</legend>
-          <div className={d.allDay ? "" : "row2"}>
+          <div className={d.allDay ? "" : "row2 dt"}>
             <input aria-label={de.calendar.from + " " + de.calendar.date} type="date" value={d.startDate} required onChange={(e) => {
               const shift = dayDiff(d.startDate, e.target.value || d.startDate);
               setD({ ...d, startDate: e.target.value, endDate: e.target.value ? addDays(d.endDate, shift) : d.endDate });
@@ -199,7 +199,7 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
         </fieldset>
         <fieldset className="field plain">
           <legend className="legend">{de.calendar.to}</legend>
-          <div className={d.allDay ? "" : "row2"}>
+          <div className={d.allDay ? "" : "row2 dt"}>
             <input aria-label={de.calendar.to + " " + de.calendar.date} type="date" value={d.endDate} min={d.startDate} required onChange={(e) => setD({ ...d, endDate: e.target.value })} />
             {!d.allDay && <input aria-label={de.calendar.to + " " + de.calendar.time} type="time" value={d.endTime} required onChange={(e) => setD({ ...d, endTime: e.target.value })} />}
           </div>

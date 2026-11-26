@@ -223,7 +223,7 @@ function TodoForm({ rule, members, meId, onClose, onDone }: { rule: TodoRule | n
           </button>
         )}
 
-        <div className="row2">
+        <div className="row2 dt">
           <div className="field">
             <label htmlFor={ids + "d"}>{de.todos.date}</label>
             <input id={ids + "d"} type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} />

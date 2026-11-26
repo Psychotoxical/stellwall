@@ -4,6 +4,12 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Fixed
+
+- Phones: pages no longer move sideways, forms in sheets scroll in one place, and Save stays visible at the bottom, also with the keyboard open.
+- Phones: the tab bar hides while typing, the page behind a sheet stays still, and date fields show the full year on small screens.
+- Phones: the shopping field moves up when typing so its suggestions are not hidden by the keyboard.
+
 ## [0.1.3] - 2026-11-26
 
 ### Added
