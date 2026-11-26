@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signInAlex } from "./helpers.ts";
 
 async function login(page: Page, user: string, password: string) {
   await page.goto("/anmelden");
@@ -11,16 +12,7 @@ async function login(page: Page, user: string, password: string) {
 test("live shopping between two people", async ({ browser }) => {
   const alexCtx = await browser.newContext({ baseURL: "http://localhost:5173" });
   const alex = await alexCtx.newPage();
-  await alex.goto("/");
-  if (await alex.getByRole("heading", { name: "Stellwall einrichten" }).isVisible().catch(() => false)) {
-    await alex.getByLabel("Benutzername").fill("alex");
-    await alex.getByLabel("Anzeigename").fill("Alex");
-    await alex.getByLabel("Passwort").fill("correct-horse-1");
-    await alex.getByRole("button", { name: "Konto anlegen" }).click();
-  } else {
-    await login(alex, "alex", "correct-horse-1");
-  }
-  await expect(alex.getByRole("heading", { name: "Hallo Alex" })).toBeVisible();
+  await signInAlex(alex);
 
   // Alex adds Sam.
   await alex.goto("/mitglieder");
