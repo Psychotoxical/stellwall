@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-26
+
 ### Added
 
 - Calendar with month, week and "upcoming" views, showing everyone's events or only your own.
