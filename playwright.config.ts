@@ -5,6 +5,8 @@ const ci = !!process.env.CI;
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
+  // All tests share one server and its database, so they run one after another.
+  workers: 1,
   use: { baseURL: "http://localhost:5173", ...(ci ? {} : { channel: "chrome" }) },
   webServer: [
     {
