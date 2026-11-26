@@ -4,8 +4,6 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-11-26
-
 ### Added
 
 - To-dos: who takes care of it, who may see it, a date and time, and repeating on chosen weekdays, daily or monthly.
@@ -17,6 +15,8 @@ Every version has its own section. The section of a version becomes the text of 
 ### Fixed
 
 - The sign-in and setup pages start at the top on phones.
+
+## [0.1.1] - 2026-11-26
 
 ### Added
 
