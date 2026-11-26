@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, gt, ne } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { boardSeen, items, lists, members, todoAssignees, todos } from "../db/schema.ts";
+import { boardSeen, eventFor, events, items, lists, members, todoAssignees, todos } from "../db/schema.ts";
+import { eventVisibleTo } from "../calendar/events.ts";
 import { requireMember } from "../auth/guard.ts";
 import { listVisibleTo } from "../shopping/visibility.ts";
 
@@ -20,6 +21,8 @@ export type BoardRow = {
 };
 
 export type TodoBoardRow = { kind: "todo"; who: string; whoName: string; todoId: string; title: string; latestAt: string };
+
+export type EventBoardRow = { kind: "event"; who: string; whoName: string; eventId: string; title: string; start: string; allDay: boolean; latestAt: string };
 
 export async function boardRoutes(app: FastifyInstance, opts: { db: Db; now: () => Date }) {
   const { db, now } = opts;
@@ -53,7 +56,14 @@ export async function boardRoutes(app: FastifyInstance, opts: { db: Db; now: () 
       .innerJoin(members, eq(todoAssignees.assignedBy, members.id))
       .where(and(eq(todoAssignees.memberId, me), ne(todoAssignees.assignedBy, me), gt(todoAssignees.assignedAt, since)));
     const todoRows: TodoBoardRow[] = given.map((g) => ({ kind: "todo", who: g.who, whoName: g.whoName, todoId: g.todoId, title: g.title, latestAt: g.at.toISOString() }));
-    return [...groups.values(), ...todoRows].sort((a, b) => b.latestAt.localeCompare(a.latestAt)).slice(0, MAX_ROWS);
+    const entered = await db
+      .select({ eventId: events.id, title: events.title, startAt: events.startAt, allDay: events.allDay, who: eventFor.addedBy, whoName: members.displayName, at: eventFor.addedAt })
+      .from(eventFor)
+      .innerJoin(events, eq(eventFor.eventId, events.id))
+      .innerJoin(members, eq(eventFor.addedBy, members.id))
+      .where(and(eq(eventFor.memberId, me), ne(eventFor.addedBy, me), gt(eventFor.addedAt, since), eventVisibleTo(me)));
+    const eventRows: EventBoardRow[] = entered.map((e) => ({ kind: "event", who: e.who, whoName: e.whoName, eventId: e.eventId, title: e.title, start: e.startAt.toISOString(), allDay: e.allDay, latestAt: e.at.toISOString() }));
+    return [...groups.values(), ...todoRows, ...eventRows].sort((a, b) => b.latestAt.localeCompare(a.latestAt)).slice(0, MAX_ROWS);
   });
 
   app.post("/api/board/seen", { preHandler: requireMember }, async (req) => {
