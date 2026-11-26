@@ -224,3 +224,32 @@ export const birthdayMembers = pgTable(
   },
   (t) => [primaryKey({ columns: [t.birthdayId, t.memberId] })],
 );
+
+/** Settings the administration keeps, such as the Mealie connection. Values never leave the server unasked. */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One lunch per day: a Mealie recipe or a free text. */
+export const mealPlan = pgTable("meal_plan", {
+  date: date("date", { mode: "string" }).primaryKey(),
+  recipeId: text("recipe_id"),
+  recipeSlug: text("recipe_slug"),
+  recipeName: text("recipe_name"),
+  text: text("text"),
+  cookId: uuid("cook_id").references(() => members.id, { onDelete: "set null" }),
+  servings: integer("servings").notNull().default(4),
+  updatedBy: uuid("updated_by")
+    .notNull()
+    .references(() => members.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+/** What a household usually has at home; asked about instead of bought by default. */
+export const pantryStaples = pgTable("pantry_staples", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  variants: jsonb("variants").$type<string[]>().notNull().default([]),
+});
