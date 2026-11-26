@@ -146,3 +146,81 @@ export const todoDone = pgTable(
   },
   (t) => [primaryKey({ columns: [t.todoId, t.occurrenceDate] })],
 );
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    location: text("location").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+    allDay: boolean("all_day").notNull().default(false),
+    tz: text("tz").notNull(),
+    rrule: text("rrule"),
+    everyone: boolean("everyone").notNull().default(false),
+    createdBy: uuid("created_by").notNull().references(() => members.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    importUid: text("import_uid"),
+    importOwner: uuid("import_owner").references(() => members.id),
+    reminders: jsonb("reminders").notNull().default([]),
+  },
+  (t) => [uniqueIndex("events_import").on(t.importOwner, t.importUid)],
+);
+
+export const eventMembers = pgTable(
+  "event_members",
+  {
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.memberId] })],
+);
+
+export const eventFor = pgTable(
+  "event_for",
+  {
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    addedBy: uuid("added_by").notNull().references(() => members.id),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.memberId] })],
+);
+
+export const eventExceptions = pgTable(
+  "event_exceptions",
+  {
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    occurrenceDate: date("occurrence_date").notNull(),
+    cancelled: boolean("cancelled").notNull().default(false),
+    title: text("title"),
+    location: text("location"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.occurrenceDate] })],
+);
+
+export const birthdays = pgTable("birthdays", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  month: integer("month").notNull(),
+  day: integer("day").notNull(),
+  year: integer("year"),
+  everyone: boolean("everyone").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  remindDays: integer("remind_days").notNull().default(1),
+  remindWho: jsonb("remind_who").notNull().default([]),
+});
+
+export const birthdayMembers = pgTable(
+  "birthday_members",
+  {
+    birthdayId: uuid("birthday_id").notNull().references(() => birthdays.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.birthdayId, t.memberId] })],
+);
