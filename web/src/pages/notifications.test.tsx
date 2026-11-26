@@ -63,3 +63,44 @@ describe("cooking", () => {
     expect(await screen.findByRole("button", { name: /Reis$/ })).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+describe("notification review fixes", () => {
+  const endpoint = "https://fcm.googleapis.com/fcm/send/this-device";
+  function fakePush() {
+    const sub = { endpoint, toJSON: () => ({ endpoint, keys: { p256dh: "p", auth: "a" } }), unsubscribe: async () => true };
+    const reg = { pushManager: { getSubscription: async () => sub } };
+    Object.defineProperty(navigator, "serviceWorker", { value: { getRegistration: async () => reg, ready: Promise.resolve(reg) }, configurable: true });
+    vi.stubGlobal("PushManager", function () {});
+    vi.stubGlobal("Notification", Object.assign(function () {}, { permission: "granted", requestPermission: async () => "granted" }));
+    onTestFinished(() => {
+      delete (navigator as unknown as Record<string, unknown>).serviceWorker;
+    });
+  }
+
+  it("a device that already receives messages is registered for whoever is signed in now", async () => {
+    fakePush();
+    const calls = fakeApi(base({ "POST /api/push/subscriptions": () => ({ status: 200, body: { id: "d1" } }) }));
+    renderAt("/benachrichtigungen");
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/push/subscriptions")?.body).toMatchObject({ endpoint }));
+  });
+
+  it("signing out takes the device's push address along", async () => {
+    fakePush();
+    const calls = fakeApi(base({ "GET /api/auth/sessions": () => ({ status: 200, body: [] }), "POST /api/auth/logout": () => ({ status: 200, body: { ok: true } }) }));
+    renderAt("/konto");
+    fireEvent.click(await screen.findByRole("button", { name: de.account.logout }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/auth/logout")?.body).toEqual({ pushEndpoint: endpoint }));
+  });
+
+  it("an iPad, which calls itself a Mac, also gets the home-screen steps", async () => {
+    const ua = vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.1 Safari/605.1.15");
+    Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
+    onTestFinished(() => {
+      ua.mockRestore();
+      delete (navigator as unknown as Record<string, unknown>).maxTouchPoints;
+    });
+    fakeApi(base());
+    renderAt("/benachrichtigungen");
+    expect(await screen.findByText(de.notify.iphoneTitle)).toBeInTheDocument();
+  });
+});

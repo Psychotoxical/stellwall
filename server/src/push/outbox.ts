@@ -1,8 +1,8 @@
-import { and, eq, inArray, isNull, like, lte } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, lt, lte } from "drizzle-orm";
 import webpush from "web-push";
 import { bundleDue, quietUntil } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { birthdays, events, lists, notificationPrefs, notifications, pushSubscriptions, settings, todos } from "../db/schema.ts";
+import { birthdays, events, lists, members, notificationPrefs, notifications, pushSubscriptions, settings, todos } from "../db/schema.ts";
 import { eventVisibleTo } from "../calendar/events.ts";
 import { birthdayVisibleTo } from "../calendar/birthdays.ts";
 import { listVisibleTo } from "../shopping/visibility.ts";
@@ -53,7 +53,13 @@ export async function vapidKeys(db: Db): Promise<{ publicKey: string; privateKey
 export function webPushSender(db: Db, publicUrl: string): PushSender {
   let ready: Promise<void> | null = null;
   return async (sub, payload) => {
-    ready ??= vapidKeys(db).then((k) => webpush.setVapidDetails(publicUrl, k.publicKey, k.privateKey));
+    // A failed setup (database away) is tried again with the next message instead of stopping all pushes.
+    ready ??= vapidKeys(db)
+      .then((k) => webpush.setVapidDetails(publicUrl, k.publicKey, k.privateKey))
+      .catch((e: unknown) => {
+        ready = null;
+        throw e;
+      });
     await ready;
     try {
       await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload, { TTL: 24 * 3600, timeout: 10_000 });
@@ -69,7 +75,11 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
   const { now, timeZone: tz, sender } = opts;
 
   async function wanted(memberIds: string[], actor: string | null, kind: Kind) {
-    const ids = [...new Set(memberIds)].filter((id) => id !== actor);
+    let ids = [...new Set(memberIds)].filter((id) => id !== actor);
+    if (!ids.length) return [];
+    // Removed members are told nothing more.
+    const active = await db.select({ id: members.id }).from(members).where(and(inArray(members.id, ids), isNull(members.removedAt)));
+    ids = ids.filter((id) => active.some((a) => a.id === id));
     if (!ids.length) return [];
     const off = await db.select({ id: notificationPrefs.memberId }).from(notificationPrefs).where(and(inArray(notificationPrefs.memberId, ids), eq(notificationPrefs.kind, kind), eq(notificationPrefs.enabled, false)));
     return ids.filter((id) => !off.some((o) => o.id === id));
@@ -121,9 +131,14 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
 
     /** Sends what is due, after checking again that the person may still see it and still wants it. */
     async dispatch() {
-      const due = await db.select().from(notifications).where(and(isNull(notifications.sentAt), lte(notifications.dueAt, now()))).limit(BATCH);
+      // Claim the batch in one step, so that a second run at the same time never sends the same message.
+      const t = now();
+      const due = await db
+        .update(notifications)
+        .set({ sentAt: t })
+        .where(and(isNull(notifications.sentAt), inArray(notifications.id, db.select({ id: notifications.id }).from(notifications).where(and(isNull(notifications.sentAt), lte(notifications.dueAt, t))).limit(BATCH))))
+        .returning();
       for (const n of due) {
-        await db.update(notifications).set({ sentAt: now() }).where(eq(notifications.id, n.id));
         if (!(await wanted([n.memberId], null, n.kind as Kind)).length) continue;
         if (!(await stillVisible(n.memberId, { type: n.refType as Ref["type"], id: n.refId }))) continue;
         const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.memberId, n.memberId));
@@ -133,6 +148,11 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
           if (r.gone) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));
         }
       }
+    },
+
+    /** Sent messages older than a month are no longer needed. */
+    async prune() {
+      await db.delete(notifications).where(lt(notifications.sentAt, new Date(now().getTime() - 30 * 86_400_000)));
     },
   };
 }

@@ -68,7 +68,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const sender = deps.pushSender ?? webPushSender(deps.db, deps.config.publicUrl);
   const outbox = createOutbox(deps.db, { now, timeZone: deps.config.timeZone, sender });
   await pushRoutes(app, { db: deps.db, now, sender });
-  const announcer = createAnnouncer(deps.db, outbox, deps.config.timeZone);
+  const announcer = createAnnouncer(deps.db, outbox, deps.config.timeZone, now);
   // Reports run in the background; sending waits for those still being written.
   const pending = new Set<Promise<unknown>>();
   const quietly = (p: Promise<unknown>) => {
@@ -83,9 +83,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     itemsAdded: (...a) => quietly(announcer.itemsAdded(...a)),
     cook: (...a) => quietly(announcer.cook(...a)),
   };
+  // One run at a time: a slow run is not overtaken by the next tick.
+  const single = (fn: () => Promise<void>) => {
+    let running: Promise<void> | null = null;
+    return () => (running ??= fn().finally(() => (running = null)));
+  };
   app.decorate("push", {
-    dispatch: () => settled().then(() => outbox.dispatch()),
-    remind: () => settled().then(() => remind(deps.db, outbox, now(), deps.config.timeZone)),
+    dispatch: single(() => settled().then(() => outbox.dispatch())),
+    remind: single(() => settled().then(() => remind(deps.db, outbox, now(), deps.config.timeZone))),
   });
   if (deps.timers !== false) {
     // Reminders are worked out every minute, due messages go out every 30 seconds.

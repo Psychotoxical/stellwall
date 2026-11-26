@@ -1,7 +1,7 @@
 import { eq, isNull } from "drizzle-orm";
-import { localDate } from "@stellwall/shared";
+import { expandEvent, localDate, zonedTime, type Exception } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { events, lists, members, todos } from "../db/schema.ts";
+import { eventExceptions, events, lists, members, todos } from "../db/schema.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
 import type { Outbox } from "./outbox.ts";
 
@@ -15,22 +15,29 @@ export function whenText(at: Date, allDay: boolean, tz: string) {
 }
 
 /** What the routes report so that the people concerned get a push message. */
-export function createAnnouncer(db: Db, outbox: Outbox, tz: string) {
+export function createAnnouncer(db: Db, outbox: Outbox, tz: string, now: () => Date) {
   return {
     /** People who were just made the ones an event is for, or whose event changed. */
-    async eventFor(eventId: string, memberIds: string[], actor: Actor, changed: boolean) {
+    async eventFor(eventId: string, memberIds: string[], actor: Actor, changed: boolean, date?: string) {
       if (!memberIds.length) return;
       const ev = (await db.select().from(events).where(eq(events.id, eventId)))[0];
       if (!ev) return;
-      const when = whenText(ev.startAt, ev.allDay, tz);
+      // The day it is about: the changed occurrence, else the next one (a series may have begun long ago).
+      const exceptions: Exception[] = (await db.select().from(eventExceptions).where(eq(eventExceptions.eventId, ev.id))).map((x) => ({ date: x.occurrenceDate, cancelled: x.cancelled, title: x.title, location: x.location, startAt: x.startAt, endAt: x.endAt }));
+      const spec = { start: ev.startAt, end: ev.endAt, allDay: ev.allDay, rrule: ev.rrule, tz: ev.tz };
+      const from = date ? zonedTime(date, "00:00", ev.tz) : now();
+      const inst = ev.rrule ? expandEvent(spec, exceptions, new Date(from.getTime() - 86_400_000), new Date(from.getTime() + 400 * 86_400_000)).find((i) => (date ? i.date === date : i.end > from)) : null;
+      const start = inst?.start ?? ev.startAt;
+      const title = inst?.title ?? ev.title;
+      const when = whenText(start, ev.allDay, tz);
       await outbox.enqueue({
         memberIds,
         actor: actor.id,
         kind: "event",
         ref: { type: "event", id: ev.id },
         title: "Kalender",
-        body: changed ? `${actor.displayName} hat einen Termin geändert: ${ev.title}, ${when}` : `${actor.displayName} hat dir einen Termin eingetragen: ${ev.title}, ${when}`,
-        url: `/kalender?tag=${localDate(ev.startAt, tz)}`,
+        body: changed ? `${actor.displayName} hat einen Termin geändert: ${title}, ${when}` : `${actor.displayName} hat dir einen Termin eingetragen: ${title}, ${when}`,
+        url: `/kalender?tag=${localDate(start, tz)}`,
       });
     },
 

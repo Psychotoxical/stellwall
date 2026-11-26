@@ -1,7 +1,7 @@
 import { inArray, sql } from "drizzle-orm";
 import { birthdaysBetween, eveningBefore, expandEvent, localDate, occurrences, type Exception, type Recurrence } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { birthdays, eventExceptions, eventFor, events, todoAssignees, todos } from "../db/schema.ts";
+import { birthdays, eventExceptions, eventFor, events, todoAssignees, todoDone, todos } from "../db/schema.ts";
 import type { Outbox } from "./outbox.ts";
 
 const DAY = 86_400_000;
@@ -25,6 +25,7 @@ function relative(date: string, at: Date, tz: string) {
 
 /** Puts every reminder that is due now into the outbox; the outbox's key keeps each one to a single message. */
 export async function remind(db: Db, outbox: Outbox, now: Date, tz: string) {
+  await outbox.prune();
   const from = new Date(now.getTime() - GRACE_MS);
   const due = (at: Date) => at > from && at <= now;
   const to = new Date(now.getTime() + LOOKAHEAD_DAYS * DAY);
@@ -47,7 +48,7 @@ export async function remind(db: Db, outbox: Outbox, now: Date, tz: string) {
           const day = localDate(inst.start, tz);
           const rel = relative(day, at, tz);
           const body = ev.allDay ? `Erinnerung: ${title} ${rel || "heute"}` : `Erinnerung: ${title} ${rel ? rel + " " : ""}um ${hhmm(inst.start, tz)}`;
-          await outbox.enqueue({ memberIds: people, actor: null, kind: "event_reminder", ref: { type: "event", id: ev.id }, title: "Kalender", body, url: `/kalender?tag=${day}`, dueAt: at, dedupe: `rem:e:${ev.id}:${inst.date}:${r}`, quiet: false });
+          await outbox.enqueue({ memberIds: people, actor: null, kind: "event_reminder", ref: { type: "event", id: ev.id }, title: "Kalender", body, url: `/kalender?tag=${day}`, dueAt: at, dedupe: `rem:e:${ev.id}:${inst.date}:${at.getTime()}`, quiet: false });
         }
       }
     }
@@ -57,17 +58,20 @@ export async function remind(db: Db, outbox: Outbox, now: Date, tz: string) {
   const tds = await db.select().from(todos).where(sql`jsonb_array_length(${todos.reminders}) > 0 and ${todos.startDate} is not null`);
   if (tds.length) {
     const assigned = await db.select().from(todoAssignees).where(inArray(todoAssignees.todoId, tds.map((t) => t.id)));
+    const done = await db.select({ todoId: todoDone.todoId, date: todoDone.occurrenceDate }).from(todoDone).where(inArray(todoDone.todoId, tds.map((t) => t.id)));
     for (const t of tds) {
       const people = assigned.filter((a) => a.todoId === t.id).map((a) => a.memberId);
       if (!people.length) continue;
       const rule = { start: t.startDate!, time: t.time, recurrence: t.recurrence as Recurrence, until: t.until };
       for (const o of occurrences(rule, now, to, tz)) {
+        // Already done: nobody needs reminding.
+        if (done.some((d) => d.todoId === t.id && d.date === o.date)) continue;
         for (const r of t.reminders as number[]) {
           const at = t.time ? new Date(o.at.getTime() - r * 60_000) : dayReminder(o.date, r, tz);
           if (!due(at)) continue;
           const rel = relative(o.date, at, tz);
           const body = t.time ? `Erinnerung: ${t.title} ${rel ? rel + " " : ""}um ${t.time}` : `Erinnerung: ${t.title} ${rel || "heute"}`;
-          await outbox.enqueue({ memberIds: people, actor: null, kind: "todo_reminder", ref: { type: "todo", id: t.id }, title: "To-dos", body, url: "/todos", dueAt: at, dedupe: `rem:t:${t.id}:${o.date}:${r}`, quiet: false });
+          await outbox.enqueue({ memberIds: people, actor: null, kind: "todo_reminder", ref: { type: "todo", id: t.id }, title: "To-dos", body, url: "/todos", dueAt: at, dedupe: `rem:t:${t.id}:${o.date}:${at.getTime()}`, quiet: false });
         }
       }
     }
@@ -78,7 +82,8 @@ export async function remind(db: Db, outbox: Outbox, now: Date, tz: string) {
   const today = localDate(now, tz);
   for (const b of bds) {
     for (const o of birthdaysBetween({ month: b.month, day: b.day, year: b.year }, today, addDays(today, LOOKAHEAD_DAYS + 62))) {
-      const at = eveningBefore(addDays(o.date, -b.remindDays), tz);
+      // Like events: "1 day before" is the evening before, each further day one evening earlier.
+      const at = eveningBefore(addDays(o.date, -Math.max(0, b.remindDays - 1)), tz);
       if (!due(at)) continue;
       const rel = relative(o.date, at, tz);
       const body = `${b.name} hat ${rel} Geburtstag${o.age !== null ? ` und wird ${o.age}` : ""}`;

@@ -6,8 +6,11 @@ import { notificationPrefs, pushSubscriptions } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
 import { KINDS, vapidKeys, type PushSender } from "./outbox.ts";
 
+/** The browsers' push services; nothing else gets the server to send anywhere. */
+const PUSH_HOSTS = /^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|([a-z0-9-]+\.)*push\.apple\.com|([a-z0-9-]+\.)*notify\.windows\.com)$/;
+
 const subBody = z.object({
-  endpoint: z.url({ protocol: /^https$/ }).max(2000),
+  endpoint: z.url({ protocol: /^https$/, hostname: PUSH_HOSTS }).max(2000),
   keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
   label: z.string().trim().max(60).default(""),
 });

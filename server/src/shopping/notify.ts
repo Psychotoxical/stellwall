@@ -17,7 +17,7 @@ export type Notifier = {
   /** The meal plan changed (it is for everyone). */
   meals(): void;
   /** Push: people were made the ones an event is for, or their event changed. */
-  eventFor(eventId: string, memberIds: string[], actor: Actor, changed: boolean): void;
+  eventFor(eventId: string, memberIds: string[], actor: Actor, changed: boolean, date?: string): void;
   /** Push: people were given a to-do. */
   todoGiven(todoId: string, memberIds: string[], actor: Actor): void;
   /** Push: someone put things on a list (bundled). */

@@ -87,9 +87,10 @@ describe("reminders", () => {
     await a.post("/api/events", { title: "Ausflug", allDay: true, startDate: "2026-11-27", endDate: "2026-11-27", rrule: null, seeAll: false, reminders: [1440], forWhom: [f.alex.id] });
     await a.post("/api/birthdays", { name: "Oma", month: 12, day: 3, year: 1950, visibility: { everyone: true, memberIds: [] }, remindDays: 7, remindWho: [f.sam.id] });
     await run("2026-11-25T17:00:00Z"); // 18:00 local on the 25th
-    expect(sent.map((s) => [s.to, s.body])).toEqual([["sam", "Oma hat in 8 Tagen Geburtstag und wird 76"]]);
+    expect(sent).toEqual([]);
+    // Lead time counts like for events: 7 days before means the evening of the 26th, a week ahead.
     await run("2026-11-26T17:00:00Z");
-    expect(sent.map((s) => [s.to, s.body]).at(-1)).toEqual(["alex", "Erinnerung: Ausflug morgen"]);
+    expect(sent.map((s) => [s.to, s.body])).toEqual([["alex", "Erinnerung: Ausflug morgen"], ["sam", "Oma hat in 7 Tagen Geburtstag und wird 76"]]);
   });
 
   it("a to-do with a time reminds whoever takes care of it", async () => {

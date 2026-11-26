@@ -4,7 +4,7 @@ import { as, setupFamily } from "./family.ts";
 import { H } from "./auth-helpers.ts";
 import type { PushSender } from "../src/push/outbox.ts";
 
-const sub = (n: string) => ({ endpoint: `https://push.example.test/${n}`, keys: { p256dh: "BPk-test-key", auth: "auth-test" }, label: "Handy" });
+const sub = (n: string) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: "BPk-test-key", auth: "auth-test" }, label: "Handy" });
 
 async function start() {
   const sent: string[] = [];
@@ -58,6 +58,6 @@ describe("push API", () => {
     await as(app, f.sam.cookie).post("/api/push/subscriptions", sub("sam"));
     await as(app, f.kim.cookie).post("/api/push/subscriptions", sub("kim"));
     expect((await as(app, f.sam.cookie).post("/api/push/test", {})).json()).toEqual({ devices: 1 });
-    expect(sent).toEqual(["https://push.example.test/sam Stellwall kann dir jetzt Bescheid geben."]);
+    expect(sent).toEqual(["https://fcm.googleapis.com/fcm/send/sam Stellwall kann dir jetzt Bescheid geben."]);
   });
 });

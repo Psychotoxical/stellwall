@@ -210,7 +210,7 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
           set: { cancelled: false, ...(b.data.title ? { title: b.data.title } : {}), ...(b.data.location !== undefined ? { location: b.data.location } : {}), ...(startAt ? { startAt } : {}), ...(endAt ? { endAt } : {}) },
         });
       notify.calendar(ev.id);
-      if (b.data.title || startAt) notify.eventFor(ev.id, await forWhomOf(ev.id), req.member!, true);
+      if (b.data.title || startAt) notify.eventFor(ev.id, await forWhomOf(ev.id), req.member!, true, date);
       return dto(ev);
     }
 

@@ -5,15 +5,14 @@ import { Button, Notice } from "../components/ui.tsx";
 import { Icon } from "../icons.ts";
 import { de } from "../text/de.ts";
 import { Header } from "./Home.tsx";
+import { canPush, currentSubscription, isAppleMobile } from "../push-device.ts";
 
 type Prefs = Record<string, boolean>;
 type Device = { id: string; label: string; createdAt: string };
 const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal"] as const;
 const PUSH_ID = "sw-push-id";
 
-const isIphone = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
 const isStandalone = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.("(display-mode: standalone)").matches === true;
-const canPush = () => typeof Notification !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
 const permission = () => (typeof Notification === "undefined" ? "unsupported" : Notification.permission);
 
 /** The browser's push key comes base64url-encoded; subscribe wants the raw bytes. */
@@ -26,7 +25,7 @@ function keyBytes(b64: string) {
 function deviceLabel() {
   const ua = navigator.userAgent;
   if (/iPhone/.test(ua)) return "iPhone";
-  if (/iPad/.test(ua)) return "iPad";
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "iPad";
   if (/Android/.test(ua)) return "Android-Handy";
   if (/Mac/.test(ua)) return "Mac";
   if (/Windows/.test(ua)) return "Windows-PC";
@@ -42,12 +41,24 @@ export function Notifications() {
   const [perm, setPerm] = useState(permission());
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const iphoneOutside = isIphone() && !isStandalone();
+  const iphoneOutside = isAppleMobile() && !isStandalone();
 
+  // A subscription the browser already has is registered again for whoever is signed in now:
+  // on a shared tablet it moves to the new person, and a lost or renewed one is put right.
   useEffect(() => {
-    if (!canPush()) return setSubscribed(false);
-    navigator.serviceWorker.getRegistration().then((r) => r?.pushManager.getSubscription()).then((s) => setSubscribed(!!s)).catch(() => setSubscribed(false));
-  }, []);
+    void currentSubscription().then(async (s) => {
+      if (!s) return setSubscribed(false);
+      const json = s.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      try {
+        const r = await api<{ id: string }>("/api/push/subscriptions", { method: "POST", body: { endpoint: json.endpoint, keys: json.keys, label: deviceLabel() } });
+        localStorage.setItem(PUSH_ID, r.id);
+        setSubscribed(true);
+        void qc.invalidateQueries({ queryKey: ["push-devices"] });
+      } catch {
+        setSubscribed(false);
+      }
+    });
+  }, [qc]);
 
   const refreshDevices = () => qc.invalidateQueries({ queryKey: ["push-devices"] });
 
