@@ -4,6 +4,15 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Meal plan: one lunch per day, either a recipe from Mealie or a free text, with who cooks and how many servings.
+- Recipe view with ingredients recalculated for the servings and large steps; the screen stays on while it is open.
+- "Buy the week's ingredients": what is needed is ticked, pantry items are asked about, everything goes onto one list chosen by the administration and adds up with what is already there.
+- Pantry list that everyone can change, filled with common basics.
+- Mealie connection under More (administration only); the key is never shown again after saving.
+- More shows the running version, and a bar offers to reload when a new version is ready.
+
 ### Fixed
 
 - Phones: pages no longer move sideways, forms in sheets scroll in one place, and Save stays visible at the bottom, also with the keyboard open.
