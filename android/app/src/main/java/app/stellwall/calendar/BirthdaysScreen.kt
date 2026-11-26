@@ -61,6 +61,7 @@ import app.stellwall.ui.PrimaryButton
 import app.stellwall.ui.RadiusSm
 import app.stellwall.ui.RowDivider
 import app.stellwall.ui.Sheet
+import app.stellwall.ui.Dropdown
 import app.stellwall.ui.fieldColors
 import kotlinx.coroutines.launch
 
@@ -120,8 +121,8 @@ private fun BirthdaySheet(model: BirthdaysModel, b: Birthday?, onClose: () -> Un
     Sheet(if (b != null) CalText.B_EDIT else CalText.B_NEW, onClose) {
         OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text(CalText.B_NAME) }, singleLine = true, colors = fieldColors())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pick(CalText.B_DAY, "$day", (1..31).map { "$it" }, Modifier.weight(1f)) { day = it + 1 }
-            Pick(CalText.B_MONTH, CalText.MONTHS[month - 1], CalText.MONTHS, Modifier.weight(2f)) { month = it + 1 }
+            Dropdown(CalText.B_DAY, "$day", (1..31).map { "$it" }, Modifier.weight(1f)) { day = it + 1 }
+            Dropdown(CalText.B_MONTH, CalText.MONTHS[month - 1], CalText.MONTHS, Modifier.weight(2f)) { month = it + 1 }
         }
         OutlinedTextField(
             year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text(CalText.B_YEAR) }, singleLine = true, colors = fieldColors(),
@@ -138,7 +139,7 @@ private fun BirthdaySheet(model: BirthdaysModel, b: Birthday?, onClose: () -> Un
                 Text(ShopText.see(visibilityLabel(visibility, model.members, meId)), style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp), color = p.ink)
             }
         }
-        Pick(CalText.B_REMIND, CalText.REMIND_DAYS.firstOrNull { it.first == remindDays }?.second ?: "$remindDays", CalText.REMIND_DAYS.map { it.second }, Modifier.fillMaxWidth()) {
+        Dropdown(CalText.B_REMIND, CalText.REMIND_DAYS.firstOrNull { it.first == remindDays }?.second ?: "$remindDays", CalText.REMIND_DAYS.map { it.second }, Modifier.fillMaxWidth()) {
             remindDays = CalText.REMIND_DAYS[it].first
         }
         Text(CalText.B_REMIND_WHO, style = MaterialTheme.typography.labelLarge, color = p.inkSoft)
@@ -165,18 +166,5 @@ private fun BirthdaySheet(model: BirthdaysModel, b: Birthday?, onClose: () -> Un
         }, Modifier.fillMaxWidth())
         GhostButton(CalText.CANCEL, onClose, Modifier.fillMaxWidth())
         if (b != null && isCreator) GhostButton(CalText.B_DELETE, { scope.launch { model.delete(b); onClose() } }, Modifier.fillMaxWidth(), danger = true)
-    }
-}
-
-@Composable
-private fun Pick(label: String, value: String, options: List<String>, modifier: Modifier, onPick: (Int) -> Unit) {
-    val p = LocalPalette.current
-    var menu by remember { mutableStateOf(false) }
-    Box(modifier) {
-        OutlinedTextField(value, {}, Modifier.fillMaxWidth(), readOnly = true, label = { Text(label) }, colors = fieldColors(), trailingIcon = { Text("▾", color = p.inkSoft) })
-        Box(Modifier.matchParentSize().clickable(role = Role.DropdownList, onClickLabel = label) { menu = true })
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = p.surface) {
-            options.forEachIndexed { i, o -> DropdownMenuItem(text = { Text(o, color = p.ink) }, onClick = { onPick(i); menu = false }) }
-        }
     }
 }

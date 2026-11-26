@@ -16,6 +16,7 @@ object Icons {
     val MEALS = R.drawable.ic_chef_hat_minimalistic
     val MEMBERS = R.drawable.ic_users_group_rounded
     val TRASH = R.drawable.ic_trash_bin_minimalistic
+    val RECIPE = R.drawable.ic_notebook_bookmark
 
     @Composable
     fun vector(id: Int): ImageVector = ImageVector.vectorResource(id)

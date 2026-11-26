@@ -6,7 +6,7 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Added
 
-- Android app (in progress): sign-in that stays signed in, Start with the board and areas, shopping lists with suggestions, ticking and live updates, and the calendar with month, week and upcoming views, events, series and birthdays.
+- Android app (in progress): sign-in that stays signed in, Start with the board, "Heute für dich" and areas, shopping lists with suggestions, ticking and live updates, the calendar with month, week and upcoming views, events, series and birthdays, the meal plan with recipes, cooking mode and shopping for the week, and to-dos.
 
 ## [0.1.7] - 2026-11-26
 

@@ -1,0 +1,19 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "slug": "gemuese-pfanne",
+      "name": "Gemüsepfanne",
+      "servings": 4,
+      "hasImage": true
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "slug": "pfannkuchen",
+      "name": "Pfannkuchen",
+      "servings": 2,
+      "hasImage": false
+    }
+  ]
+}

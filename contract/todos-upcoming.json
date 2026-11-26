@@ -1,0 +1,261 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-11-28",
+      "at": "2026-11-28T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-11-29",
+      "at": "2026-11-29T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000004",
+      "title": "Müll rausbringen",
+      "date": "2026-11-30",
+      "at": "2026-11-29T23:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "needsConfirm": false,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-11-30",
+      "at": "2026-11-30T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-01",
+      "at": "2026-12-01T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-02",
+      "at": "2026-12-02T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000004",
+      "title": "Müll rausbringen",
+      "date": "2026-12-03",
+      "at": "2026-12-02T23:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "needsConfirm": false,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-03",
+      "at": "2026-12-03T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-04",
+      "at": "2026-12-04T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-05",
+      "at": "2026-12-05T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-06",
+      "at": "2026-12-06T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000004",
+      "title": "Müll rausbringen",
+      "date": "2026-12-07",
+      "at": "2026-12-06T23:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "needsConfirm": false,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-07",
+      "at": "2026-12-07T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-08",
+      "at": "2026-12-08T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-09",
+      "at": "2026-12-09T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000004",
+      "title": "Müll rausbringen",
+      "date": "2026-12-10",
+      "at": "2026-12-09T23:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003"
+      ],
+      "needsConfirm": false,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-10",
+      "at": "2026-12-10T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-12-11",
+      "at": "2026-12-11T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    }
+  ]
+}

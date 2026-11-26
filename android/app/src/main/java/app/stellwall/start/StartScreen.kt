@@ -3,6 +3,7 @@ package app.stellwall.start
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,9 +46,10 @@ import app.stellwall.ui.SectionHead
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 
 /** Where a tap on Start leads. */
-data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false)
+data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null)
 
 private data class Area(val label: String, val icon: Int, val target: Target?)
 
@@ -61,15 +63,20 @@ private val AREAS = listOf(
 )
 
 @Composable
-fun StartScreen(member: Member, model: StartModel, live: Flow<LiveEvent> = emptyFlow(), today: LocalDate = LocalDate.now(), onOpen: (Target) -> Unit) {
+fun StartScreen(member: Member, model: StartModel, live: Flow<LiveEvent> = emptyFlow(), today: LocalDate = LocalDate.now(), mine: TodayModel? = null, onOpen: (Target) -> Unit) {
     val rows by model.rows.collectAsStateWithLifecycle()
     LaunchedEffect(model) { model.load() }
     LaunchedEffect(model, live) { live.collect { model.onLive(it) } }
+    if (mine != null) {
+        LaunchedEffect(mine) { mine.load() }
+        LaunchedEffect(mine, live) { live.collect { mine.onLive(it) } }
+    }
     val p = LocalPalette.current
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp)) {
         Wordmark(size = 22)
         Column(Modifier.padding(top = 14.dp)) { PageHead(title = StartText.hello(member.displayName), sub = StartText.today(today)) }
         Board(rows.orEmpty(), onOpen)
+        if (mine != null) MyToday(mine, today, onOpen)
         SectionHead(StartText.AREAS)
         BoxCard {
             AREAS.forEachIndexed { i, a ->
@@ -123,6 +130,44 @@ private fun Board(rows: List<BoardRow>, onOpen: (Target) -> Unit) {
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(p.change).padding(horizontal = 8.dp, vertical = 4.dp),
                 )
             }
+        }
+    }
+}
+
+
+@Composable
+private fun MyToday(model: TodayModel, today: LocalDate, onOpen: (Target) -> Unit) {
+    val t by model.state.collectAsStateWithLifecycle()
+    val p = LocalPalette.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    SectionHead(app.stellwall.todos.TodoText.MY_TODAY)
+    val lunch = t.lunch
+    if (lunch != null) {
+        val what = lunch.recipe?.name ?: lunch.text.orEmpty()
+        BoxCard(Modifier.padding(bottom = 10.dp)) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) {
+                    onOpen(Target(Tab.Essen, cook = lunch.recipe?.let { app.stellwall.meals.MealPage.Cook(it.slug, lunch.servings, today) }))
+                }.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(Icons.vector(Icons.MEALS), contentDescription = null, tint = p.ink, modifier = Modifier.size(28.dp))
+                Text(app.stellwall.meals.MealText.todayLunch(what), style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), color = p.ink)
+            }
+        }
+    }
+    if (t.events.isNotEmpty()) {
+        Box(Modifier.padding(bottom = 10.dp)) {
+            app.stellwall.calendar.CalList(t.events, today, t.members, java.time.ZoneId.systemDefault()) { i ->
+                onOpen(if (i is app.stellwall.api.CalendarInstance.Birthday) Target(Tab.Kalender, birthdays = true) else Target(Tab.Kalender, date = today))
+            }
+        }
+    }
+    when {
+        t.todos.isNotEmpty() -> app.stellwall.todos.TodoList(t.todos, t.members, onToggle = { o -> scope.launch { model.toggle(o) } }, onOpen = { onOpen(Target(Tab.Todos)) })
+        t.loaded && t.events.isEmpty() && lunch == null -> BoxCard {
+            Text(app.stellwall.todos.TodoText.MY_TODAY_EMPTY, color = p.inkSoft, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(14.dp))
         }
     }
 }

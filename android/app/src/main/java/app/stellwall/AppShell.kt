@@ -35,7 +35,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import app.stellwall.api.LiveEvent
 import app.stellwall.api.Member
 import app.stellwall.api.CalendarApi
+import app.stellwall.api.MealsApi
 import app.stellwall.api.ShoppingApi
+import app.stellwall.api.TodosApi
+import app.stellwall.meals.MealPage
+import app.stellwall.meals.MealsArea
+import app.stellwall.meals.MealsModel
+import app.stellwall.start.TodayModel
+import app.stellwall.todos.TodosModel
+import app.stellwall.todos.TodosScreen
 import app.stellwall.calendar.BirthdaysModel
 import app.stellwall.calendar.CalendarModel
 import app.stellwall.calendar.CalendarScreen
@@ -60,7 +68,15 @@ enum class Tab(val label: String) { Start("Start"), Einkauf("Einkauf"), Kalender
  * Without [api] (previews, the shell test) the areas show only their titles.
  */
 @Composable
-fun AppShell(member: Member? = null, api: ShoppingApi? = null, calendarApi: CalendarApi? = null, live: Flow<LiveEvent> = emptyFlow(), webUrl: String? = null) {
+fun AppShell(
+    member: Member? = null,
+    api: ShoppingApi? = null,
+    calendarApi: CalendarApi? = null,
+    mealsApi: MealsApi? = null,
+    todosApi: TodosApi? = null,
+    live: Flow<LiveEvent> = emptyFlow(),
+    webUrl: String? = null,
+) {
     var tab by rememberSaveable { mutableStateOf(Tab.Start) }
     var listId by rememberSaveable { mutableStateOf<String?>(null) }
     var calTarget by remember { mutableStateOf<Target?>(null) }
@@ -75,6 +91,9 @@ fun AppShell(member: Member? = null, api: ShoppingApi? = null, calendarApi: Cale
     val start = remember(api) { api?.let { a -> StartModel(board = { a.board() }) } }
     val shopping = remember(api, member) { if (api != null && member != null) ShoppingModel(api, member) else null }
     val calendar = remember(calendarApi, member) { if (calendarApi != null && member != null) CalendarModel(calendarApi, member) else null }
+    val meals = remember(mealsApi) { mealsApi?.let { MealsModel(it) } }
+    val todos = remember(todosApi, member) { if (todosApi != null && member != null) TodosModel(todosApi, member) else null }
+    val mine = remember(todosApi, calendarApi, mealsApi) { if (todosApi != null && calendarApi != null && mealsApi != null) TodayModel(todosApi, calendarApi, mealsApi) else null }
     val birthdays = remember(calendarApi, member) { if (calendarApi != null && member != null) BirthdaysModel(calendarApi, member) else null }
 
     // Back leads to Start first, as the web app's back buttons do.
@@ -102,12 +121,16 @@ fun AppShell(member: Member? = null, api: ShoppingApi? = null, calendarApi: Cale
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
             when {
-                tab == Tab.Start && start != null && member != null -> StartScreen(member, start, hints) { target ->
+                tab == Tab.Start && start != null && member != null -> StartScreen(member, start, hints, mine = mine) { target ->
                     tab = target.tab
                     listId = target.listId
                     calTarget = target
                 }
                 tab == Tab.Einkauf && shopping != null -> ShoppingScreen(shopping, listId, hints, leaveScope = scope)
+                tab == Tab.Essen && meals != null && mealsApi != null -> androidx.compose.runtime.key(calTarget) {
+                    MealsArea(meals, mealsApi, hints, calTarget?.cook ?: MealPage.Week) { id -> tab = Tab.Einkauf; listId = id }
+                }
+                tab == Tab.Todos && todos != null -> TodosScreen(todos, hints)
                 tab == Tab.Kalender && calendar != null && birthdays != null ->
                     // A new key for each jump from Start, so "Geburtstage" and the day open again.
                     androidx.compose.runtime.key(calTarget) { CalendarScreen(calendar, birthdays, hints, calTarget?.date, calTarget?.birthdays == true, webUrl) }

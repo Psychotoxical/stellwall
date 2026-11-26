@@ -57,6 +57,8 @@ import app.stellwall.ui.PersonChip
 import app.stellwall.ui.PrimaryButton
 import app.stellwall.ui.RadiusSm
 import app.stellwall.ui.Sheet
+import app.stellwall.ui.DateField
+import app.stellwall.ui.TimeField
 import app.stellwall.ui.fieldColors
 import java.time.Instant
 import java.time.LocalDate
@@ -224,75 +226,4 @@ private fun RepeatField(d: EventDraft, rrule: String?, onPick: (Repeat) -> Unit)
             Text(Rules.describe(Rules.simple(d.repeat, d.startDate)), style = MaterialTheme.typography.bodySmall, color = p.inkSoft, modifier = Modifier.padding(top = 4.dp, start = 4.dp))
         }
     }
-}
-
-/** A date that opens the date picker; shown as "Do, 3.12.2026". */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DateField(label: String, date: LocalDate, modifier: Modifier, onPick: (LocalDate) -> Unit) {
-    val p = LocalPalette.current
-    var open by remember { mutableStateOf(false) }
-    PickerBox(Days.dateShort(date), label, modifier) { open = true }
-    if (open) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { open = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
-                    open = false
-                }) { Text("OK", color = p.ink) }
-            },
-            dismissButton = { TextButton(onClick = { open = false }) { Text(CalText.CANCEL, color = p.ink) } },
-            colors = DatePickerDefaults.colors(containerColor = p.surface),
-        ) {
-            DatePicker(
-                state = state,
-                colors = DatePickerDefaults.colors(
-                    containerColor = p.surface, titleContentColor = p.inkSoft, headlineContentColor = p.ink, weekdayContentColor = p.inkSoft,
-                    navigationContentColor = p.ink, yearContentColor = p.ink, currentYearContentColor = p.primary, selectedYearContainerColor = p.primary,
-                    selectedYearContentColor = p.primaryInk, dayContentColor = p.ink, selectedDayContainerColor = p.primary, selectedDayContentColor = p.primaryInk,
-                    todayContentColor = p.primary, todayDateBorderColor = p.primary, dividerColor = p.rule,
-                ),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimeField(label: String, time: LocalTime, modifier: Modifier, onPick: (LocalTime) -> Unit) {
-    val p = LocalPalette.current
-    var open by remember { mutableStateOf(false) }
-    PickerBox(time.format(DateTimeFormatter.ofPattern("HH:mm")), label, modifier) { open = true }
-    if (open) {
-        val state = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { open = false },
-            confirmButton = { TextButton(onClick = { onPick(LocalTime.of(state.hour, state.minute)); open = false }) { Text("OK", color = p.ink) } },
-            dismissButton = { TextButton(onClick = { open = false }) { Text(CalText.CANCEL, color = p.ink) } },
-            text = {
-                TimePicker(
-                    state = state,
-                    colors = TimePickerDefaults.colors(
-                        clockDialColor = p.field, clockDialSelectedContentColor = p.primaryInk, selectorColor = p.primary,
-                        containerColor = p.surface, timeSelectorSelectedContainerColor = p.primary,
-                        timeSelectorSelectedContentColor = p.primaryInk,
-                    ),
-                )
-            },
-            containerColor = p.surface,
-        )
-    }
-}
-
-@Composable
-private fun PickerBox(value: String, label: String, modifier: Modifier, onClick: () -> Unit) {
-    val p = LocalPalette.current
-    Box(
-        modifier.heightIn(min = 52.dp).clip(RadiusSm).border(1.dp, p.rule, RadiusSm).background(p.surface)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick).semantics { contentDescription = "$label: $value" }
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) { Text(value, style = MaterialTheme.typography.bodyLarge, color = p.ink) }
 }

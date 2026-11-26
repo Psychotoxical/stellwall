@@ -47,7 +47,7 @@ fun Root(model: AppModel<ApiClient>, dark: Boolean) {
             is AppState.SignedIn -> {
                 val api = model.backend
                 val live = remember(api) { api?.live() ?: emptyFlow() }
-                AppShell(member = s.member, api = api, calendarApi = api, live = live, webUrl = model.server)
+                AppShell(member = s.member, api = api, calendarApi = api, mealsApi = api, todosApi = api, live = live, webUrl = model.server)
             }
         }
     }

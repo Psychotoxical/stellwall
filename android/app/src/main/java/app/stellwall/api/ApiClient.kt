@@ -63,8 +63,36 @@ interface CalendarApi {
     suspend fun deleteBirthday(id: String)
 }
 
+/** The meal plan, recipes from Mealie and the pantry. */
+interface MealsApi {
+    suspend fun members(): List<Member>
+    suspend fun meals(week: String): List<Meal>
+    suspend fun saveMeal(date: String, body: MealBody): Meal
+    suspend fun deleteMeal(date: String)
+    suspend fun recipes(q: String): List<RecipeSummary>
+    suspend fun recipe(slug: String): Recipe
+    suspend fun recipeImage(id: String): ByteArray
+    suspend fun shopPreview(dates: List<String>, servings: Int?): ShopPreview
+    suspend fun shopCommit(lines: List<ShopLine>): CommitResult
+    suspend fun pantry(): List<Staple>
+    suspend fun addStaple(name: String): Staple
+    suspend fun deleteStaple(id: String)
+}
+
+interface TodosApi {
+    suspend fun members(): List<Member>
+    suspend fun todos(view: String, mine: Boolean): List<Occurrence>
+    suspend fun todo(id: String): TodoRule
+    suspend fun createTodo(body: TodoBody): TodoRule
+    suspend fun updateTodo(id: String, body: TodoBody): TodoRule
+    suspend fun deleteTodo(id: String)
+    suspend fun done(id: String, date: String)
+    suspend fun undone(id: String, date: String)
+    suspend fun todoSuggestions(q: String): List<String>
+}
+
 /** Talks to one Stellwall server; the session lives in [store]. */
-class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi {
+class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi, MealsApi, TodosApi {
     private val jar = SessionCookieJar(store)
     private val http = OkHttpClient.Builder()
         .cookieJar(jar)
@@ -179,6 +207,76 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
     override suspend fun deleteBirthday(id: String) {
         call("DELETE", "api/birthdays/${seg(id)}")
     }
+
+    private fun url(path: String, vararg query: Pair<String, String>) =
+        base.newBuilder().addPathSegments(path).apply { for ((k, v) in query) addQueryParameter(k, v) }.build()
+
+    override suspend fun meals(week: String) = send("GET", url("api/meals", "week" to week), null).decode(ListSerializer(Meal.serializer()))
+
+    override suspend fun saveMeal(date: String, body: MealBody): Meal {
+        // Both keys must be there, one of them null: encode with nulls for this body.
+        val text = Json { explicitNulls = true }.encodeToString(MealBody.serializer(), body)
+        return call("PUT", "api/meals/${seg(date)}", text).decode(Meal.serializer())
+    }
+
+    override suspend fun deleteMeal(date: String) {
+        call("DELETE", "api/meals/${seg(date)}")
+    }
+
+    override suspend fun recipes(q: String) = send("GET", url("api/recipes", "q" to q), null).decode(ListSerializer(RecipeSummary.serializer()))
+
+    override suspend fun recipe(slug: String) = call("GET", "api/recipes/${seg(slug)}").decode(Recipe.serializer())
+
+    override suspend fun recipeImage(id: String): ByteArray = withContext(Dispatchers.IO) {
+        http.newCall(Request.Builder().url(base.resolve("api/recipes/${seg(id)}/image")!!).build()).execute().use { res ->
+            if (!res.isSuccessful) throw ApiException(res.code, "")
+            res.body.bytes()
+        }
+    }
+
+    override suspend fun shopPreview(dates: List<String>, servings: Int?) =
+        call("POST", "api/meals/shopping/preview", encode(ShopRequest.serializer(), ShopRequest(dates, servings))).decode(ShopPreview.serializer())
+
+    override suspend fun shopCommit(lines: List<ShopLine>) =
+        call("POST", "api/meals/shopping/commit", encode(CommitRequest.serializer(), CommitRequest(lines.map { CommitLine(it.food, it.quantity) }))).decode(CommitResult.serializer())
+
+    override suspend fun pantry() = call("GET", "api/pantry").decode(ListSerializer(Staple.serializer()))
+
+    override suspend fun addStaple(name: String) = call("POST", "api/pantry", encode(NewStaple.serializer(), NewStaple(name))).decode(Staple.serializer())
+
+    override suspend fun deleteStaple(id: String) {
+        call("DELETE", "api/pantry/${seg(id)}")
+    }
+
+    override suspend fun todos(view: String, mine: Boolean) =
+        send("GET", url("api/todos", *listOfNotNull("view" to view, if (mine) "mine" to "1" else null).toTypedArray()), null).decode(ListSerializer(Occurrence.serializer()))
+
+    override suspend fun todo(id: String) = call("GET", "api/todos/${seg(id)}").decode(TodoRule.serializer())
+
+    /** Nulls are sent: an empty date or time is a change too. */
+    private fun todoJson(body: TodoBody): String {
+        val o = Json { explicitNulls = true }.encodeToJsonElement(TodoBody.serializer(), body) as JsonObject
+        return JsonObject(o.filter { (k, v) -> !(k == "visibility" && v is kotlinx.serialization.json.JsonNull) }).toString()
+    }
+
+    override suspend fun createTodo(body: TodoBody) = call("POST", "api/todos", todoJson(body)).decode(TodoRule.serializer())
+
+    override suspend fun updateTodo(id: String, body: TodoBody) = call("PATCH", "api/todos/${seg(id)}", todoJson(body)).decode(TodoRule.serializer())
+
+    override suspend fun deleteTodo(id: String) {
+        call("DELETE", "api/todos/${seg(id)}")
+    }
+
+    override suspend fun done(id: String, date: String) {
+        call("POST", "api/todos/${seg(id)}/done", encode(DoneRequest.serializer(), DoneRequest(date)))
+    }
+
+    override suspend fun undone(id: String, date: String) {
+        call("DELETE", "api/todos/${seg(id)}/done/${seg(date)}")
+    }
+
+    override suspend fun todoSuggestions(q: String) =
+        send("GET", url("api/todo-suggestions", "q" to q), null).decode(ListSerializer(NameOnly.serializer())).map { it.name }
 
     /**
      * Change hints for as long as it is collected. A dropped connection is opened again,
