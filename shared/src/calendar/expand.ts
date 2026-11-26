@@ -1,8 +1,9 @@
-import rrulePkg from "rrule";
+import * as rrulePkg from "rrule";
 import { localDate, zonedTime } from "../todos/recurrence.ts";
 
 // rrule ships CommonJS; Node only offers its default export to ES modules.
-const { RRule } = rrulePkg;
+// Node sees rrule as CommonJS (everything under default), bundlers as ESM with named exports.
+const RRule = (rrulePkg as unknown as { RRule?: typeof rrulePkg.RRule; default?: { RRule: typeof rrulePkg.RRule } }).RRule ?? (rrulePkg as unknown as { default: { RRule: typeof rrulePkg.RRule } }).default.RRule;
 
 export type Exception = {
   date: string;

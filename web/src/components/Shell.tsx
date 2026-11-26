@@ -9,7 +9,7 @@ type Item = { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElem
 const ITEMS: Item[] = [
   { to: "/", label: de.nav.start, icon: Icon.Start, ready: true },
   { to: "/einkauf", label: de.nav.einkauf, icon: Icon.Einkauf, ready: true },
-  { to: "/kalender", label: de.nav.kalender, icon: Icon.Kalender, ready: false },
+  { to: "/kalender", label: de.nav.kalender, icon: Icon.Kalender, ready: true },
   { to: "/todos", label: de.nav.todos, icon: Icon.Todos, ready: true },
   { to: "/mehr", label: de.nav.mehr, icon: Icon.Mehr, ready: true },
 ];

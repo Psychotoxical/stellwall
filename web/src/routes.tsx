@@ -9,6 +9,9 @@ import { Account } from "./pages/Account.tsx";
 import { More } from "./pages/More.tsx";
 import { Shopping } from "./pages/Shopping.tsx";
 import { Todos } from "./pages/Todos.tsx";
+import { Calendar } from "./pages/Calendar.tsx";
+import { Birthdays } from "./pages/Birthdays.tsx";
+import { Import } from "./pages/Import.tsx";
 import { useLive } from "./live.ts";
 
 function RequireMember() {
@@ -50,6 +53,9 @@ export const routes: RouteObject[] = [
       { path: "/", element: <Home /> },
       { path: "/einkauf", element: <Shopping /> },
       { path: "/todos", element: <Todos /> },
+      { path: "/kalender", element: <Calendar /> },
+      { path: "/kalender/geburtstage", element: <Birthdays /> },
+      { path: "/kalender/import", element: <Import /> },
       { path: "/mehr", element: <More /> },
       { path: "/konto", element: <Account /> },
       { path: "/mitglieder", element: <AdminOnly><Members /></AdminOnly> },

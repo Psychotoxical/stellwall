@@ -28,6 +28,12 @@ export function More() {
         Icons: Solar von 480 Design, Lizenz{" "}
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
       </p>
+      <p className="lead">
+        Wiederholungen: rrule, Lizenz{" "}
+        <a href="https://github.com/jkbrzt/rrule/blob/master/LICENCE" target="_blank" rel="noreferrer">BSD-3-Clause</a>. Kalender-Import: ical.js, Lizenz{" "}
+        <a href="https://www.mozilla.org/MPL/2.0/" target="_blank" rel="noreferrer">MPL 2.0</a>, Quellcode auf{" "}
+        <a href="https://github.com/kewisch/ical.js" target="_blank" rel="noreferrer">GitHub</a>.
+      </p>
     </>
   );
 }

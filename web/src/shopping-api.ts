@@ -17,7 +17,8 @@ export type ItemDto = {
 };
 export type ShoppingBoardRow = { kind: "shopping"; who: string; whoName: string; listId: string; listName: string; count: number; latestAt: string; itemIds: string[] };
 export type TodoBoardRow = { kind: "todo"; who: string; whoName: string; todoId: string; title: string; latestAt: string };
-export type BoardRow = ShoppingBoardRow | TodoBoardRow;
+export type EventBoardRow = { kind: "event"; who: string; whoName: string; eventId: string; title: string; start: string; allDay: boolean; latestAt: string };
+export type BoardRow = ShoppingBoardRow | TodoBoardRow | EventBoardRow;
 export type Recurrence = { kind: "none" } | { kind: "daily" } | { kind: "weekly"; weekdays: number[] } | { kind: "monthly"; day: number };
 export type OccurrenceDto = {
   todoId: string; title: string; date: string | null; at: string | null; overdue: boolean;
