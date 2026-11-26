@@ -18,6 +18,12 @@ const UNITS: Record<string, string> = {
   tasse: "Tasse", tassen: "Tasse", glas: "Glas", gläser: "Glas", würfel: "Würfel",
 };
 
+/** A unit as Mealie or a recipe names it ("Esslöffel", "g", "Gramm"), in Stellwall's spelling. */
+export function normalizeUnit(u: string | null | undefined): string | null {
+  if (!u) return null;
+  return UNITS[u.trim().replace(/\.$/, "").toLowerCase()] ?? u.trim();
+}
+
 const VAGUE = /^(etwas|ein wenig|ein paar|nach belieben)\s+/i;
 
 /** Reads a free-text recipe line such as "1 ½ EL Öl" or "1 Dose Tomaten (400 g)". */

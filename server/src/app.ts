@@ -15,10 +15,11 @@ import { todoRoutes } from "./todos/routes.ts";
 import { eventRoutes } from "./calendar/events.ts";
 import { birthdayRoutes } from "./calendar/birthdays.ts";
 import { importRoutes } from "./calendar/import.ts";
+import { createMealie, mealieRoutes } from "./meals/mealie.ts";
 
 const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
-export type AppDeps = { config: Config; db: Db; now?: (() => Date) | undefined };
+export type AppDeps = { config: Config; db: Db; now?: (() => Date) | undefined; mealieTimeoutMs?: number | undefined };
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const now = deps.now ?? (() => new Date());
@@ -52,6 +53,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await eventRoutes(app, { db: deps.db, now, timeZone: deps.config.timeZone, notify });
   await birthdayRoutes(app, { db: deps.db, now, notify });
   await importRoutes(app, { db: deps.db, now, timeZone: deps.config.timeZone, notify });
+  const mealie = createMealie(deps.db, deps.mealieTimeoutMs ?? 10_000);
+  await mealieRoutes(app, { db: deps.db, mealie });
 
   const webDir = deps.config.webDir;
   if (webDir) {

@@ -12,10 +12,10 @@ export const testConfig: Config = {
   timeZone: "Europe/Berlin",
 };
 
-export async function createTestApp(opts: { client?: PGlite; now?: () => Date } = {}) {
+export async function createTestApp(opts: { client?: PGlite; now?: () => Date; mealieTimeoutMs?: number | undefined } = {}) {
   const client = opts.client ?? new PGlite();
   const database: Database = await openPglite(client);
   await database.migrate();
-  const app = await buildApp({ config: testConfig, db: database.db, now: opts.now });
+  const app = await buildApp({ config: testConfig, db: database.db, now: opts.now, mealieTimeoutMs: opts.mealieTimeoutMs });
   return { app, db: database.db, client };
 }
