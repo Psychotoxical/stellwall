@@ -7,6 +7,8 @@ import { csrfCheck } from "./auth/guard.ts";
 import { authRoutes } from "./auth/routes.ts";
 import { SESSION_COOKIE, findSession } from "./auth/sessions.ts";
 import { memberRoutes } from "./members/routes.ts";
+import { listRoutes } from "./shopping/lists.ts";
+import { silent } from "./shopping/notify.ts";
 
 const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
@@ -34,6 +36,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.get("/api/health", async () => ({ ok: true }));
   await authRoutes(app, { db: deps.db, now, cookieSecure: deps.config.cookieSecure });
   await memberRoutes(app, { db: deps.db, now });
+  const notify = silent;
+  await listRoutes(app, { db: deps.db, now, notify });
 
   const webDir = deps.config.webDir;
   if (webDir) {
