@@ -147,6 +147,8 @@ export const de = {
     myToday: "Heute für dich",
     myTodayEmpty: "Für dich steht heute nichts an.",
   },
+  update: { ready: "Eine neue Version von Stellwall ist da.", reload: "Neu laden" },
+  about: { version: (v: string) => `Version ${v}` },
   calendar: {
     page: "Kalender",
     views: { month: "Monat", week: "Woche", upcoming: "Demnächst" },

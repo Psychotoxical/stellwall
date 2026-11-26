@@ -24,6 +24,7 @@ export function More() {
         </Link>
       </div>
       <div className="sechead"><h2>Über Stellwall</h2></div>
+      <p className="lead">{de.about.version(__APP_VERSION__)}</p>
       <p className="lead">
         Icons: Solar von 480 Design, Lizenz{" "}
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.

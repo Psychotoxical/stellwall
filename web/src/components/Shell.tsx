@@ -3,6 +3,7 @@ import type { ComponentType, SVGProps } from "react";
 import { Icon } from "../icons.ts";
 import { de } from "../text/de.ts";
 import { ConnectionBanner } from "./ConnectionBanner.tsx";
+import { UpdateBanner } from "./UpdateBanner.tsx";
 
 type Item = { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; ready: boolean };
 
@@ -44,6 +45,7 @@ export function Shell() {
         <NavItems rail />
       </nav>
       <div className="content">
+        <UpdateBanner />
         <ConnectionBanner />
         <main className="main">
           <Outlet />
