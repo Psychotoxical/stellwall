@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { routes } from "./routes.tsx";
 import "./app.css";
+import { trackViewport } from "./viewport.ts";
+
+trackViewport();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } });
 const router = createBrowserRouter(routes);
