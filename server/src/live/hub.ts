@@ -5,6 +5,8 @@ import type { WebSocket } from "@fastify/websocket";
 import type { Db } from "../db/client.ts";
 import { lists, todos } from "../db/schema.ts";
 import { todoMemberIds } from "../todos/routes.ts";
+import { eventAudience } from "../calendar/events.ts";
+import { birthdayAudience } from "../calendar/birthdays.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
 import type { Notifier } from "../shopping/notify.ts";
 
@@ -49,6 +51,9 @@ export function createHub(db: Db) {
     lists: () => send([...sockets.keys()], { type: "lists" }),
     todo: (todoId) => void todoChanged(todoId).catch(() => {}),
     todoGone: (audience) => send(audience ?? [...sockets.keys()], { type: "todos" }),
+    calendar: (id) => void eventAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "calendar" })).catch(() => {}),
+    birthday: (id) => void birthdayAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "calendar" })).catch(() => {}),
+    calendarGone: (audience) => send(audience ?? [...sockets.keys()], { type: "calendar" }),
   };
 
   return { add, notifier };

@@ -26,7 +26,11 @@ export function useLive(enabled: boolean) {
           void qc.invalidateQueries({ queryKey: ["lists"] });
           void qc.invalidateQueries({ queryKey: ["board"] });
         } else if (msg.type === "lists") void qc.invalidateQueries({ queryKey: ["lists"] });
-        else if (msg.type === "todos") {
+        else if (msg.type === "calendar") {
+          void qc.invalidateQueries({ queryKey: ["calendar"] });
+          void qc.invalidateQueries({ queryKey: ["birthdays"] });
+          void qc.invalidateQueries({ queryKey: ["board"] });
+        } else if (msg.type === "todos") {
           void qc.invalidateQueries({ queryKey: ["todos"] });
           void qc.invalidateQueries({ queryKey: ["board"] });
         }

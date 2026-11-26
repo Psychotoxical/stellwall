@@ -16,7 +16,7 @@ export function fakeApi(table: FakeApi) {
       const key = (init?.method ?? "GET") + " " + url;
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       calls.push({ key, body });
-      const h = table[key];
+      const h = table[key] ?? table[key.split("?")[0] + "?*"];
       if (!h) return new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
       const r = h(body);
       return new Response(JSON.stringify(r.body), { status: r.status });

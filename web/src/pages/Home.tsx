@@ -7,6 +7,9 @@ import { useBoard, useMembers, useTodos } from "../shopping-api.ts";
 import { TodoRow } from "./Todos.tsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
+import { addDays, shortDay, todayYmd, useCalendar, hhmm, ymd } from "../calendar-api.ts";
+import { CalList } from "./Calendar.tsx";
+import { useNavigate } from "react-router";
 
 const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: "einkauf", icon: Icon.Einkauf },
@@ -16,6 +19,8 @@ const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGEl
   { key: "dokumente", icon: Icon.Dokumente },
   { key: "essensplan", icon: Icon.Essensplan },
 ];
+
+const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage" };
 
 export function Header({ title, sub }: { title: string; sub?: string }) {
   const me = useMe().data;
@@ -49,8 +54,8 @@ export function Home() {
           </div>
           <div className="areas">
             {AREAS.map(({ key, icon: I }) =>
-              key === "einkauf" || key === "todos" ? (
-                <Link key={key} to={key === "einkauf" ? "/einkauf" : "/todos"} className="area">
+              key in LINKS ? (
+                <Link key={key} to={LINKS[key]!} className="area">
                   <I className="ico" aria-hidden="true" />
                   <b>{de.areas[key]}</b>
                   <small />
@@ -90,6 +95,15 @@ function Board() {
             </span>
             <span className="tag">{de.board.tag}</span>
           </Link>
+        ) : r.kind === "event" ? (
+          <Link key={"e" + r.eventId} to={`/kalender?tag=${ymd(new Date(r.start))}`} className="brow">
+            <span className="tm">{time(r.latestAt)}</span>
+            <span className="what">
+              {de.board.entered(r.whoName, r.title, shortDay(ymd(new Date(r.start))) + (r.allDay ? "" : " " + hhmm(r.start)))}
+              <em>{de.board.calendarArea}</em>
+            </span>
+            <span className="tag">{de.board.tag}</span>
+          </Link>
         ) : (
           <Link key={"t" + r.todoId} to="/todos" className="brow">
             <span className="tm">{time(r.latestAt)}</span>
@@ -110,12 +124,16 @@ function MyToday() {
   const members = useMembers().data ?? [];
   const qc = useQueryClient();
   const rows = list.data ?? [];
+  const today = todayYmd();
+  const cal = useCalendar(today, addDays(today, 1), true).data ?? [];
+  const navigate = useNavigate();
   return (
     <>
       <div className="sechead">
         <h2>{de.todos.myToday}</h2>
       </div>
-      {rows.length === 0 ? (
+      {cal.length > 0 && <CalList list={cal} date={today} members={members} onOpen={(i) => navigate(i.kind === "birthday" ? "/kalender/geburtstage" : `/kalender?tag=${today}`)} />}
+      {rows.length === 0 && cal.length > 0 ? null : rows.length === 0 ? (
         <div className="box"><p className="empty">{de.todos.myTodayEmpty}</p></div>
       ) : (
         <ul className="box todolist">
