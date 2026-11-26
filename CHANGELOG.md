@@ -4,6 +4,15 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Calendar with month, week and "upcoming" views, showing everyone's events or only your own.
+- Events: all-day or with times, place and note, who it is for, and whether everyone may see it.
+- Repeating events weekly, every two weeks, monthly or yearly; changes apply to this one, this and following, or all.
+- Birthdays, also for people outside the family, with the age they turn, a reminder lead time and who gets reminded.
+- One-time import of a calendar file from Google or Apple, or a shared calendar link, with a preview first; importing the same file again adds nothing twice.
+- The start screen lists today's events and birthdays, and the board shows events others entered for you.
+
 ## [0.1.2] - 2026-11-26
 
 ### Added
