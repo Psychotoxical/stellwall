@@ -9,6 +9,8 @@ Every version has its own section. The section of a version becomes the text of 
 - Meal plan: without a search word all recipes are listed, not just the first 24; who cooks and servings sit above the list.
 - Mealie connection test shows how many recipes there are in total, not just the first page.
 
+## [0.1.5] - 2026-11-26
+
 ### Added
 
 - Meal plan: one lunch per day, either a recipe from Mealie or a free text, with who cooks and how many servings.
