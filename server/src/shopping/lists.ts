@@ -116,12 +116,12 @@ async function unlearnFromFamily(db: Db, listId: string, creator: string, at: Da
       .where(and(eq(items.key, key), eq(lists.everyone, true), ne(lists.id, listId)))
       .limit(1);
     if (elsewhere.length) continue;
-    const fam = (await db.select().from(catalogEntries).where(and(eq(catalogEntries.scope, "family"), eq(catalogEntries.key, key))))[0];
+    const fam = (await db.select().from(catalogEntries).where(and(eq(catalogEntries.kind, "shopping"), eq(catalogEntries.scope, "family"), eq(catalogEntries.key, key))))[0];
     if (!fam) continue;
     await db
       .insert(catalogEntries)
       .values({ scope: creator, key, name: fam.name, category: fam.category, uses: fam.uses, lastUsed: at })
-      .onConflictDoUpdate({ target: [catalogEntries.scope, catalogEntries.key], set: { uses: sql`${catalogEntries.uses} + ${fam.uses}` } });
+      .onConflictDoUpdate({ target: [catalogEntries.kind, catalogEntries.scope, catalogEntries.key], set: { uses: sql`${catalogEntries.uses} + ${fam.uses}` } });
     await db.delete(catalogEntries).where(eq(catalogEntries.id, fam.id));
   }
 }

@@ -4,6 +4,18 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- To-dos: who takes care of it, who may see it, a date and time, and repeating on chosen weekdays, daily or monthly.
+- "Must be confirmed": such to-dos are checked off, everyone sees who did it, and missed ones stay on top as overdue.
+- Reminder times can be set already; they reach the phone once notifications are ready.
+- Suggestions while typing from about 180 household tasks, learning from what you type.
+- The start screen shows your to-dos for today, and the board shows to-dos others gave you.
+
+### Fixed
+
+- The sign-in and setup pages start at the top on phones.
+
 ## [0.1.1] - 2026-11-26
 
 ### Added

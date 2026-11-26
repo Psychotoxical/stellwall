@@ -74,9 +74,9 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 /* Shopping */
 .shop { max-width: 680px; }
 .listbar { margin-bottom: 12px; }
-.listbar button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
-.listbar button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
-.listbar .count { font-family: var(--font-board); font-weight: 800; font-size: 13px; color: var(--ink-soft); }
+.seg button { border: 0; background: transparent; color: inherit; padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; min-height: 36px; }
+.seg button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.seg .count { font-family: var(--font-board); font-weight: 800; font-size: 13px; color: var(--ink-soft); }
 .listhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .toolist { display: flex; flex-direction: column; gap: 8px; }
 .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rule); background: var(--surface); border-radius: 999px; padding: 7px 12px 7px 9px; font-weight: 600; font-size: 14px; }
@@ -117,6 +117,20 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 0 0 12px; }
 .person { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: var(--radius-sm); background: var(--field); cursor: pointer; }
 .person input { width: 18px; height: 18px; accent-color: var(--primary); margin: 0; }
+
+.todolist { list-style: none; margin: 0; padding: 0; }
+.todolist .item { grid-template-columns: 1fr auto 48px; }
+.chips { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.tag-inline { font-size: 11px; padding: 2px 6px; margin-right: 4px; }
+fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.weekdays { display: flex; gap: 6px; flex-wrap: wrap; }
+.wd { position: relative; display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px; border-radius: var(--radius-sm); border: 1.5px solid var(--rule); background: var(--surface); font-weight: 700; cursor: pointer; }
+.wd input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.wd.on { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
+.wd:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.todoform { max-width: none; }
+.sheet .todoform { max-height: 75vh; overflow-y: auto; }
 
 /* Area list */
 .areas { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-md); overflow: hidden; }
@@ -190,7 +204,8 @@ h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 
 .sheet p { color: var(--ink-soft); margin: 0 0 14px; }
 
 /* Auth pages */
-.auth { min-height: 100vh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); }
+.auth { min-height: 100vh; display: grid; justify-items: center; align-items: start; padding: calc(48px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+@media (min-width: 700px) and (min-height: 700px) { .auth { align-items: center; padding-top: 24px; } }
 .auth-card { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 18px; }
 .auth-card .brand { font-family: var(--font-board); font-weight: 800; font-size: 22px; }
 

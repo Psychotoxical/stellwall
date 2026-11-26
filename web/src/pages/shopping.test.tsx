@@ -72,7 +72,7 @@ describe("shopping", () => {
   });
 
   it("unseen items of others are highlighted", async () => {
-    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: milk.addedAt, itemIds: ["i1"] }] }) });
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: milk.addedAt, itemIds: ["i1"] }] }) });
     renderAt("/einkauf");
     const name = await screen.findByText("Milch");
     await waitFor(() => expect(name.closest(".item")).toHaveClass("is-new"));
@@ -81,7 +81,7 @@ describe("shopping", () => {
 
 describe("home board", () => {
   it("lists what others added and links to the list", async () => {
-    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 3, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a", "b", "c"] }] }) });
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 3, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a", "b", "c"] }] }) });
     renderAt("/");
     const link = await screen.findByRole("link", { name: new RegExp(de.board.added("Sam", 3, "Einkauf")) });
     expect(link).toHaveAttribute("href", "/einkauf?liste=l1");

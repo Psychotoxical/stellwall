@@ -6,3 +6,5 @@ export * from "./shopping/quantity.ts";
 export * from "./shopping/suggest.ts";
 export * from "./shopping/day.ts";
 export * from "./shopping/catalog.ts";
+export * from "./todos/recurrence.ts";
+export * from "./todos/catalog.ts";

@@ -25,7 +25,7 @@ export function Shopping() {
   const [newName, setNewName] = useState<string | null>(null);
 
   // Highlight what others added since the last look; leaving the page marks it as seen.
-  const unseen = useMemo(() => new Set((board.data ?? []).flatMap((r) => r.itemIds)), [board.data]);
+  const unseen = useMemo(() => new Set((board.data ?? []).flatMap((r) => (r.kind === "shopping" ? r.itemIds : []))), [board.data]);
   const frozenUnseen = useRef<Set<string> | null>(null);
   if (frozenUnseen.current === null && board.data) frozenUnseen.current = unseen;
   useEffect(

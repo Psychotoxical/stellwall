@@ -3,7 +3,10 @@ import type { ComponentType, SVGProps } from "react";
 import { Icon } from "../icons.ts";
 import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
-import { useBoard } from "../shopping-api.ts";
+import { useBoard, useMembers, useTodos } from "../shopping-api.ts";
+import { TodoRow } from "./Todos.tsx";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../api.ts";
 
 const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: "einkauf", icon: Icon.Einkauf },
@@ -40,13 +43,14 @@ export function Home() {
       <div className="cols">
         <Board />
         <section aria-labelledby="areas-h">
+          <MyToday />
           <div className="sechead">
             <h2 id="areas-h">{de.home.areas}</h2>
           </div>
           <div className="areas">
             {AREAS.map(({ key, icon: I }) =>
-              key === "einkauf" ? (
-                <Link key={key} to="/einkauf" className="area">
+              key === "einkauf" || key === "todos" ? (
+                <Link key={key} to={key === "einkauf" ? "/einkauf" : "/todos"} className="area">
                   <I className="ico" aria-hidden="true" />
                   <b>{de.areas[key]}</b>
                   <small />
@@ -76,16 +80,61 @@ function Board() {
         <span>{de.board.count(rows.length)}</span>
       </div>
       {rows.length === 0 && <p className="board-empty">{de.home.boardEmpty}</p>}
-      {rows.map((r) => (
-        <Link key={r.who + r.listId} to={`/einkauf?liste=${r.listId}`} className="brow">
-          <span className="tm">{time(r.latestAt)}</span>
-          <span className="what">
-            {de.board.added(r.whoName, r.count, r.listName)}
-            <em>{de.board.area}</em>
-          </span>
-          <span className="tag">{de.board.tag}</span>
-        </Link>
-      ))}
+      {rows.map((r) =>
+        r.kind === "shopping" ? (
+          <Link key={"s" + r.who + r.listId} to={`/einkauf?liste=${r.listId}`} className="brow">
+            <span className="tm">{time(r.latestAt)}</span>
+            <span className="what">
+              {de.board.added(r.whoName, r.count, r.listName)}
+              <em>{de.board.area}</em>
+            </span>
+            <span className="tag">{de.board.tag}</span>
+          </Link>
+        ) : (
+          <Link key={"t" + r.todoId} to="/todos" className="brow">
+            <span className="tm">{time(r.latestAt)}</span>
+            <span className="what">
+              {de.board.gave(r.whoName, r.title)}
+              <em>{de.board.todoArea}</em>
+            </span>
+            <span className="tag">{de.board.tag}</span>
+          </Link>
+        ),
+      )}
     </section>
+  );
+}
+
+function MyToday() {
+  const list = useTodos("today", true);
+  const members = useMembers().data ?? [];
+  const qc = useQueryClient();
+  const rows = list.data ?? [];
+  return (
+    <>
+      <div className="sechead">
+        <h2>{de.todos.myToday}</h2>
+      </div>
+      {rows.length === 0 ? (
+        <div className="box"><p className="empty">{de.todos.myTodayEmpty}</p></div>
+      ) : (
+        <ul className="box todolist">
+          {rows.map((o) => (
+            <TodoRow
+              key={o.todoId + (o.date ?? "")}
+              o={o}
+              members={members}
+              onOpen={() => {}}
+              onToggle={async () => {
+                const date = o.date ?? "1970-01-01";
+                if (o.done) await api(`/api/todos/${o.todoId}/done/${date}`, { method: "DELETE" });
+                else await api(`/api/todos/${o.todoId}/done`, { method: "POST", body: { date } });
+                await qc.invalidateQueries({ queryKey: ["todos"] });
+              }}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

@@ -15,7 +15,18 @@ export type ItemDto = {
   checkedAt: string | null;
   checkedBy: string | null;
 };
-export type BoardRow = { who: string; whoName: string; listId: string; listName: string; count: number; latestAt: string; itemIds: string[] };
+export type ShoppingBoardRow = { kind: "shopping"; who: string; whoName: string; listId: string; listName: string; count: number; latestAt: string; itemIds: string[] };
+export type TodoBoardRow = { kind: "todo"; who: string; whoName: string; todoId: string; title: string; latestAt: string };
+export type BoardRow = ShoppingBoardRow | TodoBoardRow;
+export type Recurrence = { kind: "none" } | { kind: "daily" } | { kind: "weekly"; weekdays: number[] } | { kind: "monthly"; day: number };
+export type OccurrenceDto = {
+  todoId: string; title: string; date: string | null; at: string | null; overdue: boolean;
+  done: { by: string; at: string } | null; assignees: string[]; needsConfirm: boolean; everyone: boolean; createdBy: string;
+};
+export type TodoRule = {
+  id: string; title: string; visibility: Visibility; createdBy: string; assignees: string[]; startDate: string | null;
+  time: string | null; recurrence: Recurrence; until: string | null; needsConfirm: boolean; reminders: number[];
+};
 export type Suggestion = { name: string; category: string };
 
 export const useLists = () => useQuery({ queryKey: ["lists"], queryFn: () => api<ListDto[]>("/api/lists") });
@@ -23,3 +34,5 @@ export const useItems = (listId: string | undefined) =>
   useQuery({ queryKey: ["items", listId], queryFn: () => api<ItemDto[]>(`/api/lists/${listId}/items`), enabled: !!listId });
 export const useBoard = () => useQuery({ queryKey: ["board"], queryFn: () => api<BoardRow[]>("/api/board") });
 export const useMembers = () => useQuery({ queryKey: ["members"], queryFn: () => api<MemberDto[]>("/api/members") });
+export const useTodos = (view: "today" | "upcoming" | "undated", mine: boolean) =>
+  useQuery({ queryKey: ["todos", view, mine], queryFn: () => api<OccurrenceDto[]>(`/api/todos?view=${view}${mine ? "&mine=1" : ""}`) });

@@ -1,0 +1,17 @@
+/* Hand-written everyday household tasks, offered while typing a to-do. */
+const RAW = [
+  "Müll rausbringen|Restmüll rausbringen|Biomüll rausbringen|Papiermüll rausbringen|Gelben Sack rausstellen|Altglas wegbringen|Pfandflaschen zurückbringen|Mülltonnen reinholen|Mülleimer leeren|Mülleimer sauber machen",
+  "Katzen füttern|Katzenklo sauber machen|Katzenstreu wechseln|Hund füttern|Mit dem Hund rausgehen|Wassernapf auffüllen|Vögel füttern|Aquarium reinigen|Fische füttern|Tierarzttermin machen|Entwurmen|Flohschutz geben|Krallen schneiden|Futter nachkaufen",
+  "Pflanzen gießen|Balkonpflanzen gießen|Garten gießen|Rasen mähen|Unkraut jäten|Hecke schneiden|Laub harken|Blumen umtopfen|Kompost umsetzen|Gartengeräte wegräumen|Terrasse fegen|Schnee schippen|Gehweg streuen|Regenrinne sauber machen",
+  "Staubsaugen|Wischen|Boden wischen|Staub wischen|Bad putzen|Toilette putzen|Dusche putzen|Badewanne putzen|Waschbecken putzen|Spiegel putzen|Fenster putzen|Küche putzen|Herd putzen|Backofen reinigen|Kühlschrank auswischen|Kühlschrank abtauen|Mikrowelle reinigen|Arbeitsplatte abwischen|Spüle putzen|Fliesen putzen|Treppe putzen|Flur putzen|Teppich saugen|Polster saugen|Gardinen waschen|Heizkörper abstauben|Lichtschalter abwischen|Türklinken desinfizieren",
+  "Spülmaschine einräumen|Spülmaschine ausräumen|Abwaschen|Geschirr wegräumen|Tisch decken|Tisch abräumen|Kochen|Essen vorbereiten|Brotdosen packen|Wochenplan Essen machen|Einkaufsliste schreiben|Einkaufen gehen|Getränke holen|Vorräte prüfen|Abgelaufenes aussortieren",
+  "Wäsche waschen|Wäsche aufhängen|Wäsche abnehmen|Wäsche zusammenlegen|Wäsche wegräumen|Bügeln|Betten neu beziehen|Handtücher wechseln|Waschmaschine reinigen|Trockner Flusensieb leeren|Kleidung aussortieren|Schuhe putzen|Altkleider wegbringen",
+  "Zimmer aufräumen|Schreibtisch aufräumen|Keller aufräumen|Dachboden aufräumen|Garage aufräumen|Schrank ausmisten|Spielzeug wegräumen|Post sortieren|Zeitungen wegbringen|Pakete wegbringen|Paket abholen|Retoure zurückschicken",
+  "Rechnungen bezahlen|Überweisung machen|Kontoauszüge prüfen|Steuererklärung machen|Versicherung kündigen|Vertrag prüfen|Zählerstand ablesen|Zählerstand melden|Rundfunkbeitrag prüfen|Unterlagen abheften|Dokumente einscannen|Formular ausfüllen|Ausweis verlängern|Reisepass beantragen|Termin beim Amt machen",
+  "Arzttermin machen|Zahnarzttermin machen|Rezept abholen|Medikamente nehmen|Medikamente nachbestellen|Apotheke gehen|Impfpass prüfen|Vorsorgetermin machen|Brille abholen|Kontaktlinsen bestellen",
+  "Auto tanken|Auto waschen|Auto aussaugen|Reifendruck prüfen|Reifen wechseln|Ölstand prüfen|Scheibenwischwasser auffüllen|TÜV-Termin machen|Werkstatttermin machen|Fahrrad aufpumpen|Fahrrad reparieren|Fahrrad ölen",
+  "Glühbirne wechseln|Rauchmelder testen|Batterien wechseln|Heizung entlüften|Filter wechseln|Wasserfilter tauschen|Staubsaugerbeutel wechseln|Abfluss reinigen|Entkalken|Kaffeemaschine entkalken|Wasserkocher entkalken|Werkzeug zurückbringen|Kleinreparatur erledigen|Handwerker anrufen",
+  "Geburtstagsgeschenk besorgen|Geburtstagskarte schreiben|Blumen besorgen|Oma anrufen|Opa anrufen|Eltern anrufen|Nachbarn Bescheid geben|Babysitter organisieren|Kinder abholen|Kinder zum Training bringen|Hausaufgaben kontrollieren|Elternbrief unterschreiben|Schulsachen kaufen|Ausflug planen|Urlaub buchen|Koffer packen|Fotos sortieren|Backup machen|Handy laden|Router neu starten|Passwörter aktualisieren",
+].join("|");
+
+export const TODO_CATALOG: readonly string[] = RAW.split("|").map((s) => s.trim());

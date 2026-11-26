@@ -3,7 +3,8 @@ import websocket from "@fastify/websocket";
 import { eq } from "drizzle-orm";
 import type { WebSocket } from "@fastify/websocket";
 import type { Db } from "../db/client.ts";
-import { lists } from "../db/schema.ts";
+import { lists, todos } from "../db/schema.ts";
+import { todoMemberIds } from "../todos/routes.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
 import type { Notifier } from "../shopping/notify.ts";
 
@@ -36,9 +37,18 @@ export function createHub(db: Db) {
     send(allowed, { type: "list", id: listId });
   }
 
+  async function todoChanged(todoId: string) {
+    const rows = await db.select({ everyone: todos.everyone }).from(todos).where(eq(todos.id, todoId)).limit(1);
+    if (!rows[0]) return;
+    const allowed = rows[0].everyone ? [...sockets.keys()] : await todoMemberIds(db, todoId);
+    send(allowed, { type: "todos" });
+  }
+
   const notifier: Notifier = {
     list: (listId) => void listChanged(listId).catch(() => {}),
     lists: () => send([...sockets.keys()], { type: "lists" }),
+    todo: (todoId) => void todoChanged(todoId).catch(() => {}),
+    todoGone: (audience) => send(audience ?? [...sockets.keys()], { type: "todos" }),
   };
 
   return { add, notifier };

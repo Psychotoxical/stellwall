@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const members = pgTable("members", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -80,6 +80,7 @@ export const catalogEntries = pgTable(
   "catalog_entries",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind", { enum: ["shopping", "todo"] }).notNull().default("shopping"),
     scope: text("scope").notNull(),
     key: text("key").notNull(),
     name: text("name").notNull(),
@@ -87,7 +88,7 @@ export const catalogEntries = pgTable(
     uses: integer("uses").notNull().default(1),
     lastUsed: timestamp("last_used", { withTimezone: true }).notNull(),
   },
-  (t) => [uniqueIndex("catalog_scope_key").on(t.scope, t.key)],
+  (t) => [uniqueIndex("catalog_kind_scope_key").on(t.kind, t.scope, t.key)],
 );
 
 export const boardSeen = pgTable("board_seen", {
@@ -96,3 +97,52 @@ export const boardSeen = pgTable("board_seen", {
     .references(() => members.id, { onDelete: "cascade" }),
   seenAt: timestamp("seen_at", { withTimezone: true }).notNull(),
 });
+
+export const todos = pgTable("todos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  key: text("key").notNull(),
+  everyone: boolean("everyone").notNull().default(true),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  ruleChangedAt: timestamp("rule_changed_at", { withTimezone: true }).notNull(),
+  startDate: date("start_date"),
+  time: text("time"),
+  recurrence: jsonb("recurrence").notNull(),
+  until: date("until"),
+  needsConfirm: boolean("needs_confirm").notNull().default(false),
+  reminders: jsonb("reminders").notNull().default([]),
+});
+
+export const todoMembers = pgTable(
+  "todo_members",
+  {
+    todoId: uuid("todo_id").notNull().references(() => todos.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.todoId, t.memberId] })],
+);
+
+export const todoAssignees = pgTable(
+  "todo_assignees",
+  {
+    todoId: uuid("todo_id").notNull().references(() => todos.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    assignedBy: uuid("assigned_by").notNull().references(() => members.id),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.todoId, t.memberId] })],
+);
+
+export const todoDone = pgTable(
+  "todo_done",
+  {
+    todoId: uuid("todo_id").notNull().references(() => todos.id, { onDelete: "cascade" }),
+    occurrenceDate: date("occurrence_date").notNull(),
+    doneBy: uuid("done_by").notNull().references(() => members.id),
+    doneAt: timestamp("done_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.todoId, t.occurrenceDate] })],
+);
