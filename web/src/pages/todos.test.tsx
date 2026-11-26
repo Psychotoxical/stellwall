@@ -59,3 +59,12 @@ describe("to-dos page", () => {
     await waitFor(() => expect(calls.find((c) => c.key === "POST /api/todos/t1/done")?.body).toEqual({ date: "2026-11-24" }));
   });
 });
+
+describe("to-dos review fixes", () => {
+  it("an undated to-do can always be checked off", async () => {
+    fakeApi({ ...base(), "GET /api/todos?view=undated&mine=1": () => ({ status: 200, body: [occ({ title: "Zimmer aufräumen", date: null, at: null })] }) });
+    renderAt("/todos");
+    fireEvent.click(await screen.findByRole("button", { name: de.todos.views.undated }));
+    expect(await screen.findByRole("checkbox", { name: de.todos.check("Zimmer aufräumen") })).toBeInTheDocument();
+  });
+});

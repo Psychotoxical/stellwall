@@ -235,6 +235,11 @@ export async function todoRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const t = await findVisible(p.data.id, me);
     if (!t) return reply.code(404).send({ error: "not_found" });
     if (b.data.visibility && t.createdBy !== me) return reply.code(403).send({ error: "not_creator" });
+    if (b.data.assignees && !t.everyone && t.createdBy !== me) {
+      // Adding someone would widen who sees a private to-do; that stays with its creator.
+      const canSee = await todoMemberIds(db, t.id);
+      if (b.data.assignees.some((id) => !canSee.includes(id))) return reply.code(403).send({ error: "not_creator" });
+    }
     const start = b.data.startDate === undefined ? t.startDate : b.data.startDate;
     const rec = b.data.recurrence ?? (t.recurrence as Recurrence);
     if (start === null && rec.kind !== "none") return reply.code(400).send({ error: "invalid_input" });
@@ -244,16 +249,19 @@ export async function todoRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     if (b.data.reminders !== undefined) set.reminders = b.data.reminders;
     if (b.data.visibility) set.everyone = b.data.visibility.everyone;
     const ruleKeys = ["startDate", "time", "recurrence", "until"] as const;
-    if (ruleKeys.some((k) => b.data[k] !== undefined)) {
+    const differs = (k: (typeof ruleKeys)[number]) => b.data[k] !== undefined && JSON.stringify(b.data[k]) !== JSON.stringify(t[k]);
+    if (ruleKeys.some(differs)) {
       for (const k of ruleKeys) if (b.data[k] !== undefined) (set as Record<string, unknown>)[k] = b.data[k];
+      // Only a real change of the rule resets what counts as overdue.
       set.ruleChangedAt = now();
     }
     const [u] = Object.keys(set).length ? await db.update(todos).set(set).where(eq(todos.id, t.id)).returning() : [t];
+    // Assignees first, so visibility is built from the new set of people.
+    if (b.data.assignees) await setAssignees(u!, b.data.assignees, me);
     if (b.data.visibility) {
       await setVisibility(t.id, b.data.visibility.everyone, b.data.visibility.memberIds, t.createdBy);
       if (t.everyone && !b.data.visibility.everyone) await unlearn(u!);
     }
-    if (b.data.assignees) await setAssignees(u!, b.data.assignees, me);
     notify.todo(t.id);
     return ruleDto(u!);
   });

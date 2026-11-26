@@ -96,7 +96,7 @@ export function TodoRow({ o, members, onToggle, onOpen }: { o: OccurrenceDto; me
           return m ? <PersonChip key={id} name={m.displayName} color={m.color} /> : null;
         })}
       </span>
-      {o.needsConfirm ? (
+      {o.needsConfirm || !o.date ? (
         <button type="button" role="checkbox" aria-checked={done} className="ck" aria-label={done ? de.todos.uncheck(o.title) : de.todos.check(o.title)} onClick={onToggle}>
           <span>{done && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12.5 4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>}</span>
         </button>
