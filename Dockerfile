@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM node:24-slim AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY shared/package.json shared/
 COPY server/package.json server/
 COPY web/package.json web/
