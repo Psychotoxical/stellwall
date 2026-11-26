@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-26
+
 ### Added
 
 - Meal plan: one lunch per day, either a recipe from Mealie or a free text, with who cooks and how many servings.
