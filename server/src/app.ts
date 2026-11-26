@@ -11,6 +11,7 @@ import { listRoutes } from "./shopping/lists.ts";
 import { createHub, liveRoutes } from "./live/hub.ts";
 import { itemRoutes } from "./shopping/items.ts";
 import { boardRoutes } from "./board/routes.ts";
+import { todoRoutes } from "./todos/routes.ts";
 
 const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
@@ -44,6 +45,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await listRoutes(app, { db: deps.db, now, notify });
   await itemRoutes(app, { db: deps.db, now, timeZone: deps.config.timeZone, notify });
   await boardRoutes(app, { db: deps.db, now });
+  await todoRoutes(app, { db: deps.db, now, timeZone: deps.config.timeZone, notify });
 
   const webDir = deps.config.webDir;
   if (webDir) {
