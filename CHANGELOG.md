@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-26
+
 ### Added
 
 - To-dos: who takes care of it, who may see it, a date and time, and repeating on chosen weekdays, daily or monthly.
