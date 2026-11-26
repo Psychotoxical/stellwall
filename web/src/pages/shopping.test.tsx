@@ -87,3 +87,33 @@ describe("home board", () => {
     expect(link).toHaveAttribute("href", "/einkauf?liste=l1");
   });
 });
+
+describe("shopping review fixes", () => {
+  it("a new list asks who may see it before it is created", async () => {
+    const calls = fakeApi({
+      ...base(),
+      "POST /api/lists": (b) => ({ status: 200, body: { ...list, id: "l2", name: (b as { name: string }).name, visibility: (b as { visibility: unknown }).visibility } }),
+    });
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.manage }));
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.newList }));
+    fireEvent.change(await screen.findByLabelText(de.shopping.listName), { target: { value: "Geschenke" } });
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    fireEvent.click(await screen.findByLabelText(new RegExp(de.visibility.me)));
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    await waitFor(() => {
+      const post = calls.find((c) => c.key === "POST /api/lists");
+      expect(post?.body).toEqual({ name: "Geschenke", visibility: { everyone: false, memberIds: ["a1"] } });
+    });
+  });
+
+  it("editing sends only the changed fields", async () => {
+    const long = { ...milk, quantity: "1 l + 2 Pck + 500 g + 1 Dose + 3 Fl" };
+    const calls = fakeApi({ ...base([long]), "PATCH /api/items/i1": () => ({ status: 200, body: long }) });
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("button", { name: /Milch/ }));
+    fireEvent.change(await screen.findByLabelText(de.shopping.category), { target: { value: "Getränke" } });
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    await waitFor(() => expect(calls.find((c) => c.key === "PATCH /api/items/i1")?.body).toEqual({ category: "Getränke" }));
+  });
+});

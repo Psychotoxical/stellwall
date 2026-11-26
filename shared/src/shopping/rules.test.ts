@@ -34,7 +34,8 @@ describe("quantity", () => {
   });
   it("keeps incompatible amounts side by side", () => {
     expect(mergeQuantity("1 Pck", "200 g")).toBe("1 Pck + 200 g");
-    expect(mergeQuantity("ein bisschen", "2")).toBe("ein bisschen + 2");
+    expect(mergeQuantity("ein bisschen", "2")).toBe("ein bisschen + 2×");
+    expect(mergeQuantity("1 l + 2 Pck", "500 ml")).toBe("1,5 l + 2 Pck");
   });
 });
 

@@ -42,10 +42,32 @@ export function formatQuantity(value: number, unit: Unit): string {
   return `${num(value)} ${unit}`;
 }
 
-/** Amount after the same item was added twice. An empty amount counts as one piece. */
+/**
+ * Amount after the same item was added again. Amounts are kept as parts joined by " + ";
+ * parts with the same unit add up, parts without a known unit stay as typed.
+ * An empty amount counts as one piece.
+ */
 export function mergeQuantity(a: string, b: string): string {
-  const pa = a.trim() ? parseQuantity(a) : { value: 1, unit: "x" as Unit };
-  const pb = b.trim() ? parseQuantity(b) : { value: 1, unit: "x" as Unit };
-  if (pa && pb && pa.unit === pb.unit) return formatQuantity(pa.value + pb.value, pa.unit);
-  return `${a.trim() || "1×"} + ${b.trim() || "1×"}`;
+  const sums = new Map<Unit, number>();
+  const order: (Unit | string)[] = [];
+  const raw = new Set<string>();
+  const take = (s: string) => {
+    const parts = s.trim() ? s.split(" + ") : ["1×"];
+    for (const part of parts) {
+      const p = parseQuantity(part);
+      if (!p) {
+        const k = part.trim();
+        if (k && !raw.has(k)) {
+          raw.add(k);
+          order.push(k);
+        }
+        continue;
+      }
+      if (!sums.has(p.unit)) order.push(p.unit);
+      sums.set(p.unit, (sums.get(p.unit) ?? 0) + p.value);
+    }
+  };
+  take(a);
+  take(b);
+  return order.map((u) => (sums.has(u as Unit) ? formatQuantity(sums.get(u as Unit)!, u as Unit) : u)).join(" + ");
 }

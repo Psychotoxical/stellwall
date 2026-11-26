@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { and, asc, count, eq, isNull } from "drizzle-orm";
+import { and, asc, count, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/client.ts";
-import { items, listMembers, lists } from "../db/schema.ts";
+import { catalogEntries, items, listMembers, lists } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
 import { findVisibleList, listMemberIds, listVisibleTo } from "./visibility.ts";
 import type { Notifier } from "./notify.ts";
@@ -46,11 +46,14 @@ export async function listRoutes(app: FastifyInstance, opts: { db: Db; now: () =
 
   app.get("/api/lists", { preHandler: requireMember }, async (req) => {
     const me = req.member!.id;
-    const total = (await db.select({ n: count() }).from(lists))[0]?.n ?? 0;
-    if (total === 0) {
+    const visible = () => db.select().from(lists).where(listVisibleTo(me)).orderBy(asc(lists.position), asc(lists.createdAt));
+    let rows = await visible();
+    if (rows.length === 0) {
+      // Nobody is left without a list: a fresh family list appears.
       await db.insert(lists).values({ name: DEFAULT_LIST_NAME, everyone: true, createdBy: me, createdAt: now() });
+      notify.lists();
+      rows = await visible();
     }
-    const rows = await db.select().from(lists).where(listVisibleTo(me)).orderBy(asc(lists.position), asc(lists.createdAt));
     return Promise.all(rows.map(toDto));
   });
 
@@ -81,6 +84,7 @@ export async function listRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     if (body.data.visibility) set.everyone = body.data.visibility.everyone;
     const [updated] = Object.keys(set).length ? await db.update(lists).set(set).where(eq(lists.id, l.id)).returning() : [l];
     if (body.data.visibility) await setMembers(db, l.id, body.data.visibility.everyone, body.data.visibility.memberIds, l.createdBy);
+    if (l.everyone && body.data.visibility && !body.data.visibility.everyone) await unlearnFromFamily(db, l.id, l.createdBy, now());
     notify.lists();
     return toDto(updated!);
   });
@@ -96,4 +100,28 @@ export async function listRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     notify.lists();
     return { ok: true };
   });
+}
+
+/**
+ * A list that turns private takes the names it taught the family back to its creator,
+ * unless another family list still has an item of that name.
+ */
+async function unlearnFromFamily(db: Db, listId: string, creator: string, at: Date) {
+  const keys = await db.selectDistinct({ key: items.key }).from(items).where(eq(items.listId, listId));
+  for (const { key } of keys) {
+    const elsewhere = await db
+      .select({ id: items.id })
+      .from(items)
+      .innerJoin(lists, eq(items.listId, lists.id))
+      .where(and(eq(items.key, key), eq(lists.everyone, true), ne(lists.id, listId)))
+      .limit(1);
+    if (elsewhere.length) continue;
+    const fam = (await db.select().from(catalogEntries).where(and(eq(catalogEntries.scope, "family"), eq(catalogEntries.key, key))))[0];
+    if (!fam) continue;
+    await db
+      .insert(catalogEntries)
+      .values({ scope: creator, key, name: fam.name, category: fam.category, uses: fam.uses, lastUsed: at })
+      .onConflictDoUpdate({ target: [catalogEntries.scope, catalogEntries.key], set: { uses: sql`${catalogEntries.uses} + ${fam.uses}` } });
+    await db.delete(catalogEntries).where(eq(catalogEntries.id, fam.id));
+  }
 }

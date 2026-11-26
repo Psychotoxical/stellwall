@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { CATALOG, CATEGORIES, OTHER, itemKey, mergeQuantity, startOfLocalDay, suggest } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
@@ -148,16 +148,40 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const { checked, ...fields } = body.data;
     const set: Partial<typeof items.$inferInsert> = { ...fields };
     if (fields.name) set.key = itemKey(fields.name);
-    if (Object.keys(set).length) await db.update(items).set(set).where(eq(items.id, item.id));
-    if (checked === true) {
-      // Only the first check counts; a second one in parallel changes nothing.
-      await db.update(items).set({ checkedAt: now(), checkedBy: me }).where(and(eq(items.id, item.id), isNull(items.checkedAt)));
-    } else if (checked === false) {
-      await db.update(items).set({ checkedAt: null, checkedBy: null }).where(eq(items.id, item.id));
-    }
-    const [fresh] = await db.select().from(items).where(eq(items.id, item.id));
+    const key = set.key ?? item.key;
+    const fresh = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${item.listId + "|" + key}))`);
+      if (Object.keys(set).length) await tx.update(items).set(set).where(eq(items.id, item.id));
+      if (checked === true) {
+        // Only the first check counts; a second one in parallel changes nothing.
+        await tx.update(items).set({ checkedAt: now(), checkedBy: me }).where(and(eq(items.id, item.id), isNull(items.checkedAt)));
+      } else if (checked === false) {
+        await tx.update(items).set({ checkedAt: null, checkedBy: null }).where(eq(items.id, item.id));
+      }
+      const [cur] = await tx.select().from(items).where(eq(items.id, item.id));
+      if (!cur) return null;
+      // An open item that now has the name of another open item joins it.
+      if (!cur.checkedAt) {
+        const [twin] = await tx
+          .select()
+          .from(items)
+          .where(and(eq(items.listId, cur.listId), eq(items.key, cur.key), isNull(items.checkedAt), ne(items.id, cur.id)))
+          .limit(1);
+        if (twin) {
+          const [merged] = await tx
+            .update(items)
+            .set({ quantity: mergeQuantity(twin.quantity, cur.quantity) })
+            .where(eq(items.id, twin.id))
+            .returning();
+          await tx.delete(items).where(eq(items.id, cur.id));
+          return merged!;
+        }
+      }
+      return cur;
+    });
+    if (!fresh) return reply.code(404).send({ error: "not_found" });
     notify.list(item.listId);
-    return toDto(fresh!);
+    return toDto(fresh);
   });
 
   app.delete("/api/items/:id", { preHandler: requireMember }, async (req, reply) => {

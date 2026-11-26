@@ -22,6 +22,7 @@ export function Shopping() {
   const items = useItems(list?.id);
   const [sheet, setSheet] = useState<null | "tools" | "visibility" | "new" | "rename" | "delete" | { item: ItemDto }>(null);
   const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState<string | null>(null);
 
   // Highlight what others added since the last look; leaving the page marks it as seen.
   const unseen = useMemo(() => new Set((board.data ?? []).flatMap((r) => r.itemIds)), [board.data]);
@@ -51,7 +52,14 @@ export function Shopping() {
     }
   };
 
-  if (!list) return <Header title={de.shopping.title} />;
+  if (!list) {
+    return (
+      <div className="shop">
+        <Header title={de.shopping.title} />
+        <Button onClick={() => void qc.invalidateQueries({ queryKey: ["lists"] })}>{de.connection.retry}</Button>
+      </div>
+    );
+  }
   const open = (items.data ?? []).filter((i) => !i.checkedAt);
   const checked = (items.data ?? []).filter((i) => i.checkedAt);
   const groups = CATEGORIES.map((c) => ({ c, rows: open.filter((i) => i.category === c) })).filter((g) => g.rows.length);
@@ -136,11 +144,27 @@ export function Shopping() {
         onClose={() => setSheet(null)}
         onSave={async (name) => {
           if (sheet === "new") {
-            const l = await api<ListDto>("/api/lists", { method: "POST", body: { name, visibility: { everyone: true, memberIds: [] } } });
-            await refresh();
-            setParams({ liste: l.id });
-          } else await run(() => api(`/api/lists/${list.id}`, { method: "PATCH", body: { name } }));
+            // A new list asks who may see it before anything is written to it.
+            setNewName(name);
+            setSheet(null);
+            return;
+          }
+          await run(() => api(`/api/lists/${list.id}`, { method: "PATCH", body: { name } }));
           setSheet(null);
+        }}
+      />
+      <VisibilitySheet
+        open={newName !== null}
+        lead={de.shopping.newList + ": " + (newName ?? "")}
+        value={{ everyone: true, memberIds: [] }}
+        members={members}
+        meId={me.id}
+        onClose={() => setNewName(null)}
+        onSave={async (v: Visibility) => {
+          const l = await api<ListDto>("/api/lists", { method: "POST", body: { name: newName, visibility: v } });
+          setNewName(null);
+          await refresh();
+          setParams({ liste: l.id });
         }}
       />
       <Dialog open={sheet === "delete"} title={de.shopping.deleteListConfirm(list.name)} onClose={() => setSheet(null)}>
@@ -283,7 +307,8 @@ function EditItem({ item, onClose, onDone }: { item: ItemDto; onClose: () => voi
   const save = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await api(`/api/items/${item.id}`, { method: "PATCH", body: f });
+      const changed = Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== item[k as keyof typeof f]));
+      if (Object.keys(changed).length) await api(`/api/items/${item.id}`, { method: "PATCH", body: changed });
       await onDone();
     } catch {
       setError(de.errors.invalidInput);
