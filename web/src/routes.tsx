@@ -8,6 +8,7 @@ import { Members } from "./pages/Members.tsx";
 import { Account } from "./pages/Account.tsx";
 import { More } from "./pages/More.tsx";
 import { Shopping } from "./pages/Shopping.tsx";
+import { Todos } from "./pages/Todos.tsx";
 import { useLive } from "./live.ts";
 
 function RequireMember() {
@@ -48,6 +49,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <Home /> },
       { path: "/einkauf", element: <Shopping /> },
+      { path: "/todos", element: <Todos /> },
       { path: "/mehr", element: <More /> },
       { path: "/konto", element: <Account /> },
       { path: "/mitglieder", element: <AdminOnly><Members /></AdminOnly> },
