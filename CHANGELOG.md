@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-26
+
 ### Added
 
 - Push notifications, switched on per device under More → Notifications; each person chooses what they are told about.
