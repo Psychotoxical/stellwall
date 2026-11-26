@@ -34,6 +34,8 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
+        // Push messages: show them and open the page they point to.
+        importScripts: ["push-sw.js"],
         runtimeCaching: [],
       },
     }),

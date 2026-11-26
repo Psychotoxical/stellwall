@@ -16,6 +16,7 @@ import { Meals } from "./pages/Meals.tsx";
 import { RecipeView } from "./pages/Recipe.tsx";
 import { Pantry } from "./pages/Pantry.tsx";
 import { MealieSettings } from "./pages/MealieSettings.tsx";
+import { Notifications } from "./pages/Notifications.tsx";
 import { useLive } from "./live.ts";
 
 function RequireMember() {
@@ -63,6 +64,7 @@ export const routes: RouteObject[] = [
       { path: "/essen", element: <Meals /> },
       { path: "/essen/rezept/:slug", element: <RecipeView /> },
       { path: "/essen/grundvorrat", element: <Pantry /> },
+      { path: "/benachrichtigungen", element: <Notifications /> },
       { path: "/mealie", element: <AdminOnly><MealieSettings /></AdminOnly> },
       { path: "/mehr", element: <More /> },
       { path: "/konto", element: <Account /> },

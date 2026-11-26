@@ -235,6 +235,14 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
 .ings small { font-weight: 400; color: var(--ink-soft); font-size: 14px; }
 .steps-cook { margin: 0; padding-left: 1.6em; display: flex; flex-direction: column; gap: 14px; font-size: 19px; line-height: 1.5; max-width: 62ch; }
 .steps-cook li::marker { font-family: var(--font-board); font-weight: 800; }
+.ings li { display: block; padding: 0; }
+.tick { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ings .tick { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; padding: 11px 14px; align-items: baseline; min-height: 48px; }
+.steps-cook .tick { padding: 4px 0; line-height: inherit; }
+.tick[aria-pressed="true"] { color: var(--ink-soft); text-decoration: line-through; text-decoration-thickness: 2px; }
+.tick[aria-pressed="true"] .q { opacity: 0.6; }
+.howto { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; }
+.hint { color: var(--ink-soft); font-size: 14px; display: block; margin-top: 8px; }
 .recipeview .lead { margin-top: 18px; font-size: 14px; }
 .todaylunch { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 10px; text-decoration: none; font-weight: 600; }
 .todaylunch + .box, .todaylunch + .callist { margin-top: 0; }
