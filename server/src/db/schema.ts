@@ -253,3 +253,51 @@ export const pantryStaples = pgTable("pantry_staples", {
   name: text("name").notNull().unique(),
   variants: jsonb("variants").$type<string[]>().notNull().default([]),
 });
+
+/** A device that receives push messages for a member. */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  memberId: uuid("member_id")
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  label: text("label").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
+/** What a member switched off; a missing row means on. */
+export const notificationPrefs = pgTable(
+  "notification_prefs",
+  {
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    enabled: boolean("enabled").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.memberId, t.kind] })],
+);
+
+/** The outbox: every message waits here until it is due, then is checked again and sent. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    refType: text("ref_type").notNull(),
+    refId: text("ref_id").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url").notNull(),
+    count: integer("count").notNull().default(1),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    dedupe: text("dedupe"),
+  },
+  (t) => [uniqueIndex("notifications_dedupe").on(t.memberId, t.dedupe), index("notifications_due").on(t.sentAt, t.dueAt)],
+);

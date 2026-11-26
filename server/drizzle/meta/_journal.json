@@ -36,6 +36,13 @@
       "when": 1795720760331,
       "tag": "0004_meals",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795724245839,
+      "tag": "0005_notifications",
+      "breakpoints": true
     }
   ]
 }
