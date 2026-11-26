@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
+import fastifyStatic from "@fastify/static";
 import type { Config } from "./config.ts";
 import type { Db } from "./db/client.ts";
 import { csrfCheck } from "./auth/guard.ts";
@@ -30,5 +31,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.get("/api/health", async () => ({ ok: true }));
   await authRoutes(app, { db: deps.db, now, cookieSecure: deps.config.cookieSecure });
   await memberRoutes(app, { db: deps.db, now });
+
+  const webDir = deps.config.webDir;
+  if (webDir) {
+    await app.register(fastifyStatic, { root: webDir, wildcard: false, index: false });
+  }
+  app.setNotFoundHandler((req, reply) => {
+    if (webDir && req.method === "GET" && !req.url.startsWith("/api/")) {
+      return reply.header("cache-control", "no-cache").sendFile("index.html");
+    }
+    return reply.code(404).send({ error: "not_found" });
+  });
   return app;
 }

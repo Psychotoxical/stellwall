@@ -1,0 +1,79 @@
+name: After the release
+
+# Runs when a release draft is published by hand: builds the container image of the tag
+# (tags vX.Y.Z and stable) and brings main up to date through a pull request.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Container image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Image name
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/stellwall" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.img.outputs.name }}:${{ env.TAG }}
+            ${{ steps.img.outputs.name }}:stable
+
+  sync:
+    name: Bring main up to date
+    needs: image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Take over version and CHANGELOG
+        run: |
+          version=${TAG#v}
+          git show "refs/tags/$TAG:CHANGELOG.md" > "$RUNNER_TEMP/released.md"
+          python3 .github/release/bump_version.py sync "$version" "$RUNNER_TEMP/released.md"
+          if git diff --quiet; then
+            echo "::notice::main already has $version"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="release-sync/$version"
+          git checkout -q -b "$branch"
+          git add -u
+          git commit -q -m "Main: version $version after the release"
+          git push --force origin "$branch"
+          title="Main: version $version after the release"
+          body="Version $version is released. This brings its number and its CHANGELOG.md section to main; entries that went into the release leave [Unreleased]."
+          if ! gh pr create --base main --head "$branch" --title "$title" --body "$body"; then
+            echo "::warning::Could not open the pull request; open it by hand: https://github.com/$GITHUB_REPOSITORY/compare/main...$branch"
+          fi
+          echo "::notice::Approve the CI run of the pull request (Approve and run), then merge it"
+          git push origin --delete "release/v$version" || true

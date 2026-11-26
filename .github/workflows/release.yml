@@ -1,0 +1,61 @@
+name: main → release
+
+# Started by hand. Waits for a green ci-ok on main, raises the version when the current one is
+# already released, turns [Unreleased] into that version's section and opens a release draft.
+# The draft's commit lives on the branch release/v<version>; publishing the draft tags it,
+# builds the container image and brings main up to date (release-published.yml).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+
+jobs:
+  draft:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      checks: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Is main green?
+        run: |
+          sha=$(git rev-parse HEAD)
+          for _ in $(seq 1 90); do
+            state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?check_name=ci-ok" --jq '[.check_runs[] | .conclusion // "pending"] | first // "missing"')
+            case "$state" in
+              success) exit 0 ;;
+              failure|cancelled|timed_out) echo "::error::ci-ok on main is $state"; exit 1 ;;
+            esac
+            sleep 60
+          done
+          echo "::error::ci-ok on main did not finish within 90 minutes"; exit 1
+      - name: Version and changelog
+        id: v
+        run: |
+          published=$(gh release list --exclude-drafts --limit 200 --json tagName --jq '.[].tagName | ltrimstr("v")')
+          # shellcheck disable=SC2086
+          version=$(python3 .github/release/bump_version.py next $published)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "release/v$version"
+          git add -u
+          git diff --cached --quiet || git commit -q -m "Release $version"
+          git push --force origin "release/v$version"
+      - name: Draft
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          python3 .github/release/release_notes.py "$VERSION" > "$RUNNER_TEMP/notes.md"
+          gh release delete "v$VERSION" --yes 2>/dev/null || true
+          gh release create "v$VERSION" --draft --target "release/v$VERSION" --title "Stellwall $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" deploy/compose.yaml deploy/.env.example
