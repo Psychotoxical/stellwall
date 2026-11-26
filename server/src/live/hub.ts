@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import websocket from "@fastify/websocket";
 import { eq } from "drizzle-orm";
-import type { WebSocket } from "ws";
+import type { WebSocket } from "@fastify/websocket";
 import type { Db } from "../db/client.ts";
 import { lists } from "../db/schema.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
