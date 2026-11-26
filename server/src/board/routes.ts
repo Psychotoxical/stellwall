@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, gt, ne } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { boardSeen, items, lists, members } from "../db/schema.ts";
+import { boardSeen, items, lists, members, todoAssignees, todos } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
 import { listVisibleTo } from "../shopping/visibility.ts";
 
@@ -9,6 +9,7 @@ const FIRST_LOOK_MS = 24 * 60 * 60 * 1000;
 const MAX_ROWS = 10;
 
 export type BoardRow = {
+  kind: "shopping";
   who: string;
   whoName: string;
   listId: string;
@@ -17,6 +18,8 @@ export type BoardRow = {
   latestAt: string;
   itemIds: string[];
 };
+
+export type TodoBoardRow = { kind: "todo"; who: string; whoName: string; todoId: string; title: string; latestAt: string };
 
 export async function boardRoutes(app: FastifyInstance, opts: { db: Db; now: () => Date }) {
   const { db, now } = opts;
@@ -40,10 +43,17 @@ export async function boardRoutes(app: FastifyInstance, opts: { db: Db; now: () 
         g.count++;
         g.itemIds.push(r.id);
       } else {
-        groups.set(key, { who: r.who, whoName: r.whoName, listId: r.listId, listName: r.listName, count: 1, latestAt: r.addedAt.toISOString(), itemIds: [r.id] });
+        groups.set(key, { kind: "shopping", who: r.who, whoName: r.whoName, listId: r.listId, listName: r.listName, count: 1, latestAt: r.addedAt.toISOString(), itemIds: [r.id] });
       }
     }
-    return [...groups.values()].slice(0, MAX_ROWS);
+    const given = await db
+      .select({ todoId: todos.id, title: todos.title, who: todoAssignees.assignedBy, whoName: members.displayName, at: todoAssignees.assignedAt })
+      .from(todoAssignees)
+      .innerJoin(todos, eq(todoAssignees.todoId, todos.id))
+      .innerJoin(members, eq(todoAssignees.assignedBy, members.id))
+      .where(and(eq(todoAssignees.memberId, me), ne(todoAssignees.assignedBy, me), gt(todoAssignees.assignedAt, since)));
+    const todoRows: TodoBoardRow[] = given.map((g) => ({ kind: "todo", who: g.who, whoName: g.whoName, todoId: g.todoId, title: g.title, latestAt: g.at.toISOString() }));
+    return [...groups.values(), ...todoRows].sort((a, b) => b.latestAt.localeCompare(a.latestAt)).slice(0, MAX_ROWS);
   });
 
   app.post("/api/board/seen", { preHandler: requireMember }, async (req) => {
