@@ -100,6 +100,14 @@ export function createMealie(db: Db, timeoutMs: number) {
           }
         });
       }),
+    /** How many recipes Mealie holds in total, not just the first page. */
+    count: async () => {
+      const body = await json<{ total?: number; items?: unknown[]; data?: unknown[] }>("/api/recipes?perPage=1&page=1");
+      if (typeof body.total === "number") return body.total;
+      const items = body.items ?? body.data;
+      if (!Array.isArray(items)) throw new MealieError("mealie_bad");
+      return items.length;
+    },
     recipe: (slug: string) =>
       cached(`r:${slug}`, RECIPE_TTL_MS, async (): Promise<Recipe> => {
         const r = await json<MealieRecipe>(`/api/recipes/${encodeURIComponent(slug)}`);
@@ -156,7 +164,7 @@ export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie:
   app.post("/api/settings/mealie/test", { preHandler: requireAdmin }, async (_req, reply) => {
     try {
       mealie.clear();
-      return { ok: true, recipes: (await mealie.search("")).length };
+      return { ok: true, recipes: await mealie.count() };
     } catch (e) {
       return fail(reply, e);
     }

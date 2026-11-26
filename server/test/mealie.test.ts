@@ -27,7 +27,7 @@ describe("Mealie connection", () => {
     expect(got.json()).toEqual({ url: mealie.url, hasToken: true, listId: null });
     expect(got.body).not.toContain(TOKEN);
     const test = await as(app, f.alex.cookie).post("/api/settings/mealie/test", {});
-    expect(test.json()).toMatchObject({ ok: true });
+    expect(test.json()).toEqual({ ok: true, recipes: 32 });
   });
 
   it("searches recipes and reads one with structured and free-text ingredients", async () => {

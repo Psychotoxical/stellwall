@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Fixed
+
+- Mealie connection test shows how many recipes there are in total, not just the first page.
+
 ### Added
 
 - Meal plan: one lunch per day, either a recipe from Mealie or a free text, with who cooks and how many servings.
