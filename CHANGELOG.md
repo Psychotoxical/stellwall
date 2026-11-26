@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-26
+
 ### Added
 
 - Shopping lists: several lists, each with "who may see this", sorted by store section.
