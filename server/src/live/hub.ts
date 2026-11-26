@@ -8,7 +8,7 @@ import { todoMemberIds } from "../todos/routes.ts";
 import { eventAudience } from "../calendar/events.ts";
 import { birthdayAudience } from "../calendar/birthdays.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
-import type { Notifier } from "../shopping/notify.ts";
+import type { LiveNotifier as Notifier } from "../shopping/notify.ts";
 
 /**
  * Connected devices per member. Messages are only hints ("list X changed"); the data itself is

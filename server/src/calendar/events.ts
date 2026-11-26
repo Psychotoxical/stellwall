@@ -82,6 +82,7 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
     await q.insert(eventMembers).values([...new Set([...wanted, ev.createdBy])].map((memberId) => ({ eventId: ev.id, memberId }))).onConflictDoNothing();
     const drop = me === ev.createdBy ? gone.filter((id) => id !== ev.createdBy) : [];
     if (drop.length) await q.delete(eventMembers).where(and(eq(eventMembers.eventId, ev.id), inArray(eventMembers.memberId, drop)));
+    return added;
   }
 
   function times(b: { allDay: boolean; start?: string; end?: string; startDate?: string; endDate?: string }) {
@@ -168,8 +169,9 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
       .insert(events)
       .values({ title: b.data.title, location: b.data.location, notes: b.data.notes, ...t, allDay: b.data.allDay, tz, rrule: b.data.rrule, everyone: b.data.seeAll, createdBy: me, createdAt: now(), reminders: b.data.reminders })
       .returning();
-    await setPeople(ev!, b.data.forWhom, me);
+    const added = await setPeople(ev!, b.data.forWhom, me);
     notify.calendar(ev!.id);
+    notify.eventFor(ev!.id, added, req.member!, false);
     return dto(ev!);
   });
 
@@ -208,6 +210,7 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
           set: { cancelled: false, ...(b.data.title ? { title: b.data.title } : {}), ...(b.data.location !== undefined ? { location: b.data.location } : {}), ...(startAt ? { startAt } : {}), ...(endAt ? { endAt } : {}) },
         });
       notify.calendar(ev.id);
+      if (b.data.title || startAt) notify.eventFor(ev.id, await forWhomOf(ev.id), req.member!, true);
       return dto(ev);
     }
 
@@ -231,6 +234,7 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
       Object.assign(set, t, { allDay });
     }
 
+    let added: string[] = [];
     const u = await db.transaction(async (tx) => {
       let target = ev;
       if (scope === "following") {
@@ -250,11 +254,14 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
         target = copy!;
       }
       const [row] = Object.keys(set).length ? await tx.update(events).set(set).where(eq(events.id, target.id)).returning() : [target];
-      if (b.data.forWhom) await setPeople(row!, b.data.forWhom, me, tx);
+      if (b.data.forWhom) added = await setPeople(row!, b.data.forWhom, me, tx);
       return row!;
     });
     notify.calendar(u.id);
     if (u.id !== ev.id) notify.calendar(ev.id);
+    notify.eventFor(u.id, added, req.member!, false);
+    const changed = ["title", "location", "start", "end", "startDate", "endDate", "allDay", "rrule"].some((k) => (b.data as Record<string, unknown>)[k] !== undefined);
+    if (changed) notify.eventFor(u.id, (await forWhomOf(u.id)).filter((id) => !added.includes(id)), req.member!, true);
     return dto(u);
   });
 
