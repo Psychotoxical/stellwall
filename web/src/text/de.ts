@@ -4,7 +4,7 @@ export const de = {
     offline: "Keine Verbindung. Änderungen werden erst gespeichert, wenn das Netz wieder da ist.",
     retry: "Erneut versuchen",
   },
-  nav: { start: "Start", einkauf: "Einkauf", kalender: "Kalender", todos: "To-dos", mehr: "Mehr", members: "Mitglieder", account: "Mein Konto" },
+  nav: { start: "Start", einkauf: "Einkauf", kalender: "Kalender", essen: "Essen", todos: "To-dos", mehr: "Mehr", members: "Mitglieder", account: "Mein Konto", back: (to: string) => `Zurück zu ${to}` },
   areas: {
     dokumente: "Dokumente",
     kalender: "Kalender",
@@ -60,6 +60,10 @@ export const de = {
   },
   account: {
     title: "Mein Konto",
+    colorHint: "Deine Kennfarbe: daran erkennen dich die anderen, zum Beispiel im Kalender.",
+    world: "Deine Farbwelt",
+    worldHint: "Die App nimmt deine Farbe an, auf allen deinen Geräten.",
+    worlds: { salbei: "Salbei", flieder: "Flieder", pfirsich: "Pfirsich", himmel: "Himmel", rose: "Rosé", sonne: "Sonne" } as Record<string, string>,
     profile: "Name und Farbe",
     password: "Passwort ändern",
     passwordChanged: "Passwort geändert.",

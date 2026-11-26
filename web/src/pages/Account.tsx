@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { MemberDto, PersonColor } from "@stellwall/shared";
+import { WORLDS, type MemberDto, type PersonColor, type World } from "@stellwall/shared";
 import { ApiError, api } from "../api.ts";
 import { ColorPicker } from "../components/ColorPicker.tsx";
 import { Button, Notice, TextField } from "../components/ui.tsx";
 import { useMe, useSetMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { readTheme, saveTheme, type ThemeChoice } from "../theme/theme.ts";
+import { applyWorld } from "../theme/world.ts";
 import { Header } from "./Home.tsx";
 import { currentSubscription } from "../push-device.ts";
 
@@ -35,6 +36,15 @@ export function Account() {
     try {
       setMe(await api<MemberDto>("/api/members/" + me.id, { method: "PATCH", body: profile }));
       setProfileMsg({ kind: "ok", text: de.account.saved });
+    } catch {
+      setProfileMsg({ kind: "error", text: de.errors.generic });
+    }
+  }
+
+  async function pickWorld(world: World) {
+    applyWorld(world);
+    try {
+      setMe(await api<MemberDto>("/api/members/" + me.id, { method: "PATCH", body: { world } }));
     } catch {
       setProfileMsg({ kind: "error", text: de.errors.generic });
     }
@@ -72,6 +82,7 @@ export function Account() {
           <form className="form" onSubmit={saveProfile}>
             <TextField label={de.fields.displayName} required value={profile.displayName} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} />
             <ColorPicker value={profile.color} onChange={(color) => setProfile({ ...profile, color })} />
+            <small className="hint">{de.account.colorHint}</small>
             {profileMsg && <Notice kind={profileMsg.kind}>{profileMsg.text}</Notice>}
             <div className="actions" style={{ justifyContent: "flex-start" }}><Button type="submit">{de.members.save}</Button></div>
           </form>
@@ -85,6 +96,18 @@ export function Account() {
           </form>
         </div>
         <div>
+          <div className="sechead"><h2>{de.account.world}</h2></div>
+          <p className="lead" style={{ marginBottom: 10 }}>{de.account.worldHint}</p>
+          <div className="worlds" role="radiogroup" aria-label={de.account.world}>
+            {WORLDS.map((w) => (
+              <label key={w} className="worldpick" data-world-preview={w}>
+                <input type="radio" name="world" value={w} checked={me.world === w} onChange={() => void pickWorld(w)} />
+                <span className="sw" aria-hidden="true" />
+                {de.account.worlds[w]}
+              </label>
+            ))}
+          </div>
+
           <div className="sechead"><h2>{de.account.theme}</h2></div>
           <div className="seg" role="radiogroup" aria-label={de.account.theme}>
             {(["system", "light", "dark"] as const).map((t) => (

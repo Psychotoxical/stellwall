@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, asc, count, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
-import { PERSON_COLORS, passwordSchema, roleSchema, usernameSchema } from "@stellwall/shared";
+import { PERSON_COLORS, WORLDS, passwordSchema, roleSchema, usernameSchema } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
 import { members, pushSubscriptions } from "../db/schema.ts";
 import { requireAdmin, requireMember } from "../auth/guard.ts";
@@ -20,6 +20,7 @@ const patchBody = z.object({
   displayName: z.string().trim().min(1).max(60).optional(),
   color: colorSchema.optional(),
   role: roleSchema.optional(),
+  world: z.enum(WORLDS).optional(),
 });
 const resetBody = z.object({ password: passwordSchema });
 const idParam = z.object({ id: z.uuid() });

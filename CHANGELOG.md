@@ -4,6 +4,19 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Colour worlds: each person picks Salbei, Flieder, Pfirsich, Himmel, Rosé or Sonne under My account, and the whole app takes it on, light and dark, on all their devices.
+- A new round "stellwall" wordmark with the four l in the family colours.
+- The meal plan has its own tab; everything else is behind the round picture top right.
+- Back buttons on every page below an area.
+- Calendar week and upcoming views as a compact agenda: a date column beside the events, empty days as a thin line.
+
+### Fixed
+
+- Shopping list: tick boxes line up whether or not an item has an amount.
+- Sheets on the iPhone can no longer be pushed sideways by wide date and time fields.
+
 ## [0.1.6] - 2026-11-26
 
 ### Added

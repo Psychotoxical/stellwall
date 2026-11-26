@@ -104,16 +104,17 @@ export function Calendar() {
         </div>
       )}
       {view === "week" && (
-        <div className="weeklist">
+        <div className="weeklist agenda">
           {Array.from({ length: 7 }, (_, n) => addDays(range[0], n)).map((d) => (
-            <DayBlock key={d} date={d} today={today} list={days.get(d) ?? []} members={members} onOpen={open} showEmpty />
+            <AgendaDay key={d} date={d} today={today} list={days.get(d) ?? []} members={members} onOpen={open} />
           ))}
+          {cal.data && Array.from({ length: 7 }, (_, n) => addDays(range[0], n)).every((d) => !(days.get(d) ?? []).length) && <p className="agendaempty">{de.calendar.weekEmpty}</p>}
         </div>
       )}
       {view === "upcoming" && (
-        <div className="weeklist">
+        <div className="weeklist agenda">
           {[...days.keys()].filter((d) => d >= range[0] && d < range[1]).sort().map((d) => (
-            <DayBlock key={d} date={d} today={today} list={days.get(d)!} members={members} onOpen={open} />
+            <AgendaDay key={d} date={d} today={today} list={days.get(d)!} members={members} onOpen={open} withMonth />
           ))}
           {cal.data && ![...days.keys()].some((d) => d >= range[0] && d < range[1]) && <div className="box"><p className="empty">{de.calendar.upcomingEmpty}</p></div>}
         </div>
@@ -183,12 +184,18 @@ function DayList({ date, today, list, members, onOpen }: { date: string; today: 
   );
 }
 
-function DayBlock({ date, today, list, members, onOpen, showEmpty }: { date: string; today: string; list: CalendarInstance[]; members: MemberDto[]; onOpen: (i: CalendarInstance) => void; showEmpty?: boolean }) {
-  if (!list.length && !showEmpty) return null;
+/** One day as an agenda row: a narrow date column, its events beside it; an empty day stays a thin line. */
+function AgendaDay({ date, today, list, members, onOpen, withMonth }: { date: string; today: string; list: CalendarInstance[]; members: MemberDto[]; onOpen: (i: CalendarInstance) => void; withMonth?: boolean }) {
+  const d = parseYmd(date);
+  const cls = ["agendaday", date === today && "is-today", !list.length && "is-empty"].filter(Boolean).join(" ");
   return (
-    <div className="dayblock">
-      <h3 className={"dayh" + (date === today ? " is-today" : "")}>{headOf(date, today)}</h3>
-      {list.length ? <CalList list={list} date={date} members={members} onOpen={onOpen} /> : <p className="dayempty">{de.calendar.dayEmpty}</p>}
+    <div className={cls} role="group" aria-label={headOf(date, today)}>
+      <div className="adate" aria-hidden="true">
+        <span className="awd">{d.toLocaleDateString("de-DE", { weekday: "short" }).replace(".", "")}</span>
+        <span className="adn">{d.getDate()}</span>
+        {withMonth && <span className="amo">{d.toLocaleDateString("de-DE", { month: "short" }).replace(".", "")}</span>}
+      </div>
+      {list.length > 0 && <CalList list={list} date={date} members={members} onOpen={onOpen} />}
     </div>
   );
 }

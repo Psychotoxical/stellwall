@@ -1,6 +1,7 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { ComponentType, SVGProps } from "react";
 import { Icon } from "../icons.ts";
+import { Wordmark } from "../components/Wordmark.tsx";
 import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { useBoard, useMembers, useTodos } from "../shopping-api.ts";
@@ -24,16 +25,32 @@ const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGEl
 
 const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage", essensplan: "/essen" };
 
+/** Where the back button of a page leads: the area or page it belongs to. */
+const PARENTS: [RegExp, string, string][] = [
+  [/^\/kalender\/.+/, "/kalender", de.nav.kalender],
+  [/^\/essen\/.+/, "/essen", de.meals.page],
+  [/^\/(konto|mitglieder|mealie|benachrichtigungen)$/, "/mehr", de.nav.mehr],
+  [/^\/mehr$/, "/", de.nav.start],
+];
+
 export function Header({ title, sub }: { title: string; sub?: string }) {
   const me = useMe().data;
+  const { pathname } = useLocation();
+  const parent = PARENTS.find(([re]) => re.test(pathname));
   return (
     <header className="head">
       <div>
-        {sub && <p>{sub}</p>}
+        {parent && (
+          <Link to={parent[1]} className="back" aria-label={de.nav.back(parent[2])}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m14.5 6-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <span>{parent[2]}</span>
+          </Link>
+        )}
+        {sub && !parent && <p>{sub}</p>}
         <h1>{title}</h1>
       </div>
       {me && (
-        <Link to="/konto" className="avatar" style={{ background: `var(--${me.color})` }} aria-label={de.nav.account}>
+        <Link to="/mehr" className="avatar" style={{ background: `var(--${me.color})` }} aria-label={de.nav.mehr}>
           {me.displayName.slice(0, 1).toUpperCase()}
         </Link>
       )}
@@ -46,6 +63,7 @@ export function Home() {
   const today = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
   return (
     <>
+      <div className="homebrand"><Wordmark size="sm" /></div>
       <Header sub={today} title={de.home.hello(me.displayName)} />
       <div className="cols">
         <Board />

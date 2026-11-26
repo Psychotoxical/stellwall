@@ -190,7 +190,8 @@ function ItemRow({ item, isNew, meta, onToggle, onEdit }: { item: ItemDto; isNew
         <span className="n">{item.name}</span>
         {meta && <small>{meta}</small>}
       </button>
-      {item.quantity && <span className="q">{item.quantity}</span>}
+      {/* Always there, also empty: the tick boxes stay in one column. */}
+      <span className="q">{item.quantity}</span>
       <button type="button" role="checkbox" aria-checked={done} className="ck" aria-label={done ? de.shopping.uncheck(item.name) : de.shopping.check(item.name)} onClick={onToggle}>
         <span>{done && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12.5 4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>}</span>
       </button>

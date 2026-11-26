@@ -147,3 +147,21 @@ describe("calendar review fixes", () => {
     expect(screen.queryByRole("button", { name: de.calendar.scopes.one })).not.toBeInTheDocument();
   });
 });
+
+describe("compact week", () => {
+  it("empty days take no words, a day with events lists them beside its date", async () => {
+    fakeApi(base([inst()]));
+    renderAt("/kalender");
+    fireEvent.click(await screen.findByRole("button", { name: de.calendar.views.week }));
+    expect(await screen.findByRole("button", { name: /Zahnarzt/ })).toBeInTheDocument();
+    expect(screen.queryByText(de.calendar.dayEmpty)).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".agendaday").length).toBe(7);
+  });
+
+  it("an empty week says so once", async () => {
+    fakeApi(base([]));
+    renderAt("/kalender");
+    fireEvent.click(await screen.findByRole("button", { name: de.calendar.views.week }));
+    expect(await screen.findByText(de.calendar.weekEmpty)).toBeInTheDocument();
+  });
+});

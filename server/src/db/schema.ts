@@ -6,6 +6,7 @@ export const members = pgTable("members", {
   displayName: text("display_name").notNull(),
   role: text("role", { enum: ["admin", "member"] }).notNull(),
   color: text("color").notNull(),
+  world: text("world"),
   passwordHash: text("password_hash").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   removedAt: timestamp("removed_at", { withTimezone: true }),

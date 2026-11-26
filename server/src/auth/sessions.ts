@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull, ne } from "drizzle-orm";
-import type { MemberDto } from "@stellwall/shared";
+import { defaultWorld, type MemberDto, type World } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
 import { members, sessions } from "../db/schema.ts";
 
@@ -12,7 +12,7 @@ const HOUR = 60 * 60 * 1000;
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export function toDto(m: typeof members.$inferSelect): MemberDto {
-  return { id: m.id, username: m.username, displayName: m.displayName, role: m.role, color: m.color };
+  return { id: m.id, username: m.username, displayName: m.displayName, role: m.role, color: m.color, world: (m.world as World | null) ?? defaultWorld(m.color) };
 }
 
 export async function createSession(db: Db, memberId: string, userAgent: string | undefined, now: Date) {
