@@ -7,18 +7,20 @@ import { UpdateBanner } from "./UpdateBanner.tsx";
 
 type Item = { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; ready: boolean };
 
+// Five tabs fit even narrow phones; everything else sits behind the round picture top right.
 const ITEMS: Item[] = [
   { to: "/", label: de.nav.start, icon: Icon.Start, ready: true },
   { to: "/einkauf", label: de.nav.einkauf, icon: Icon.Einkauf, ready: true },
   { to: "/kalender", label: de.nav.kalender, icon: Icon.Kalender, ready: true },
+  { to: "/essen", label: de.nav.essen, icon: Icon.Essensplan, ready: true },
   { to: "/todos", label: de.nav.todos, icon: Icon.Todos, ready: true },
-  { to: "/mehr", label: de.nav.mehr, icon: Icon.Mehr, ready: true },
 ];
+const RAIL_EXTRA: Item[] = [{ to: "/mehr", label: de.nav.mehr, icon: Icon.Mehr, ready: true }];
 
 function NavItems({ rail }: { rail: boolean }) {
   return (
     <>
-      {ITEMS.map(({ to, label, icon: I, ready }) =>
+      {(rail ? [...ITEMS, ...RAIL_EXTRA] : ITEMS).map(({ to, label, icon: I, ready }) =>
         ready ? (
           <NavLink key={to} to={to} end={to === "/"} className="navitem">
             <I aria-hidden="true" className="ico" />

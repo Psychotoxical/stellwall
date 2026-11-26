@@ -117,3 +117,14 @@ describe("shopping review fixes", () => {
     await waitFor(() => expect(calls.find((c) => c.key === "PATCH /api/items/i1")?.body).toEqual({ category: "Getränke" }));
   });
 });
+
+describe("shopping layout", () => {
+  it("every row keeps the amount column, so the tick boxes line up", async () => {
+    const rucola: ItemDto = { ...milk, id: "i3", name: "Rucola", quantity: "", category: "Obst & Gemüse" };
+    fakeApi(base([milk, rucola]));
+    renderAt("/einkauf");
+    await screen.findByText("Rucola");
+    const rows = document.querySelectorAll(".item");
+    expect([...rows].map((r) => r.children.length)).toEqual([3, 3]);
+  });
+});

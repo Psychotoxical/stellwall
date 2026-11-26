@@ -60,6 +60,8 @@ a { color: inherit; text-underline-offset: 3px; }
 h2 { font-family: var(--font-board); font-weight: 800; font-size: 21px; margin: 0; }
 .sechead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 26px 0 10px; }
 .lead { color: var(--ink-soft); margin: 0 0 18px; max-width: 62ch; }
+.back { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; margin: -10px 0 0 -8px; padding: 0 10px 0 4px; border-radius: 999px; color: var(--ink-soft); font-weight: 600; font-size: 15px; text-decoration: none; }
+.back:active { background: var(--field); }
 .avatar { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: var(--chip-ink); text-decoration: none; }
 
 /* Board */
@@ -132,6 +134,9 @@ fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; }
 /* Date next to time: the date needs the wider column, or the year gets cut on small phones. */
 .row2.dt { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
 .row2.dt input { padding-inline: 10px; }
+/* Safari on the iPhone draws date and time fields wider than their column unless told otherwise. */
+input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; display: block; min-height: 50px; }
+input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }
 .weekdays { display: flex; gap: 6px; flex-wrap: wrap; }
 .wd { position: relative; display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px; border-radius: var(--radius-sm); border: 1.5px solid var(--rule); background: var(--surface); font-weight: 700; cursor: pointer; }
 .wd input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
@@ -318,7 +323,7 @@ input[type="file"] { font-size: 16px; padding: 10px; border: 1.5px dashed var(--
   width: 100%; max-width: 520px; margin: auto auto var(--kb, 0px); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   /* One scroll area: the sheet itself, never taller than what is visible above the keyboard. */
   max-height: calc(var(--vvh, 100dvh) - env(safe-area-inset-top, 0px) - 8px);
-  overflow-y: auto; overscroll-behavior: contain;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
 }
 /* Save and cancel stay at the bottom of the sheet while its content scrolls. */
 .sheet .actions:last-child {
