@@ -8,3 +8,5 @@ export * from "./shopping/day.ts";
 export * from "./shopping/catalog.ts";
 export * from "./todos/recurrence.ts";
 export * from "./todos/catalog.ts";
+export * from "./calendar/expand.ts";
+export * from "./calendar/birthdays.ts";
