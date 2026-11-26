@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-26
+
 ### Added
 
 - Colour worlds: each person picks Salbei, Flieder, Pfirsich, Himmel, Rosé or Sonne under My account, and the whole app takes it on, light and dark, on all their devices.
