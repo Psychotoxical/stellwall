@@ -8,6 +8,12 @@ export type Notifier = {
   todo(todoId: string): void;
   /** A to-do was deleted; audience is who could see it (null: everyone). */
   todoGone(audience: string[] | null): void;
+  /** A calendar event changed. */
+  calendar(eventId: string): void;
+  /** A birthday changed. */
+  birthday(birthdayId: string): void;
+  /** An event or birthday was deleted; audience is who could see it (null: everyone). */
+  calendarGone(audience: string[] | null): void;
 };
 
-export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {} };
+export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {}, calendar: () => {}, birthday: () => {}, calendarGone: () => {} };
