@@ -1,0 +1,33 @@
+import { Link } from "react-router";
+import { Icon } from "../icons.ts";
+import { useMe } from "../session.ts";
+import { de } from "../text/de.ts";
+import { Header } from "./Home.tsx";
+
+export function More() {
+  const me = useMe().data!;
+  return (
+    <>
+      <Header title={de.nav.mehr} />
+      <div className="areas" style={{ maxWidth: 640 }}>
+        {me.role === "admin" && (
+          <Link to="/mitglieder" className="area">
+            <Icon.Members className="ico" aria-hidden="true" />
+            <b>{de.nav.members}</b>
+            <small />
+          </Link>
+        )}
+        <Link to="/konto" className="area">
+          <Icon.Account className="ico" aria-hidden="true" />
+          <b>{de.nav.account}</b>
+          <small />
+        </Link>
+      </div>
+      <div className="sechead"><h2>Über Stellwall</h2></div>
+      <p className="lead">
+        Icons: Solar von 480 Design, Lizenz{" "}
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+      </p>
+    </>
+  );
+}
