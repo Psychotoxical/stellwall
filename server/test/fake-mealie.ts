@@ -33,7 +33,7 @@ const recipes = [
 ];
 
 /** A stand-in for Mealie on a local port: just enough of its API for Stellwall. */
-export async function startFakeMealie(opts: { slow?: boolean } = {}) {
+export async function startFakeMealie(opts: { slow?: boolean; port?: number } = {}) {
   const app = Fastify({ logger: false });
   const calls: string[] = [];
   app.addHook("onRequest", async (req, reply) => {
@@ -51,7 +51,7 @@ export async function startFakeMealie(opts: { slow?: boolean } = {}) {
     return r ?? reply.code(404).send({ detail: "not found" });
   });
   app.get("/api/media/recipes/:id/images/min-original.webp", async (_req, reply) => reply.type("image/webp").send(Buffer.from("RIFFfakeWEBP")));
-  await app.listen({ port: 0, host: "127.0.0.1" });
+  await app.listen({ port: opts.port ?? 0, host: "127.0.0.1" });
   const port = (app.server.address() as { port: number }).port;
   return { url: `http://127.0.0.1:${port}`, calls, close: () => app.close() };
 }

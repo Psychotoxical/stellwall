@@ -17,6 +17,18 @@ export function More() {
             <small />
           </Link>
         )}
+        <Link to="/essen" className="area">
+          <Icon.Essensplan className="ico" aria-hidden="true" />
+          <b>{de.meals.page}</b>
+          <small />
+        </Link>
+        {me.role === "admin" && (
+          <Link to="/mealie" className="area">
+            <Icon.Settings className="ico" aria-hidden="true" />
+            <b>{de.mealie.page}</b>
+            <small />
+          </Link>
+        )}
         <Link to="/konto" className="area">
           <Icon.Account className="ico" aria-hidden="true" />
           <b>{de.nav.account}</b>

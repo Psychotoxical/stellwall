@@ -12,6 +12,10 @@ import { Todos } from "./pages/Todos.tsx";
 import { Calendar } from "./pages/Calendar.tsx";
 import { Birthdays } from "./pages/Birthdays.tsx";
 import { Import } from "./pages/Import.tsx";
+import { Meals } from "./pages/Meals.tsx";
+import { RecipeView } from "./pages/Recipe.tsx";
+import { Pantry } from "./pages/Pantry.tsx";
+import { MealieSettings } from "./pages/MealieSettings.tsx";
 import { useLive } from "./live.ts";
 
 function RequireMember() {
@@ -56,6 +60,10 @@ export const routes: RouteObject[] = [
       { path: "/kalender", element: <Calendar /> },
       { path: "/kalender/geburtstage", element: <Birthdays /> },
       { path: "/kalender/import", element: <Import /> },
+      { path: "/essen", element: <Meals /> },
+      { path: "/essen/rezept/:slug", element: <RecipeView /> },
+      { path: "/essen/grundvorrat", element: <Pantry /> },
+      { path: "/mealie", element: <AdminOnly><MealieSettings /></AdminOnly> },
       { path: "/mehr", element: <More /> },
       { path: "/konto", element: <Account /> },
       { path: "/mitglieder", element: <AdminOnly><Members /></AdminOnly> },
