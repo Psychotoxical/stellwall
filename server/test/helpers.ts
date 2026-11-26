@@ -9,6 +9,7 @@ export const testConfig: Config = {
   publicUrl: "http://localhost",
   cookieSecure: false,
   webDir: null,
+  timeZone: "Europe/Berlin",
 };
 
 export async function createTestApp(opts: { client?: PGlite; now?: () => Date } = {}) {

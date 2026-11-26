@@ -9,6 +9,7 @@ import { SESSION_COOKIE, findSession } from "./auth/sessions.ts";
 import { memberRoutes } from "./members/routes.ts";
 import { listRoutes } from "./shopping/lists.ts";
 import { silent } from "./shopping/notify.ts";
+import { itemRoutes } from "./shopping/items.ts";
 
 const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
@@ -38,6 +39,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await memberRoutes(app, { db: deps.db, now });
   const notify = silent;
   await listRoutes(app, { db: deps.db, now, notify });
+  await itemRoutes(app, { db: deps.db, now, timeZone: deps.config.timeZone, notify });
 
   const webDir = deps.config.webDir;
   if (webDir) {
