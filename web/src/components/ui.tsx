@@ -47,7 +47,10 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
       if (typeof d.showModal === "function") d.showModal();
       else d.setAttribute("open", "");
     }
-    if (!open && d.open) d.close();
+    if (!open && d.open) {
+      if (typeof d.close === "function") d.close();
+      else d.removeAttribute("open");
+    }
   }, [open]);
   return (
     <dialog

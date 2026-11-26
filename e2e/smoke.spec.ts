@@ -1,15 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { signInAlex } from "./helpers.ts";
 
 const areas = ["Dokumente", "Kalender", "Geburtstage", "Einkauf", "To-dos", "Essensplan"];
 
 test("smoke: setup, logout, login, home in both themes", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Stellwall einrichten" })).toBeVisible();
-  await page.getByLabel("Benutzername").fill("alex");
-  await page.getByLabel("Anzeigename").fill("Alex");
-  await page.getByLabel("Passwort").fill("correct-horse-1");
-  await page.getByRole("button", { name: "Konto anlegen" }).click();
-  await expect(page.getByRole("heading", { name: "Hallo Alex" })).toBeVisible();
+  await signInAlex(page);
 
   await page.goto("/konto");
   await page.getByRole("button", { name: "Auf diesem Gerät abmelden" }).click();

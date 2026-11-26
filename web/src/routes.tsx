@@ -7,10 +7,13 @@ import { Home } from "./pages/Home.tsx";
 import { Members } from "./pages/Members.tsx";
 import { Account } from "./pages/Account.tsx";
 import { More } from "./pages/More.tsx";
+import { Shopping } from "./pages/Shopping.tsx";
+import { useLive } from "./live.ts";
 
 function RequireMember() {
   const me = useMe();
   const setup = useSetupStatus();
+  useLive(!!me.data);
   if (me.isPending) return null;
   if (!me.data) {
     if (setup.isPending) return null;
@@ -44,6 +47,7 @@ export const routes: RouteObject[] = [
     element: <RequireMember />,
     children: [
       { path: "/", element: <Home /> },
+      { path: "/einkauf", element: <Shopping /> },
       { path: "/mehr", element: <More /> },
       { path: "/konto", element: <Account /> },
       { path: "/mitglieder", element: <AdminOnly><Members /></AdminOnly> },
