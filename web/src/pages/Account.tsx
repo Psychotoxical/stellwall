@@ -8,6 +8,7 @@ import { useMe, useSetMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { readTheme, saveTheme, type ThemeChoice } from "../theme/theme.ts";
 import { Header } from "./Home.tsx";
+import { currentSubscription } from "../push-device.ts";
 
 type SessionRow = { id: string; userAgent: string | null; lastSeenAt: string; current: boolean };
 
@@ -56,7 +57,9 @@ export function Account() {
   }
 
   async function logout() {
-    await api("/api/auth/logout", { method: "POST" });
+    // This device stops getting this person's messages.
+    const sub = await currentSubscription();
+    await api("/api/auth/logout", { method: "POST", body: sub ? { pushEndpoint: sub.endpoint } : {} });
     setMe(null);
   }
 

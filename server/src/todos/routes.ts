@@ -91,6 +91,7 @@ export async function todoRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       // Whoever has to do it may always see it.
       if (!todo.everyone) await db.insert(todoMembers).values(added.map((memberId) => ({ todoId: todo.id, memberId }))).onConflictDoNothing();
     }
+    return added;
   }
 
   async function learn(scope: string, title: string) {
@@ -220,7 +221,8 @@ export async function todoRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       })
       .returning();
     await setVisibility(t!.id, b.data.visibility.everyone, b.data.visibility.memberIds, me);
-    await setAssignees(t!, b.data.assignees, me);
+    const given = await setAssignees(t!, b.data.assignees, me);
+    notify.todoGiven(t!.id, given, req.member!);
     await learn(t!.everyone ? "family" : me, t!.title);
     notify.todo(t!.id);
     return ruleDto(t!);
@@ -257,7 +259,7 @@ export async function todoRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     }
     const [u] = Object.keys(set).length ? await db.update(todos).set(set).where(eq(todos.id, t.id)).returning() : [t];
     // Assignees first, so visibility is built from the new set of people.
-    if (b.data.assignees) await setAssignees(u!, b.data.assignees, me);
+    if (b.data.assignees) notify.todoGiven(u!.id, await setAssignees(u!, b.data.assignees, me), req.member!);
     if (b.data.visibility) {
       await setVisibility(t.id, b.data.visibility.everyone, b.data.visibility.memberIds, t.createdBy);
       if (t.everyone && !b.data.visibility.everyone) await unlearn(u!);

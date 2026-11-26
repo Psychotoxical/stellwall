@@ -3,7 +3,7 @@ import { and, asc, count, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { PERSON_COLORS, passwordSchema, roleSchema, usernameSchema } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { members } from "../db/schema.ts";
+import { members, pushSubscriptions } from "../db/schema.ts";
 import { requireAdmin, requireMember } from "../auth/guard.ts";
 import { hashPassword } from "../auth/password.ts";
 import { deleteAllSessions, toDto } from "../auth/sessions.ts";
@@ -104,6 +104,8 @@ export async function memberRoutes(app: FastifyInstance, opts: { db: Db; now: ()
     }
     await db.update(members).set({ removedAt: now() }).where(eq(members.id, target.id));
     await deleteAllSessions(db, target.id);
+    // A removed member's devices get nothing more.
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, target.id));
     return { ok: true };
   });
 }

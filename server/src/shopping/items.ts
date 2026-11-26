@@ -137,6 +137,7 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const result = await db.transaction((tx) => addToList(tx, { listId: l.id, name: body.data.name, quantity: body.data.quantity ?? "", category: body.data.category, me, at: now() }));
     await learn(l.everyone ? "family" : me, key, result.name, result.category);
     notify.list(l.id);
+    notify.itemsAdded(l.id, req.member!, 1);
     return toDto(result);
   });
 

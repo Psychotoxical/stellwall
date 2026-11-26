@@ -27,7 +27,7 @@ describe("Mealie connection", () => {
     expect(got.json()).toEqual({ url: mealie.url, hasToken: true, listId: null });
     expect(got.body).not.toContain(TOKEN);
     const test = await as(app, f.alex.cookie).post("/api/settings/mealie/test", {});
-    expect(test.json()).toMatchObject({ ok: true });
+    expect(test.json()).toEqual({ ok: true, recipes: 32 });
   });
 
   it("searches recipes and reads one with structured and free-text ingredients", async () => {
@@ -83,5 +83,11 @@ describe("Mealie connection", () => {
     await put(f.alex.cookie, { url: mealie.url, token: TOKEN });
     await put(f.alex.cookie, { url: "https://rezepte.example.test" });
     expect((await as(app, f.alex.cookie).get("/api/settings/mealie")).json()).toMatchObject({ hasToken: false });
+  });
+
+  it("without a search word every recipe is listed, not just the first page", async () => {
+    const { app, f, mealie, put } = await start();
+    await put(f.alex.cookie, { url: mealie.url, token: TOKEN });
+    expect(((await as(app, f.sam.cookie).get("/api/recipes?q=")).json() as unknown[]).length).toBe(32);
   });
 });

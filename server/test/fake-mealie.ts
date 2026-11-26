@@ -32,6 +32,8 @@ const recipes = [
     recipeInstructions: [{ text: "Alles verrühren." }],
   },
 ];
+// More recipes than fit on one page, like a real collection.
+for (let n = 1; n <= 30; n++) recipes.push({ id: `33333333-3333-4333-8333-${String(n).padStart(12, "0")}`, slug: `testrezept-${n}`, name: `Testrezept ${n}`, recipeServings: 4, image: null, recipeIngredient: [], recipeInstructions: [] });
 
 /** A stand-in for Mealie on a local port: just enough of its API for Stellwall. */
 export async function startFakeMealie(opts: { slow?: boolean; port?: number } = {}) {
@@ -43,9 +45,11 @@ export async function startFakeMealie(opts: { slow?: boolean; port?: number } = 
     if (req.headers.authorization !== `Bearer ${TOKEN}`) return reply.code(401).send({ detail: "Unauthorized" });
   });
   app.get("/api/recipes", async (req) => {
-    const q = String((req.query as { search?: string }).search ?? "").toLowerCase();
+    const query = req.query as { search?: string; perPage?: string };
+    const q = String(query.search ?? "").toLowerCase();
+    const perPage = Number(query.perPage) || 50;
     const items = recipes.filter((r) => r.name.toLowerCase().includes(q)).map(({ recipeIngredient: _i, recipeInstructions: _s, ...r }) => r);
-    return { page: 1, per_page: 24, total: items.length, total_pages: 1, items };
+    return { page: 1, per_page: perPage, total: items.length, total_pages: Math.ceil(items.length / perPage), items: items.slice(0, perPage) };
   });
   app.get("/api/recipes/:slug", async (req, reply) => {
     const r = recipes.find((x) => x.slug === (req.params as { slug: string }).slug);

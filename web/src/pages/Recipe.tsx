@@ -28,6 +28,38 @@ function useWakeLock() {
   }, []);
 }
 
+type Marks = { i: number[]; s: number[]; at: number };
+const MARK_PREFIX = "sw-cook:";
+const WEEK = 7 * 86_400_000;
+
+/** What the cook already did, kept on this device per recipe and day; a week later it is gone. */
+function useCookMarks(slug: string, day: string) {
+  const key = MARK_PREFIX + slug + ":" + day;
+  const [marks, setMarks] = useState<Marks>(() => {
+    try {
+      for (const k of Object.keys(localStorage)) {
+        if (!k.startsWith(MARK_PREFIX)) continue;
+        const old = JSON.parse(localStorage.getItem(k) ?? "{}") as Partial<Marks>;
+        if (!old.at || Date.now() - old.at > WEEK) localStorage.removeItem(k);
+      }
+      const m = JSON.parse(localStorage.getItem(key) ?? "null") as Marks | null;
+      return m ?? { i: [], s: [], at: Date.now() };
+    } catch {
+      return { i: [], s: [], at: Date.now() };
+    }
+  });
+  const flip = (part: "i" | "s", n: number) => {
+    const next = { ...marks, [part]: marks[part].includes(n) ? marks[part].filter((x) => x !== n) : [...marks[part], n], at: Date.now() };
+    setMarks(next);
+    try {
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* private mode: the marks simply do not stay */
+    }
+  };
+  return { marks, flip };
+}
+
 export function RecipeView() {
   const { slug } = useParams();
   const [params] = useSearchParams();
@@ -37,6 +69,7 @@ export function RecipeView() {
   const [shop, setShop] = useState(false);
   const date = params.get("tag");
   useWakeLock();
+  const { marks, flip } = useCookMarks(slug ?? "", date ?? new Date().toISOString().slice(0, 10));
 
   if (r.error) {
     const code = r.error instanceof ApiError ? r.error.code : "";
@@ -67,8 +100,10 @@ export function RecipeView() {
             const amount = [s.quantity === null ? "" : formatAmount(s.quantity), s.unit ?? ""].filter(Boolean).join(" ");
             return (
               <li key={k}>
-                <span className="q">{amount}</span>
-                <span className="n">{i.food}{i.note && <small>{i.note}</small>}</span>
+                <button type="button" className="tick" aria-pressed={marks.i.includes(k)} onClick={() => flip("i", k)}>
+                  <span className="q">{amount}</span>
+                  <span className="n">{i.food}{i.note && <small>{i.note}</small>}</span>
+                </button>
               </li>
             );
           })}
@@ -82,7 +117,11 @@ export function RecipeView() {
       <section aria-labelledby="steps-h">
         <div className="sechead"><h2 id="steps-h">{de.meals.steps}</h2></div>
         <ol className="steps-cook">
-          {r.data.steps.map((s, k) => <li key={k}>{s}</li>)}
+          {r.data.steps.map((s, k) => (
+            <li key={k}>
+              <button type="button" className="tick" aria-pressed={marks.s.includes(k)} onClick={() => flip("s", k)}>{s}</button>
+            </li>
+          ))}
         </ol>
         <p className="lead">{de.meals.awake}</p>
       </section>

@@ -69,8 +69,10 @@ export async function mealRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       updatedBy: req.member!.id,
       updatedAt: now(),
     };
+    const before = (await db.select({ cookId: mealPlan.cookId }).from(mealPlan).where(eq(mealPlan.date, p.data.date)))[0];
     const [row] = await db.insert(mealPlan).values({ date: p.data.date, ...values }).onConflictDoUpdate({ target: mealPlan.date, set: values }).returning();
     notify.meals();
+    if (b.data.cookId && b.data.cookId !== before?.cookId) notify.cook(p.data.date, b.data.cookId, req.member!);
     return dto(row!);
   });
 
@@ -124,6 +126,7 @@ export async function mealRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       for (const l of b.data.lines) await addToList(tx, { listId: target.list.id, name: l.food, quantity: l.quantity, me, at: now() });
     });
     notify.list(target.list.id);
+    notify.itemsAdded(target.list.id, req.member!, b.data.lines.length);
     return { added: b.data.lines.length, listId: target.list.id, listName: target.list.name };
   });
 

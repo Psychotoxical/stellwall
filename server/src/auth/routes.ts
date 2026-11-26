@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeUsername, passwordSchema, usernameSchema } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { members } from "../db/schema.ts";
+import { members, pushSubscriptions } from "../db/schema.ts";
 import { requireMember } from "./guard.ts";
 import { addressKey, createLockout, userKey } from "./lockout.ts";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password.ts";
@@ -99,6 +99,8 @@ export async function authRoutes(app: FastifyInstance, opts: Opts) {
 
   app.post("/api/auth/logout", { preHandler: requireMember }, async (req, reply) => {
     await deleteSession(db, req.sessionId!, req.member!.id);
+    const endpoint = (req.body as { pushEndpoint?: unknown } | undefined)?.pushEndpoint;
+    if (typeof endpoint === "string") await db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.memberId, req.member!.id)));
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     return { ok: true };
   });

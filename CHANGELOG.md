@@ -4,6 +4,20 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Push notifications, switched on per device under More → Notifications; each person chooses what they are told about.
+- Events entered or changed for you, to-dos given to you, shopping (bundled after five quiet minutes), being set as cook, and birthdays.
+- Reminders for events and to-dos at the set time; birthdays, all-day events and to-dos without a time at 18:00 the evening before.
+- Quiet from 22:00 to 7:00; reminders for events still come on time. Nobody is told about anything they cannot see, or about their own changes.
+- On an iPhone the page explains how to add Stellwall to the home screen first, which Apple requires for notifications.
+- Recipe view: tap an ingredient or step to cross it out while cooking.
+
+### Fixed
+
+- Meal plan: without a search word all recipes are listed, not just the first 24; who cooks and servings sit above the list.
+- Mealie connection test shows how many recipes there are in total, not just the first page.
+
 ## [0.1.5] - 2026-11-26
 
 ### Added

@@ -17,6 +17,11 @@ export function More() {
             <small />
           </Link>
         )}
+        <Link to="/benachrichtigungen" className="area">
+          <Icon.Bell className="ico" aria-hidden="true" />
+          <b>{de.notify.page}</b>
+          <small />
+        </Link>
         <Link to="/essen" className="area">
           <Icon.Essensplan className="ico" aria-hidden="true" />
           <b>{de.meals.page}</b>
