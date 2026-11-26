@@ -20,6 +20,7 @@ import { mealRoutes } from "./meals/plan.ts";
 import { createOutbox, webPushSender, type PushSender } from "./push/outbox.ts";
 import { createAnnouncer } from "./push/announce.ts";
 import { remind } from "./push/reminders.ts";
+import { pushRoutes } from "./push/routes.ts";
 import type { Notifier } from "./shopping/notify.ts";
 
 const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
@@ -64,7 +65,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await authRoutes(app, { db: deps.db, now, cookieSecure: deps.config.cookieSecure });
   await memberRoutes(app, { db: deps.db, now });
   const hub = createHub(deps.db);
-  const outbox = createOutbox(deps.db, { now, timeZone: deps.config.timeZone, sender: deps.pushSender ?? webPushSender(deps.db, deps.config.publicUrl) });
+  const sender = deps.pushSender ?? webPushSender(deps.db, deps.config.publicUrl);
+  const outbox = createOutbox(deps.db, { now, timeZone: deps.config.timeZone, sender });
+  await pushRoutes(app, { db: deps.db, now, sender });
   const announcer = createAnnouncer(deps.db, outbox, deps.config.timeZone);
   // Reports run in the background; sending waits for those still being written.
   const pending = new Set<Promise<unknown>>();
