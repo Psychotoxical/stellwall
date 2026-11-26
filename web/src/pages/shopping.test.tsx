@@ -1,0 +1,89 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { alex, fakeApi, renderAt, sam } from "../test-utils.tsx";
+import { de } from "../text/de.ts";
+import type { ItemDto } from "../shopping-api.ts";
+
+afterEach(() => vi.unstubAllGlobals());
+
+const list = { id: "l1", name: "Einkauf", visibility: { everyone: true, memberIds: [] }, createdBy: "a1", openCount: 1 };
+const milk: ItemDto = { id: "i1", listId: "l1", name: "Milch", quantity: "1 l", category: "Kühlregal", addedBy: "s1", addedAt: "2026-11-26T09:00:00Z", checkedAt: null, checkedBy: null };
+
+function base(items: unknown[] = [milk]) {
+  return {
+    "GET /api/me": () => ({ status: 200, body: alex }),
+    "GET /api/members": () => ({ status: 200, body: [alex, sam] }),
+    "GET /api/lists": () => ({ status: 200, body: [list] }),
+    "GET /api/lists/l1/items": () => ({ status: 200, body: items }),
+    "GET /api/board": () => ({ status: 200, body: [] }),
+    "POST /api/board/seen": () => ({ status: 200, body: { ok: true } }),
+  };
+}
+
+describe("shopping", () => {
+  it("shows items with who added them", async () => {
+    fakeApi(base());
+    renderAt("/einkauf");
+    expect(await screen.findByText("Milch")).toBeInTheDocument();
+    expect(screen.getByText(de.shopping.from("Sam"))).toBeInTheDocument();
+    expect(screen.getByText("1 l")).toBeInTheDocument();
+  });
+
+  it("typing shows suggestions and Enter adds", async () => {
+    const calls = fakeApi({
+      ...base([]),
+      "GET /api/suggestions?q=zwi": () => ({ status: 200, body: [{ name: "Zwiebeln", category: "Obst & Gemüse" }] }),
+      "POST /api/lists/l1/items": (b) => ({ status: 200, body: { ...milk, id: "i2", name: (b as { name: string }).name, category: "Obst & Gemüse" } }),
+    });
+    renderAt("/einkauf");
+    const input = await screen.findByLabelText(de.shopping.add);
+    fireEvent.change(input, { target: { value: "zwi" } });
+    expect(await screen.findByRole("option", { name: /Zwiebeln/ })).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/lists/l1/items" && (c.body as { name: string }).name === "Zwiebeln")).toBe(true));
+  });
+
+  it("checked item moves to checked section", async () => {
+    let items = [milk];
+    fakeApi({
+      ...base(),
+      "GET /api/lists/l1/items": () => ({ status: 200, body: items }),
+      "PATCH /api/items/i1": () => {
+        items = [{ ...milk, checkedAt: "2026-11-26T10:00:00Z", checkedBy: "a1" }];
+        return { status: 200, body: items[0] };
+      },
+    });
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("checkbox", { name: de.shopping.check("Milch") }));
+    const section = await screen.findByRole("region", { name: de.shopping.checked });
+    expect(within(section).getByText("Milch")).toBeInTheDocument();
+    expect(within(section).getByText(de.shopping.checkedBy("Alex"))).toBeInTheDocument();
+  });
+
+  it("visibility sheet keeps self selected", async () => {
+    fakeApi(base());
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("button", { name: de.visibility.see(de.visibility.all) }));
+    fireEvent.click(await screen.findByLabelText(new RegExp(de.visibility.some)));
+    const self = screen.getByRole("checkbox", { name: /Alex/ });
+    expect(self).toBeChecked();
+    expect(self).toBeDisabled();
+  });
+
+  it("unseen items of others are highlighted", async () => {
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: milk.addedAt, itemIds: ["i1"] }] }) });
+    renderAt("/einkauf");
+    const name = await screen.findByText("Milch");
+    await waitFor(() => expect(name.closest(".item")).toHaveClass("is-new"));
+  });
+});
+
+describe("home board", () => {
+  it("lists what others added and links to the list", async () => {
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 3, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a", "b", "c"] }] }) });
+    renderAt("/");
+    const link = await screen.findByRole("link", { name: new RegExp(de.board.added("Sam", 3, "Einkauf")) });
+    expect(link).toHaveAttribute("href", "/einkauf?liste=l1");
+  });
+});

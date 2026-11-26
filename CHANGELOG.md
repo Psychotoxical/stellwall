@@ -4,6 +4,15 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Shopping lists: several lists, each with "who may see this", sorted by store section.
+- Suggestions while typing from a catalog of about 1,600 everyday items; items you type yourself are learned (from private lists only for yourself).
+- Adding the same item twice merges it and adds up the amounts.
+- Changes show up on every device right away.
+- Checked items stay visible for the rest of the day and disappear at midnight.
+- The start screen board shows what others added since you last looked; new entries are highlighted.
+
 ### Security
 
 - Build tools updated to versions without known security issues.
