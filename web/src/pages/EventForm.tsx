@@ -4,7 +4,7 @@ import { describeRule, simpleKind, simpleRule, type SimpleKind } from "@stellwal
 import { api } from "../api.ts";
 import { Button, Dialog, Notice, PersonChip } from "../components/ui.tsx";
 import { de } from "../text/de.ts";
-import { addDays, hhmm, parseYmd, ymd, type EventDto, type EventInstance } from "../calendar-api.ts";
+import { addDays, dayOf, hhmm, parseYmd, ymd, type EventDto, type EventInstance } from "../calendar-api.ts";
 
 type Repeat = SimpleKind | "none" | "custom";
 type Scope = "one" | "following" | "all";
@@ -39,7 +39,7 @@ function initial(ev: EventDto | null, inst: EventInstance | undefined, defaultDa
   return {
     title: inst?.title ?? ev.title,
     allDay: ev.allDay,
-    startDate: inst?.date ?? ev.startDate,
+    startDate: inst ? dayOf(inst) : ev.startDate,
     startTime: ev.allDay ? "" : hhmm(start),
     endDate: ev.allDay ? (inst?.endDate ?? ev.endDate) : ymd(new Date(end)),
     endTime: ev.allDay ? "" : hhmm(end),
@@ -87,7 +87,14 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
   const timeFields = (startDate: string, endDate: string, startT: Date, endT: Date) =>
     d.allDay ? { allDay: true, startDate, endDate } : { allDay: false, start: startT.toISOString(), end: endT.toISOString() };
 
-  const ruleFor = (startDate: string) => (d.repeat === "none" ? null : d.repeat === "custom" ? event!.rrule : simpleRule(d.repeat, startDate));
+  // A simple rule follows the start day; an end set earlier (a split series) stays.
+  const ruleFor = (startDate: string) => {
+    if (d.repeat === "none") return null;
+    if (d.repeat === "custom") return event!.rrule;
+    return simpleRule(d.repeat, startDate) + (event?.rrule?.match(/;UNTIL=[^;]+/)?.[0] ?? "");
+  };
+  // These belong to the whole series; a single occurrence only takes title, place and time.
+  const seriesOnly = d.notes.trim() !== start0.notes || d.reminders.join() !== start0.reminders.join() || d.forWhom.join() !== start0.forWhom.join() || d.seeAll !== start0.seeAll || d.repeat !== start0.repeat || d.allDay !== start0.allDay;
 
   const create = async () => {
     const body = {
@@ -117,7 +124,7 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
     let seriesStart = scope === "following" ? d.startDate : ev.startDate;
     if (timesChanged) {
       if (scope === "one" || scope === "following" || !isSeries) {
-        if (!(scope === "one" && d.allDay)) Object.assign(body, timeFields(d.startDate, d.endDate, at(d.startDate, d.startTime), at(d.endDate, d.endTime)));
+        Object.assign(body, timeFields(d.startDate, d.endDate, at(d.startDate, d.startTime), at(d.endDate, d.endTime)));
       } else {
         // The whole series moves by the same amount as the occurrence that was edited.
         if (d.allDay) {
@@ -132,7 +139,10 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
         }
       }
     }
-    if (scope !== "one" && d.repeat !== start0.repeat) body.rrule = ruleFor(seriesStart);
+    if (scope !== "one") {
+      const rule = ruleFor(seriesStart);
+      if (rule !== ev.rrule) body.rrule = rule;
+    }
     const q = isSeries ? `?scope=${scope}&date=${instance?.date ?? ev.startDate}` : "?scope=all";
     await api(`/api/events/${ev.id}${q}`, { method: "PATCH", body });
   };
@@ -162,7 +172,7 @@ export function EventForm({ event, instance, defaultDate, members, meId, onClose
   const remove = (scope: Scope) => run(() => api(`/api/events/${event!.id}?scope=${scope}${isSeries ? `&date=${instance?.date ?? event!.startDate}` : ""}`, { method: "DELETE" }).then(() => undefined));
 
   const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-  const scopes: Scope[] = ask === "delete" && !isCreator ? ["one"] : ["one", "following", "all"];
+  const scopes: Scope[] = ask === "delete" ? (isCreator ? ["one", "following", "all"] : ["one"]) : seriesOnly ? ["following", "all"] : ["one", "following", "all"];
 
   return (
     <Dialog open title={event ? de.calendar.edit : de.calendar.new} onClose={onClose}>

@@ -53,6 +53,13 @@ export function expandEvent(ev: EventSpec, exceptions: Exception[], from: Date, 
     const lo = floating(addDays(localDate(new Date(from.getTime() - Math.max(duration, days * DAY)), ev.tz), -1));
     const hi = floating(addDays(localDate(to, ev.tz), 1), "23:59");
     dates = rule.between(lo, hi, true).map((d) => d.toISOString().slice(0, 10));
+    // Occurrences moved into the window from further away still belong to it.
+    for (const e of exceptions) {
+      if (e.cancelled || !e.startAt || dates.includes(e.date)) continue;
+      const end = e.endAt ?? new Date(e.startAt.getTime() + duration);
+      if (!(e.startAt < to && end > from)) continue;
+      if (rule.between(floating(e.date), floating(e.date, "23:59"), true).length) dates.push(e.date);
+    }
   }
 
   const out: Instance[] = [];
@@ -69,7 +76,7 @@ export function expandEvent(ev: EventSpec, exceptions: Exception[], from: Date, 
       start,
       end,
       allDay: ev.allDay,
-      endDate: ev.allDay ? addDays(localDate(start, ev.tz), days - 1) : localDate(end, ev.tz),
+      endDate: ev.allDay ? addDays(localDate(end, ev.tz), -1) : localDate(end, ev.tz),
       changed: !!e,
     };
     if (e?.title) inst.title = e.title;

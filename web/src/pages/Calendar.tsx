@@ -9,7 +9,7 @@ import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { useMembers } from "../shopping-api.ts";
 import {
-  addDays, byDay, dayLabel, hhmm, parseYmd, todayYmd, useCalendar, weekStart, ymd,
+  addDays, byDay, dayLabel, dayOf, hhmm, parseYmd, todayYmd, useCalendar, weekStart, ymd,
   type CalendarInstance, type EventDto, type EventInstance,
 } from "../calendar-api.ts";
 import { Header } from "./Home.tsx";
@@ -204,7 +204,7 @@ export function CalList({ list, date, members, onOpen }: { list: CalendarInstanc
 }
 
 function CalRow({ i, date, members, onOpen }: { i: CalendarInstance; date: string; members: MemberDto[]; onOpen: () => void }) {
-  const time = i.allDay ? de.calendar.allDayShort : i.date === date ? hhmm(i.start) : "…";
+  const time = i.allDay ? de.calendar.allDayShort : dayOf(i) === date ? hhmm(i.start) : "…";
   return (
     <li className="calrow">
       <button type="button" className="calrow-main" onClick={onOpen}>

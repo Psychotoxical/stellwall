@@ -68,10 +68,14 @@ export const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", {
 export const dayLabel = (s: string) => parseYmd(s).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
 export const shortDay = (s: string) => parseYmd(s).toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
 
+/** The local day an instance actually takes place on (a moved occurrence keeps its series date as key). */
+export const dayOf = (i: CalendarInstance) => ymd(new Date(i.start));
+
 /** Every local date an instance covers; all-day events can span several days. */
 export function datesOf(i: CalendarInstance): string[] {
-  const out = [i.date];
-  if (i.allDay) for (let d = addDays(i.date, 1); d <= i.endDate && out.length < 62; d = addDays(d, 1)) out.push(d);
+  const first = dayOf(i);
+  const out = [first];
+  if (i.allDay) for (let d = addDays(first, 1); d <= i.endDate && out.length < 62; d = addDays(d, 1)) out.push(d);
   return out;
 }
 

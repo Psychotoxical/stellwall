@@ -89,3 +89,15 @@ describe("birthdays", () => {
     expect(birthdaysBetween({ month: 5, day: 1, year: 2030 }, "2026-01-01", "2030-12-31")).toEqual([{ date: "2030-05-01", age: 0 }]);
   });
 });
+
+describe("review fixes", () => {
+  const tz = "Europe/Berlin";
+  it("an occurrence moved several days shows up on its new day", () => {
+    const ev = { start: zonedTime("2026-11-03", "19:30", tz), end: zonedTime("2026-11-03", "20:30", tz), allDay: false, rrule: "FREQ=WEEKLY;BYDAY=TU", tz };
+    const moved = { date: "2026-11-10", cancelled: false, startAt: zonedTime("2026-11-13", "19:30", tz), endAt: zonedTime("2026-11-13", "20:30", tz) };
+    const fri = expandEvent(ev, [moved], zonedTime("2026-11-13", "00:00", tz), zonedTime("2026-11-14", "00:00", tz));
+    expect(fri.map((i) => [i.date, i.start.toISOString()])).toEqual([["2026-11-10", "2026-11-13T18:30:00.000Z"]]);
+    const tue = expandEvent(ev, [moved], zonedTime("2026-11-10", "00:00", tz), zonedTime("2026-11-11", "00:00", tz));
+    expect(tue).toEqual([]);
+  });
+});

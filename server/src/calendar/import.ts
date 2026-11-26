@@ -6,7 +6,7 @@ import type { LookupFunction } from "node:net";
 import type { FastifyInstance } from "fastify";
 import ICAL from "ical.js";
 import { z } from "zod";
-import { expandEvent, localDate, validRule, zonedTime } from "@stellwall/shared";
+import { expandEvent, localDate, validRule, withUntil, zonedTime } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
 import { eventExceptions, eventFor, eventMembers, events } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
@@ -194,6 +194,8 @@ export function parseIcs(text: string, appTz: string): ParsedEvent[] {
       if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) throw new ImportError("bad_file");
       const recur = comp.getFirstPropertyValue("rrule") as ICAL.Recur | null;
       let rrule = recur ? recur.toString() : null;
+      // Repeats are computed on local wall time; an UNTIL instant becomes the local day it falls on.
+      if (rrule && recur?.until && !recur.until.isDate) rrule = withUntil(rrule, localDate(instant(recur.until, tzid, appTz, registered), tz));
       if (rrule && !validRule(rrule)) rrule = null;
       if (recur && !rrule) continue; // a rule we cannot repeat correctly: leave it out rather than import it wrong
       const exceptions: ParsedException[] = [];

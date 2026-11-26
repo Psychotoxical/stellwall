@@ -64,19 +64,24 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
   const { db, now, timeZone: tz, notify } = opts;
 
   const visible = async (id: string, me: string) => (await db.select().from(events).where(and(eq(events.id, id), eventVisibleTo(me))).limit(1))[0] ?? null;
-  const forWhomOf = async (id: string) => (await db.select({ id: eventFor.memberId }).from(eventFor).where(eq(eventFor.eventId, id))).map((r) => r.id);
-  const membersOf = async (id: string) => (await db.select({ id: eventMembers.memberId }).from(eventMembers).where(eq(eventMembers.eventId, id))).map((r) => r.id);
+  type Q = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
+  const forWhomOf = async (id: string, q: Q = db) => (await q.select({ id: eventFor.memberId }).from(eventFor).where(eq(eventFor.eventId, id))).map((r) => r.id);
+  const membersOf = async (id: string, q: Q = db) => (await q.select({ id: eventMembers.memberId }).from(eventMembers).where(eq(eventMembers.eventId, id))).map((r) => r.id);
 
-  /** Sets who it is for and rebuilds who may see it from creator plus those people. */
-  async function setPeople(ev: EventRow, forWhom: string[], me: string) {
-    const current = await forWhomOf(ev.id);
+  /**
+   * Sets who it is for. Everyone it is for can see it; only the creator's edits take
+   * people away again, and viewers chosen apart from that (an import) stay.
+   */
+  async function setPeople(ev: EventRow, forWhom: string[], me: string, q: Q = db) {
+    const current = await forWhomOf(ev.id, q);
     const wanted = [...new Set(forWhom)];
     const gone = current.filter((id) => !wanted.includes(id));
-    if (gone.length) await db.delete(eventFor).where(and(eq(eventFor.eventId, ev.id), inArray(eventFor.memberId, gone)));
+    if (gone.length) await q.delete(eventFor).where(and(eq(eventFor.eventId, ev.id), inArray(eventFor.memberId, gone)));
     const added = wanted.filter((id) => !current.includes(id));
-    if (added.length) await db.insert(eventFor).values(added.map((memberId) => ({ eventId: ev.id, memberId, addedBy: me, addedAt: now() })));
-    await db.delete(eventMembers).where(eq(eventMembers.eventId, ev.id));
-    await db.insert(eventMembers).values([...new Set([...wanted, ev.createdBy])].map((memberId) => ({ eventId: ev.id, memberId })));
+    if (added.length) await q.insert(eventFor).values(added.map((memberId) => ({ eventId: ev.id, memberId, addedBy: me, addedAt: now() })));
+    await q.insert(eventMembers).values([...new Set([...wanted, ev.createdBy])].map((memberId) => ({ eventId: ev.id, memberId }))).onConflictDoNothing();
+    const drop = me === ev.createdBy ? gone.filter((id) => id !== ev.createdBy) : [];
+    if (drop.length) await q.delete(eventMembers).where(and(eq(eventMembers.eventId, ev.id), inArray(eventMembers.memberId, drop)));
   }
 
   function times(b: { allDay: boolean; start?: string; end?: string; startDate?: string; endDate?: string }) {
@@ -188,49 +193,69 @@ export async function eventRoutes(app: FastifyInstance, opts: { db: Db; now: () 
 
     if (scope === "one") {
       const date = s.data.date!;
+      let startAt = b.data.start ? new Date(b.data.start) : null;
+      let endAt = b.data.end ? new Date(b.data.end) : null;
+      if (ev.allDay && b.data.startDate) {
+        startAt = zonedTime(b.data.startDate, "00:00", ev.tz);
+        endAt = zonedTime(addDays(b.data.endDate ?? b.data.startDate, 1), "00:00", ev.tz);
+      }
+      if (startAt && endAt && !(endAt > startAt)) return reply.code(400).send({ error: "invalid_input" });
       await db
         .insert(eventExceptions)
-        .values({ eventId: ev.id, occurrenceDate: date, cancelled: false, title: b.data.title ?? null, location: b.data.location ?? null, startAt: b.data.start ? new Date(b.data.start) : null, endAt: b.data.end ? new Date(b.data.end) : null })
+        .values({ eventId: ev.id, occurrenceDate: date, cancelled: false, title: b.data.title ?? null, location: b.data.location ?? null, startAt, endAt })
         .onConflictDoUpdate({
           target: [eventExceptions.eventId, eventExceptions.occurrenceDate],
-          set: { cancelled: false, ...(b.data.title ? { title: b.data.title } : {}), ...(b.data.location !== undefined ? { location: b.data.location } : {}), ...(b.data.start ? { startAt: new Date(b.data.start) } : {}), ...(b.data.end ? { endAt: new Date(b.data.end) } : {}) },
+          set: { cancelled: false, ...(b.data.title ? { title: b.data.title } : {}), ...(b.data.location !== undefined ? { location: b.data.location } : {}), ...(startAt ? { startAt } : {}), ...(endAt ? { endAt } : {}) },
         });
       notify.calendar(ev.id);
       return dto(ev);
     }
 
-    let target = ev;
+    // Work out everything first, so a refused change writes nothing.
+    let base = { startAt: ev.startAt, endAt: ev.endAt };
     if (scope === "following") {
       const date = s.data.date!;
       const inst = expandEvent({ start: ev.startAt, end: ev.endAt, allDay: ev.allDay, rrule: ev.rrule, tz: ev.tz }, [], zonedTime(date, "00:00", ev.tz), zonedTime(addDays(date, 1), "00:00", ev.tz)).find((i) => i.date === date);
       if (!inst) return reply.code(400).send({ error: "no_occurrence" });
-      const oldRule = ev.rrule!;
-      await db.update(events).set({ rrule: withUntil(oldRule, addDays(date, -1)) }).where(eq(events.id, ev.id));
-      const [copy] = await db
-        .insert(events)
-        .values({ title: ev.title, location: ev.location, notes: ev.notes, startAt: inst.start, endAt: inst.end, allDay: ev.allDay, tz: ev.tz, rrule: oldRule, everyone: ev.everyone, createdBy: ev.createdBy, createdAt: now(), reminders: ev.reminders })
-        .returning();
-      await setPeople(copy!, await forWhomOf(ev.id), me);
-      await db.update(eventExceptions).set({ eventId: copy!.id }).where(and(eq(eventExceptions.eventId, ev.id), gte(eventExceptions.occurrenceDate, date)));
-      target = copy!;
+      base = { startAt: inst.start, endAt: inst.end };
     }
-
     const set: Partial<typeof events.$inferInsert> = {};
     for (const k of ["title", "location", "notes", "rrule", "reminders"] as const) if (b.data[k] !== undefined) (set as Record<string, unknown>)[k] = b.data[k];
     if (b.data.seeAll !== undefined) set.everyone = b.data.seeAll;
-    const allDay = b.data.allDay ?? target.allDay;
+    const allDay = b.data.allDay ?? ev.allDay;
     if (b.data.start || b.data.startDate || b.data.allDay !== undefined) {
       const t = allDay
-        ? times({ allDay, startDate: b.data.startDate ?? localDate(target.startAt, target.tz), endDate: b.data.endDate ?? b.data.startDate ?? localDate(target.startAt, target.tz) })
-        : times({ allDay, start: b.data.start ?? target.startAt.toISOString(), end: b.data.end ?? target.endAt.toISOString() });
+        ? times({ allDay, startDate: b.data.startDate ?? localDate(base.startAt, ev.tz), endDate: b.data.endDate ?? b.data.startDate ?? localDate(base.startAt, ev.tz) })
+        : times({ allDay, start: b.data.start ?? base.startAt.toISOString(), end: b.data.end ?? base.endAt.toISOString() });
       if (!(t.endAt > t.startAt)) return reply.code(400).send({ error: "invalid_input" });
       Object.assign(set, t, { allDay });
     }
-    const [u] = Object.keys(set).length ? await db.update(events).set(set).where(eq(events.id, target.id)).returning() : [target];
-    if (b.data.forWhom || b.data.seeAll !== undefined) await setPeople(u!, b.data.forWhom ?? (await forWhomOf(u!.id)), me);
-    notify.calendar(u!.id);
-    if (u!.id !== ev.id) notify.calendar(ev.id);
-    return dto(u!);
+
+    const u = await db.transaction(async (tx) => {
+      let target = ev;
+      if (scope === "following") {
+        const date = s.data.date!;
+        const oldRule = ev.rrule!;
+        await tx.update(events).set({ rrule: withUntil(oldRule, addDays(date, -1)) }).where(eq(events.id, ev.id));
+        const [copy] = await tx
+          .insert(events)
+          .values({ title: ev.title, location: ev.location, notes: ev.notes, startAt: base.startAt, endAt: base.endAt, allDay: ev.allDay, tz: ev.tz, rrule: oldRule, everyone: ev.everyone, createdBy: ev.createdBy, createdAt: now(), reminders: ev.reminders })
+          .returning();
+        // The new part keeps who it is for, who added them and who may see it.
+        const fors = await tx.select().from(eventFor).where(eq(eventFor.eventId, ev.id));
+        if (fors.length) await tx.insert(eventFor).values(fors.map((x) => ({ ...x, eventId: copy!.id })));
+        const mems = await membersOf(ev.id, tx);
+        if (mems.length) await tx.insert(eventMembers).values(mems.map((memberId) => ({ eventId: copy!.id, memberId })));
+        await tx.update(eventExceptions).set({ eventId: copy!.id }).where(and(eq(eventExceptions.eventId, ev.id), gte(eventExceptions.occurrenceDate, date)));
+        target = copy!;
+      }
+      const [row] = Object.keys(set).length ? await tx.update(events).set(set).where(eq(events.id, target.id)).returning() : [target];
+      if (b.data.forWhom) await setPeople(row!, b.data.forWhom, me, tx);
+      return row!;
+    });
+    notify.calendar(u.id);
+    if (u.id !== ev.id) notify.calendar(ev.id);
+    return dto(u);
   });
 
   app.delete("/api/events/:id", { preHandler: requireMember }, async (req, reply) => {

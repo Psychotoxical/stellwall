@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { alex, fakeApi, renderAt, sam } from "../test-utils.tsx";
 import { de } from "../text/de.ts";
-import { todayYmd } from "../calendar-api.ts";
+import { addDays, todayYmd } from "../calendar-api.ts";
+import { simpleRule } from "@stellwall/shared";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -112,5 +113,37 @@ describe("home with calendar", () => {
     fakeApi(base([inst({ forWhom: ["a1"] })]));
     renderAt("/");
     expect(await screen.findByText("Zahnarzt")).toBeInTheDocument();
+  });
+});
+
+describe("calendar review fixes", () => {
+  it("a moved occurrence shows on the day it now takes place", async () => {
+    fakeApi(base([inst({ date: addDays(today, -3), series: true, changed: true })]));
+    renderAt("/kalender");
+    const day = await screen.findByRole("region");
+    expect(await within(day).findByText("Zahnarzt")).toBeInTheDocument();
+  });
+
+  it("moving a weekly series to another day moves its weekday too", async () => {
+    const calls = fakeApi(base([inst({ series: true })], {
+      "GET /api/events/e1": () => ({ status: 200, body: dto({ rrule: simpleRule("weekly", today) }) }),
+      "PATCH /api/events/e1?*": (b) => ({ status: 200, body: { ...dto(), ...(b as object) } }),
+    }));
+    renderAt("/kalender");
+    fireEvent.click(await screen.findByRole("button", { name: /Zahnarzt/ }));
+    fireEvent.change(await screen.findByLabelText(de.calendar.from + " " + de.calendar.date), { target: { value: addDays(today, 1) } });
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    fireEvent.click(await screen.findByRole("button", { name: de.calendar.scopes.all }));
+    await waitFor(() => expect(calls.find((c) => c.key.startsWith("PATCH /api/events/e1?scope=all"))?.body).toMatchObject({ rrule: simpleRule("weekly", addDays(today, 1)) }));
+  });
+
+  it("a change that only fits the whole series does not offer just this one", async () => {
+    fakeApi(base([inst({ series: true })], { "GET /api/events/e1": () => ({ status: 200, body: dto({ rrule: "FREQ=WEEKLY" }) }) }));
+    renderAt("/kalender");
+    fireEvent.click(await screen.findByRole("button", { name: /Zahnarzt/ }));
+    fireEvent.change(await screen.findByLabelText(de.calendar.notes), { target: { value: "Karte mitnehmen" } });
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    expect(await screen.findByRole("button", { name: de.calendar.scopes.following })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: de.calendar.scopes.one })).not.toBeInTheDocument();
   });
 });
