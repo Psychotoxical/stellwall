@@ -8,6 +8,8 @@ export type MemberDto = {
   displayName: string;
   role: Role;
   color: string;
+  /** The colour world the app takes on for this person. */
+  world: World;
 };
 
 export function normalizeUsername(raw: string): string {
@@ -24,4 +26,15 @@ export const passwordSchema = z.string().min(10).max(200);
 export const roleSchema = z.enum(["admin", "member"]);
 
 export const PERSON_COLORS = ["person-mint", "person-lilac", "person-peach", "person-sky"] as const;
+
+/** Colour worlds a person can give the whole app. */
+export const WORLDS = ["salbei", "flieder", "pfirsich", "himmel", "rose", "sonne"] as const;
+export type World = (typeof WORLDS)[number];
+
+const WORLD_OF_COLOR: Record<string, World> = { "person-mint": "salbei", "person-lilac": "flieder", "person-peach": "pfirsich", "person-sky": "himmel" };
+
+/** Until someone chooses, their world follows their person colour. */
+export function defaultWorld(color: string): World {
+  return WORLD_OF_COLOR[color] ?? "flieder";
+}
 export type PersonColor = (typeof PERSON_COLORS)[number];

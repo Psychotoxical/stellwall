@@ -5,6 +5,7 @@ import { ApiError, api } from "../api.ts";
 import { Button, Notice, TextField } from "../components/ui.tsx";
 import { useSetMe } from "../session.ts";
 import { de } from "../text/de.ts";
+import { Wordmark } from "../components/Wordmark.tsx";
 
 export function Setup() {
   const [form, setForm] = useState({ username: "", displayName: "", password: "" });
@@ -30,7 +31,7 @@ export function Setup() {
   return (
     <div className="auth">
       <form className="auth-card" onSubmit={submit}>
-        <div className="brand">{de.appName}</div>
+        <div className="brand"><Wordmark size={"lg"} /></div>
         <h1 className="title">{de.setup.title}</h1>
         <p className="lead">{de.setup.lead}</p>
         <TextField label={de.fields.username} autoComplete="username" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />

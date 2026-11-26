@@ -4,6 +4,7 @@ import { Icon } from "../icons.ts";
 import { de } from "../text/de.ts";
 import { ConnectionBanner } from "./ConnectionBanner.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
+import { Wordmark } from "./Wordmark.tsx";
 
 type Item = { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; ready: boolean };
 
@@ -43,7 +44,7 @@ export function Shell() {
   return (
     <div className="shell">
       <nav className="rail" aria-label="Bereiche">
-        <div className="brand">{de.appName}</div>
+        <div className="brand"><Wordmark size={"md"} /></div>
         <NavItems rail />
       </nav>
       <div className="content">

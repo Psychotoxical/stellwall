@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router";
 import type { ComponentType, SVGProps } from "react";
 import { Icon } from "../icons.ts";
+import { Wordmark } from "../components/Wordmark.tsx";
 import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { useBoard, useMembers, useTodos } from "../shopping-api.ts";
@@ -62,6 +63,7 @@ export function Home() {
   const today = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
   return (
     <>
+      <div className="homebrand"><Wordmark size="sm" /></div>
       <Header sub={today} title={de.home.hello(me.displayName)} />
       <div className="cols">
         <Board />

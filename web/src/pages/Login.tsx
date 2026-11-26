@@ -5,6 +5,7 @@ import { ApiError, api } from "../api.ts";
 import { Button, Notice, TextField } from "../components/ui.tsx";
 import { useSetMe } from "../session.ts";
 import { de } from "../text/de.ts";
+import { Wordmark } from "../components/Wordmark.tsx";
 
 export function Login() {
   const [username, setUsername] = useState("");
@@ -35,7 +36,7 @@ export function Login() {
   return (
     <div className="auth">
       <form className="auth-card" onSubmit={submit}>
-        <div className="brand">{de.appName}</div>
+        <div className="brand"><Wordmark size={"lg"} /></div>
         <h1 className="title">{de.login.title}</h1>
         <TextField label={de.fields.username} autoComplete="username" autoCapitalize="none" required value={username} onChange={(e) => setUsername(e.target.value)} />
         <TextField label={de.fields.password} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />

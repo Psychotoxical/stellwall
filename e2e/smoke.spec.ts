@@ -20,6 +20,13 @@ test("smoke: setup, logout, login, home in both themes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Hallo Alex" })).toBeVisible();
-  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe("rgb(18, 21, 28)");
+  // The ground follows the person's colour world; in dark mode it must be dark.
+  const lightness = await page.evaluate(() => {
+    const c = document.createElement("canvas").getContext("2d")!;
+    c.fillStyle = getComputedStyle(document.body).backgroundColor;
+    c.fillRect(0, 0, 1, 1);
+    const [r, g, b] = c.getImageData(0, 0, 1, 1).data;
+    return (0.2126 * r! + 0.7152 * g! + 0.0722 * b!) / 255;
+  });
+  expect(lightness).toBeLessThan(0.2);
 });

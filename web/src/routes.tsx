@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Navigate, Outlet, type RouteObject } from "react-router";
+import { applyWorld } from "./theme/world.ts";
 import { Shell } from "./components/Shell.tsx";
 import { useMe, useSetupStatus } from "./session.ts";
 import { Setup } from "./pages/Setup.tsx";
@@ -23,6 +25,10 @@ function RequireMember() {
   const me = useMe();
   const setup = useSetupStatus();
   useLive(!!me.data);
+  // The app takes on the signed-in person's colour world.
+  useEffect(() => {
+    if (me.data?.world) applyWorld(me.data.world);
+  }, [me.data?.world]);
   if (me.isPending) return null;
   if (!me.data) {
     if (setup.isPending) return null;

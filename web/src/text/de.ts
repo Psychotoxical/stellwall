@@ -60,6 +60,10 @@ export const de = {
   },
   account: {
     title: "Mein Konto",
+    colorHint: "Deine Kennfarbe: daran erkennen dich die anderen, zum Beispiel im Kalender.",
+    world: "Deine Farbwelt",
+    worldHint: "Die App nimmt deine Farbe an, auf allen deinen Geräten.",
+    worlds: { salbei: "Salbei", flieder: "Flieder", pfirsich: "Pfirsich", himmel: "Himmel", rose: "Rosé", sonne: "Sonne" } as Record<string, string>,
     profile: "Name und Farbe",
     password: "Passwort ändern",
     passwordChanged: "Passwort geändert.",
