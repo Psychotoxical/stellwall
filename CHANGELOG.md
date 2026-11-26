@@ -10,6 +10,7 @@ Every version has its own section. The section of a version becomes the text of 
 - A new round "stellwall" wordmark with the four l in the family colours.
 - The meal plan has its own tab; everything else is behind the round picture top right.
 - Back buttons on every page below an area.
+- Calendar week and upcoming views as a compact agenda: a date column beside the events, empty days as a thin line.
 
 ### Fixed
 

@@ -194,6 +194,21 @@ h3.dayh { font-size: 17px; margin: 18px 0 8px; }
 h3.dayh.is-today { color: var(--ink); text-decoration: underline 3px var(--change); text-underline-offset: 5px; }
 .dayempty { color: var(--ink-soft); margin: 0; font-size: 15px; }
 .weeklist { max-width: 680px; }
+/* Agenda: date column left, events right; empty days are a thin line */
+.agenda { display: flex; flex-direction: column; }
+.agendaday { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--rule); }
+.agendaday:first-child { border-top: 0; }
+.agendaday.is-empty { padding: 4px 0; }
+.adate { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 52px; border-radius: var(--radius-sm); line-height: 1.05; }
+.agendaday.is-empty .adate { min-height: 30px; flex-direction: row; gap: 4px; opacity: 0.55; }
+.awd { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.adn { font-family: var(--font-board); font-weight: 800; font-size: 22px; }
+.agendaday.is-empty .adn { font-size: 15px; }
+.amo { font-size: 12px; color: var(--ink-soft); }
+.agendaday.is-today .adate { background: var(--primary); color: var(--primary-ink); opacity: 1; }
+.agendaday.is-today .awd, .agendaday.is-today .amo { color: inherit; }
+.agendaday .callist { min-width: 0; }
+.agendaempty { color: var(--ink-soft); margin: 12px 0 0; }
 .weeklist .dayblock:first-child h3 { margin-top: 0; }
 .callist { list-style: none; margin: 0; padding: 0; }
 .calrow { border-top: 1px solid var(--rule); }
