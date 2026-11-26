@@ -119,7 +119,25 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: stellwall:ci
+      - name: Image starts and answers
+        run: |
+          docker network create sw
+          docker run -d --name db --network sw -e POSTGRES_USER=stellwall -e POSTGRES_PASSWORD=ci-only -e POSTGRES_DB=stellwall postgres:19
+          for _ in $(seq 1 30); do docker exec db pg_isready -U stellwall -d stellwall && break; sleep 2; done
+          docker run -d --name app --network sw -p 127.0.0.1:8470:8080 \
+            -e DATABASE_URL=postgres://stellwall:ci-only@db:5432/stellwall -e PUBLIC_URL=http://localhost:8470 stellwall:ci
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8470/api/health; then
+              curl -fsS http://127.0.0.1:8470/api/setup/status | grep -q '"needed":true'
+              curl -fsS http://127.0.0.1:8470/ | grep -q '<title>Stellwall</title>'
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          exit 1
 
   ci-ok:
     name: ci-ok

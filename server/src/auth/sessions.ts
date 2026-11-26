@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import type { MemberDto } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
 import { members, sessions } from "../db/schema.ts";
@@ -61,4 +61,8 @@ export async function listSessions(db: Db, memberId: string) {
     .select({ id: sessions.id, userAgent: sessions.userAgent, createdAt: sessions.createdAt, lastSeenAt: sessions.lastSeenAt })
     .from(sessions)
     .where(eq(sessions.memberId, memberId));
+}
+
+export async function deleteOtherSessions(db: Db, memberId: string, keepSessionId: string) {
+  await db.delete(sessions).where(and(eq(sessions.memberId, memberId), ne(sessions.id, keepSessionId)));
 }

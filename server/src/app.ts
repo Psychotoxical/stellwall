@@ -8,11 +8,14 @@ import { authRoutes } from "./auth/routes.ts";
 import { SESSION_COOKIE, findSession } from "./auth/sessions.ts";
 import { memberRoutes } from "./members/routes.ts";
 
+const TRUSTED_PROXIES = ["127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
+
 export type AppDeps = { config: Config; db: Db; now?: (() => Date) | undefined };
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const now = deps.now ?? (() => new Date());
-  const app = Fastify({ logger: false, trustProxy: "127.0.0.1" });
+  // The app sits behind the host nginx; Docker hands requests over from a private address.
+  const app = Fastify({ logger: false, trustProxy: TRUSTED_PROXIES });
   await app.register(cookie);
 
   app.decorateRequest("member", null);
