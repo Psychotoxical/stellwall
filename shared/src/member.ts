@@ -22,3 +22,6 @@ export const usernameSchema = z
 export const passwordSchema = z.string().min(10).max(200);
 
 export const roleSchema = z.enum(["admin", "member"]);
+
+export const PERSON_COLORS = ["person-mint", "person-lilac", "person-peach", "person-sky"] as const;
+export type PersonColor = (typeof PERSON_COLORS)[number];

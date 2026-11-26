@@ -5,6 +5,7 @@ import type { Db } from "./db/client.ts";
 import { csrfCheck } from "./auth/guard.ts";
 import { authRoutes } from "./auth/routes.ts";
 import { SESSION_COOKIE, findSession } from "./auth/sessions.ts";
+import { memberRoutes } from "./members/routes.ts";
 
 export type AppDeps = { config: Config; db: Db; now?: (() => Date) | undefined };
 
@@ -28,5 +29,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.get("/api/health", async () => ({ ok: true }));
   await authRoutes(app, { db: deps.db, now, cookieSecure: deps.config.cookieSecure });
+  await memberRoutes(app, { db: deps.db, now });
   return app;
 }
