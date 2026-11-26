@@ -54,6 +54,7 @@ export function createHub(db: Db) {
     calendar: (id) => void eventAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "calendar" })).catch(() => {}),
     birthday: (id) => void birthdayAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "calendar" })).catch(() => {}),
     calendarGone: (audience) => send(audience ?? [...sockets.keys()], { type: "calendar" }),
+    meals: () => send([...sockets.keys()], { type: "meals" }),
   };
 
   return { add, notifier };

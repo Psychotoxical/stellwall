@@ -27,7 +27,7 @@ test("phone: nothing scrolls sideways and every dialog can be saved without hunt
     await page.request.post("/api/members", { headers: H, data: { username, displayName, password: "member-pass-1", role: "member", color: "person-sky" } });
   }
 
-  for (const path of ["/", "/einkauf", "/todos", "/kalender", "/kalender/geburtstage", "/kalender/import", "/mehr", "/konto", "/mitglieder"]) {
+  for (const path of ["/", "/einkauf", "/todos", "/kalender", "/kalender/geburtstage", "/kalender/import", "/mehr", "/konto", "/mitglieder", "/essen", "/essen/grundvorrat", "/mealie"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     expect(await sideways(page), path).toBe(0);
@@ -46,4 +46,12 @@ test("phone: nothing scrolls sideways and every dialog can be saved without hunt
     await page.setViewportSize({ width: 320, height: 658 });
     await page.keyboard.press("Escape");
   }
+
+  // The lunch sheet of the meal plan, without Mealie set up.
+  await page.goto("/essen");
+  await page.locator(".mealday-main").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(await sideways(page), "meal").toBe(0);
+  expect(await scrollers(page), "meal: one scroll area").toBeLessThanOrEqual(1);
+  expect(await saveVisible(page), "meal: save visible").toBe(true);
 });

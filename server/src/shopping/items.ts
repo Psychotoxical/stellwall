@@ -48,6 +48,40 @@ const toDto = (i: typeof items.$inferSelect): ItemDto => ({
   checkedBy: i.checkedBy,
 });
 
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** The store section the member or the family used for this item before, else the catalog's. */
+export async function knownCategory(exec: Pick<Db, "select">, key: string, memberId: string): Promise<string> {
+  const own = await exec
+    .select({ category: catalogEntries.category, scope: catalogEntries.scope })
+    .from(catalogEntries)
+    .where(and(eq(catalogEntries.kind, "shopping"), eq(catalogEntries.key, key), inArray(catalogEntries.scope, [memberId, "family"])));
+  const mine = own.find((o) => o.scope === memberId) ?? own[0];
+  return mine?.category ?? CATALOG_BY_KEY.get(key)?.category ?? OTHER;
+}
+
+/** Puts an item on a list inside a transaction; an open item of the same name gets the amount added. */
+export async function addToList(tx: Tx, a: { listId: string; name: string; quantity: string; category?: string | undefined; me: string; at: Date }) {
+  const key = itemKey(a.name);
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${a.listId + "|" + key}))`);
+  const open = await tx
+    .select()
+    .from(items)
+    .where(and(eq(items.listId, a.listId), eq(items.key, key), isNull(items.checkedAt)))
+    .limit(1);
+  if (open[0]) {
+    const [u] = await tx
+      .update(items)
+      .set({ quantity: mergeQuantity(open[0].quantity, a.quantity), ...(a.category ? { category: a.category } : {}) })
+      .where(eq(items.id, open[0].id))
+      .returning();
+    return u!;
+  }
+  const category = a.category ?? (await knownCategory(tx, key, a.me));
+  const [n] = await tx.insert(items).values({ listId: a.listId, name: a.name, key, quantity: a.quantity, category, addedBy: a.me, addedAt: a.at }).returning();
+  return n!;
+}
+
 export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () => Date; timeZone: string; notify: Notifier }) {
   const { db, now, timeZone, notify } = opts;
 
@@ -65,15 +99,6 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       .where(and(eq(items.id, id), listVisibleTo(memberId)))
       .limit(1);
     return rows[0]?.item ?? null;
-  }
-
-  async function knownCategory(exec: Pick<Db, "select">, key: string, memberId: string): Promise<string> {
-    const own = await exec
-      .select({ category: catalogEntries.category, scope: catalogEntries.scope })
-      .from(catalogEntries)
-      .where(and(eq(catalogEntries.kind, "shopping"), eq(catalogEntries.key, key), inArray(catalogEntries.scope, [memberId, "family"])));
-    const mine = own.find((o) => o.scope === memberId) ?? own[0];
-    return mine?.category ?? CATALOG_BY_KEY.get(key)?.category ?? OTHER;
   }
 
   async function learn(scope: string, key: string, name: string, category: string) {
@@ -109,29 +134,7 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const body = addBody.safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: "invalid_input" });
     const key = itemKey(body.data.name);
-    const quantity = body.data.quantity ?? "";
-    const result = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${l.id + "|" + key}))`);
-      const open = await tx
-        .select()
-        .from(items)
-        .where(and(eq(items.listId, l.id), eq(items.key, key), isNull(items.checkedAt)))
-        .limit(1);
-      if (open[0]) {
-        const [u] = await tx
-          .update(items)
-          .set({ quantity: mergeQuantity(open[0].quantity, quantity), ...(body.data.category ? { category: body.data.category } : {}) })
-          .where(eq(items.id, open[0].id))
-          .returning();
-        return u!;
-      }
-      const category = body.data.category ?? (await knownCategory(tx, key, me));
-      const [n] = await tx
-        .insert(items)
-        .values({ listId: l.id, name: body.data.name, key, quantity, category, addedBy: me, addedAt: now() })
-        .returning();
-      return n!;
-    });
+    const result = await db.transaction((tx) => addToList(tx, { listId: l.id, name: body.data.name, quantity: body.data.quantity ?? "", category: body.data.category, me, at: now() }));
     await learn(l.everyone ? "family" : me, key, result.name, result.category);
     notify.list(l.id);
     return toDto(result);

@@ -16,5 +16,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     { command: "npm run dev -w web -- --port 5173 --strictPort", url: "http://localhost:5173", reuseExistingServer: false },
+    // A stand-in for Mealie, so the meal plan can be tested without a real recipe server.
+    { command: "node e2e/mealie-stub.ts", url: "http://127.0.0.1:8090/api/recipes", reuseExistingServer: false },
   ],
 });

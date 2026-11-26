@@ -9,6 +9,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
 import { addDays, shortDay, todayYmd, useCalendar, hhmm, ymd } from "../calendar-api.ts";
 import { CalList } from "./Calendar.tsx";
+import { useMeals } from "../meals-api.ts";
+import { weekStart } from "../calendar-api.ts";
 import { useNavigate } from "react-router";
 
 const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
@@ -20,7 +22,7 @@ const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGEl
   { key: "essensplan", icon: Icon.Essensplan },
 ];
 
-const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage" };
+const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage", essensplan: "/essen" };
 
 export function Header({ title, sub }: { title: string; sub?: string }) {
   const me = useMe().data;
@@ -127,13 +129,20 @@ function MyToday() {
   const today = todayYmd();
   const cal = useCalendar(today, addDays(today, 1), true).data ?? [];
   const navigate = useNavigate();
+  const lunch = (useMeals(weekStart(today)).data ?? []).find((m) => m.date === today);
   return (
     <>
       <div className="sechead">
         <h2>{de.todos.myToday}</h2>
       </div>
+      {lunch && (
+        <Link className="box todaylunch" to={lunch.recipe ? `/essen/rezept/${lunch.recipe.slug}?portionen=${lunch.servings}&tag=${today}` : "/essen"}>
+          <Icon.Essensplan className="ico" aria-hidden="true" />
+          <span>{de.meals.todayLunch(lunch.recipe?.name ?? lunch.text ?? "")}</span>
+        </Link>
+      )}
       {cal.length > 0 && <CalList list={cal} date={today} members={members} onOpen={(i) => navigate(i.kind === "birthday" ? "/kalender/geburtstage" : `/kalender?tag=${today}`)} />}
-      {rows.length === 0 && cal.length > 0 ? null : rows.length === 0 ? (
+      {rows.length === 0 && (cal.length > 0 || lunch) ? null : rows.length === 0 ? (
         <div className="box"><p className="empty">{de.todos.myTodayEmpty}</p></div>
       ) : (
         <ul className="box todolist">
