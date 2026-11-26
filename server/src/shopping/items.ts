@@ -71,7 +71,7 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const own = await exec
       .select({ category: catalogEntries.category, scope: catalogEntries.scope })
       .from(catalogEntries)
-      .where(and(eq(catalogEntries.key, key), inArray(catalogEntries.scope, [memberId, "family"])));
+      .where(and(eq(catalogEntries.kind, "shopping"), eq(catalogEntries.key, key), inArray(catalogEntries.scope, [memberId, "family"])));
     const mine = own.find((o) => o.scope === memberId) ?? own[0];
     return mine?.category ?? CATALOG_BY_KEY.get(key)?.category ?? OTHER;
   }
@@ -81,7 +81,7 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       .insert(catalogEntries)
       .values({ scope, key, name, category, uses: 1, lastUsed: now() })
       .onConflictDoUpdate({
-        target: [catalogEntries.scope, catalogEntries.key],
+        target: [catalogEntries.kind, catalogEntries.scope, catalogEntries.key],
         set: { uses: sql`${catalogEntries.uses} + 1`, lastUsed: now(), category },
       });
   }
@@ -201,7 +201,7 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const own = await db
       .select({ name: catalogEntries.name, category: catalogEntries.category, uses: catalogEntries.uses })
       .from(catalogEntries)
-      .where(or(eq(catalogEntries.scope, "family"), eq(catalogEntries.scope, me)));
+      .where(and(eq(catalogEntries.kind, "shopping"), or(eq(catalogEntries.scope, "family"), eq(catalogEntries.scope, me))));
     return suggest(q.data.q, CATALOG, own);
   });
 }
