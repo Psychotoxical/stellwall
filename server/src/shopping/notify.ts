@@ -14,6 +14,8 @@ export type Notifier = {
   birthday(birthdayId: string): void;
   /** An event or birthday was deleted; audience is who could see it (null: everyone). */
   calendarGone(audience: string[] | null): void;
+  /** The meal plan changed (it is for everyone). */
+  meals(): void;
 };
 
-export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {}, calendar: () => {}, birthday: () => {}, calendarGone: () => {} };
+export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {}, calendar: () => {}, birthday: () => {}, calendarGone: () => {}, meals: () => {} };
