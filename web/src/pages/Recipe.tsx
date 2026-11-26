@@ -86,7 +86,7 @@ export function RecipeView() {
         </ol>
         <p className="lead">{de.meals.awake}</p>
       </section>
-      {shop && date && <ShopSheet dates={[date]} onClose={() => setShop(false)} />}
+      {shop && date && <ShopSheet dates={[date]} servings={n} onClose={() => setShop(false)} />}
     </div>
   );
 }

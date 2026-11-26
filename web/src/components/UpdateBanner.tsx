@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { de } from "../text/de.ts";
+import { pendingUpdate } from "../update-state.ts";
 
 /** Shows a bar once a new version is waiting; reloading switches to it. */
 export function UpdateBanner() {
-  const [reload, setReload] = useState<null | (() => void)>(null);
+  const [reload, setReload] = useState<null | (() => void)>(() => pendingUpdate());
   useEffect(() => {
     const on = (e: Event) => setReload(() => (e as CustomEvent<() => void>).detail);
     window.addEventListener("stellwall:update", on);

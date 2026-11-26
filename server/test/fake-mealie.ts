@@ -12,6 +12,7 @@ const recipes = [
     recipeIngredient: [
       { quantity: 200, unit: { name: "Gramm", abbreviation: "g" }, food: { name: "Reis" }, note: "", originalText: "200 g Reis" },
       { quantity: 1.5, unit: { name: "Esslöffel", abbreviation: "EL" }, food: { name: "Öl" }, note: "", originalText: "1 ½ EL Öl" },
+      { quantity: 0, unit: null, food: null, note: "Für das Gemüse:", originalText: "" },
       { quantity: 0, unit: null, food: null, note: "2 Paprika, in Streifen", originalText: "" },
       { quantity: 0, unit: null, food: { name: "Salz" }, note: "", originalText: "Salz" },
     ],

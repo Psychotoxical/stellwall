@@ -1,4 +1,4 @@
-export type Unit = "x" | "g" | "ml" | "Pck" | "Dose" | "Fl" | "Bund" | "EL" | "TL";
+export type Unit = "x" | "g" | "ml" | "Pck" | "Dose" | "Fl" | "Bund" | "EL" | "TL" | "Becher" | "Zehe" | "Prise" | "Glas" | "Scheibe" | "Tasse" | "Würfel" | "Msp";
 
 const UNITS: Record<string, { unit: Unit; factor: number }> = {
   "": { unit: "x", factor: 1 },
@@ -25,6 +25,23 @@ const UNITS: Record<string, { unit: Unit; factor: number }> = {
   bund: { unit: "Bund", factor: 1 },
   el: { unit: "EL", factor: 1 },
   tl: { unit: "TL", factor: 1 },
+  cl: { unit: "ml", factor: 10 },
+  dl: { unit: "ml", factor: 100 },
+  mg: { unit: "g", factor: 0.001 },
+  becher: { unit: "Becher", factor: 1 },
+  zehe: { unit: "Zehe", factor: 1 },
+  zehen: { unit: "Zehe", factor: 1 },
+  prise: { unit: "Prise", factor: 1 },
+  prisen: { unit: "Prise", factor: 1 },
+  glas: { unit: "Glas", factor: 1 },
+  "gläser": { unit: "Glas", factor: 1 },
+  scheibe: { unit: "Scheibe", factor: 1 },
+  scheiben: { unit: "Scheibe", factor: 1 },
+  tasse: { unit: "Tasse", factor: 1 },
+  tassen: { unit: "Tasse", factor: 1 },
+  "würfel": { unit: "Würfel", factor: 1 },
+  msp: { unit: "Msp", factor: 1 },
+  "msp.": { unit: "Msp", factor: 1 },
 };
 
 export function parseQuantity(raw: string): { value: number; unit: Unit } | null {

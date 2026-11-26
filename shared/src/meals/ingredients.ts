@@ -25,6 +25,8 @@ export function normalizeUnit(u: string | null | undefined): string | null {
 }
 
 const VAGUE = /^(etwas|ein wenig|ein paar|nach belieben)\s+/i;
+const ABOUT = /^(ca\.|circa|etwa|ungefähr)\s*/i;
+const TO_TASTE = /\s+(nach belieben)$/i;
 
 /** Reads a free-text recipe line such as "1 ½ EL Öl" or "1 Dose Tomaten (400 g)". */
 export function parseIngredient(text: string): Ingredient {
@@ -45,6 +47,18 @@ export function parseIngredient(text: string): Ingredient {
     notes.unshift(vague[1]!.toLowerCase());
     s = s.slice(vague[0].length);
   }
+  const about = s.match(ABOUT);
+  if (about) {
+    notes.unshift(about[1]!);
+    s = s.slice(about[0].length);
+  }
+  const taste = s.match(TO_TASTE);
+  if (taste) {
+    notes.push(taste[1]!);
+    s = s.slice(0, s.length - taste[0].length);
+  }
+  // "500g" and "2 – 3" / "2 bis 3" are read like "500 g" and "2-3".
+  s = s.replace(/^(\d+(?:[.,]\d+)?)(?=[a-zA-ZäöüÄÖÜß])/, "$1 ").replace(/^(\d+(?:[.,]\d+)?)\s*(?:–|—|-|bis)\s*(?=\d)/, "$1-");
 
   let quantity: number | null = null;
   const q = s.match(/^(?:(\d+(?:[.,]\d+)?)\s*-\s*)?(\d+(?:[.,]\d+)?)?\s*(\d+\/\d+|[½¼¾⅓⅔⅛])?(?=\s|$)/);

@@ -15,7 +15,7 @@ const recipeRef = z.object({ id: z.string().regex(/^[0-9a-f-]{8,64}$/), slug: z.
 const mealBody = z
   .object({ recipe: recipeRef.nullable().optional(), text: z.string().trim().max(120).nullable().optional(), cookId: z.uuid().nullable(), servings: z.number().int().min(1).max(50) })
   .refine((b) => !!b.recipe !== !!b.text, "recipe or text");
-const previewBody = z.object({ dates: z.array(dateSchema).min(1).max(14) });
+const previewBody = z.object({ dates: z.array(dateSchema).min(1).max(14), servings: z.number().int().min(1).max(50).optional() });
 const commitBody = z.object({ lines: z.array(z.object({ food: z.string().trim().min(1).max(80), quantity: z.string().trim().max(30) })).min(1).max(200) });
 const pantryBody = z.object({ name: z.string().trim().min(1).max(80), variants: z.array(z.string().trim().min(1).max(80)).max(20).default([]) });
 const idParam = z.object({ id: z.uuid() });
@@ -95,7 +95,9 @@ export async function mealRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       if (!m.recipeSlug) continue;
       try {
         const r = await mealie.recipe(m.recipeSlug);
-        all.push(...r.ingredients.map((i) => scaleIngredient(i, m.servings / r.servings)));
+        // The recipe page may shop for other servings than planned; that only applies to its one day.
+        const servings = b.data.servings && b.data.dates.length === 1 ? b.data.servings : m.servings;
+        all.push(...r.ingredients.map((i) => scaleIngredient(i, servings / r.servings)));
       } catch (e) {
         if (e instanceof MealieError && e.code !== "not_found") return reply.code(502).send({ error: e.code });
         missing.push(m.recipeName ?? m.recipeSlug);

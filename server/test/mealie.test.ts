@@ -77,4 +77,11 @@ describe("Mealie connection", () => {
     await put(f.alex.cookie, { url: mealie.url, token: "wrong-token" });
     expect((await as(app, f.sam.cookie).get("/api/recipes?q=x")).json()).toEqual({ error: "mealie_auth" });
   });
+
+  it("a new address needs the key again, so the old key never goes to another server", async () => {
+    const { app, f, mealie, put } = await start();
+    await put(f.alex.cookie, { url: mealie.url, token: TOKEN });
+    await put(f.alex.cookie, { url: "https://rezepte.example.test" });
+    expect((await as(app, f.alex.cookie).get("/api/settings/mealie")).json()).toMatchObject({ hasToken: false });
+  });
 });

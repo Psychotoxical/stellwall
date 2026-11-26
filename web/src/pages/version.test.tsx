@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { alex, fakeApi, renderAt } from "../test-utils.tsx";
 import { de } from "../text/de.ts";
+import { offerUpdate } from "../update-state.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -29,6 +30,15 @@ describe("version", () => {
     act(() => {
       window.dispatchEvent(new CustomEvent("stellwall:update", { detail: reload }));
     });
+    fireEvent.click(await screen.findByRole("button", { name: de.update.reload }));
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("an update found before the page was ready is still offered", async () => {
+    fakeApi(base);
+    const reload = vi.fn();
+    offerUpdate(reload);
+    renderAt("/");
     fireEvent.click(await screen.findByRole("button", { name: de.update.reload }));
     expect(reload).toHaveBeenCalled();
   });

@@ -87,4 +87,10 @@ describe("shopping for the meal plan", () => {
     expect(r.statusCode).toBe(409);
     expect(r.json()).toEqual({ error: "meal_list_missing" });
   });
+
+  it("the recipe page can shop for other servings than planned", async () => {
+    const { app, f } = await withMealie();
+    const r = await as(app, f.sam.cookie).post("/api/meals/shopping/preview", { dates: ["2026-12-01"], servings: 2 });
+    expect((r.json() as { pantry: { food: string; quantity: string }[] }).pantry.map((l) => [l.food, l.quantity])).toEqual([["Mehl", "250 g"], ["Eier", "3×"], ["Öl", "1 EL"]]);
+  });
 });

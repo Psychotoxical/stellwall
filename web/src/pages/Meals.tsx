@@ -105,7 +105,9 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
   }, [q]);
   const search = useRecipeSearch(debounced, true);
   const mealieDown = search.error ? errorText(search.error, de.meals.errors) : null;
-  const showText = mode === "text" || !!mealieDown;
+  // With Mealie away a planned recipe stays as it is; only days without one switch to free text.
+  const showText = mode === "text" || (!!mealieDown && !recipe);
+  const keepRecipe = !!mealieDown && !!recipe && mode !== "text";
 
   const save = async () => {
     setError(null);
@@ -128,7 +130,8 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
           ))}
         </nav>
         {mealieDown && <Notice>{mealieDown}</Notice>}
-        {!showText && (
+        {keepRecipe && <p className="keptrecipe">{recipe!.name}</p>}
+        {!showText && !keepRecipe && (
           <>
             <div className="field">
               <label htmlFor={ids + "q"}>{de.meals.search}</label>
@@ -188,8 +191,11 @@ export function Servings({ value, onChange }: { value: number; onChange: (n: num
   );
 }
 
+/** One line of the shopping sheet: the same food in two units is two lines. */
+const keyOf = (prefix: string, l: { food: string; quantity: string }) => `${prefix}${l.food}|${l.quantity}`;
+
 /** Ingredients for the chosen days: what is needed ticked, the pantry asked about. */
-export function ShopSheet({ dates, onClose }: { dates: string[]; onClose: () => void }) {
+export function ShopSheet({ dates, servings, onClose }: { dates: string[]; servings?: number; onClose: () => void }) {
   const [preview, setPreview] = useState<ShopPreview | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -197,15 +203,15 @@ export function ShopSheet({ dates, onClose }: { dates: string[]; onClose: () => 
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api<ShopPreview>("/api/meals/shopping/preview", { method: "POST", body: { dates } })
+    api<ShopPreview>("/api/meals/shopping/preview", { method: "POST", body: servings ? { dates, servings } : { dates } })
       .then((p) => {
         setPreview(p);
-        setPicked(new Set(p.special.map((l) => "s:" + l.food)));
+        setPicked(new Set(p.special.map((l) => keyOf("s:", l))));
       })
       .catch((e) => setError(errorText(e, de.meals.errors)));
-  }, [dates]);
+  }, [dates, servings]);
 
-  const lines = preview ? [...preview.special.map((l) => ["s:" + l.food, l] as const), ...preview.pantry.map((l) => ["p:" + l.food, l] as const)].filter(([k]) => picked.has(k)).map(([, l]) => ({ food: l.food, quantity: l.quantity })) : [];
+  const lines = preview ? [...preview.special.map((l) => [keyOf("s:", l), l] as const), ...preview.pantry.map((l) => [keyOf("p:", l), l] as const)].filter(([k]) => picked.has(k)).map(([, l]) => ({ food: l.food, quantity: l.quantity })) : [];
   const commit = async () => {
     setBusy(true);
     try {
@@ -230,8 +236,8 @@ export function ShopSheet({ dates, onClose }: { dates: string[]; onClose: () => 
         {hint && <small>{hint}</small>}
         <div className="opts">
           {list.map((l) => (
-            <label key={l.food} className="person shopline">
-              <input type="checkbox" checked={picked.has(prefix + l.food)} onChange={() => toggle(prefix + l.food)} />
+            <label key={keyOf(prefix, l)} className="person shopline">
+              <input type="checkbox" checked={picked.has(keyOf(prefix, l))} onChange={() => toggle(keyOf(prefix, l))} />
               <span className="n">{l.food}</span>
               {l.display && <span className="q">{l.display}</span>}
             </label>

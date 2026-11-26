@@ -37,7 +37,9 @@ export function ingredientOf(i: MealieIngredient): Ingredient | null {
     return { quantity: i.quantity && i.quantity > 0 ? i.quantity : null, unit: normalizeUnit(i.unit?.abbreviation || i.unit?.name), food: i.food.name.trim(), note: parsed ? i.note!.trim() : "" };
   }
   const text = (i.originalText || i.note || i.display || "").trim();
-  return text ? parseIngredient(text) : null;
+  // "Für den Teig:" is a heading inside the recipe, not something to buy.
+  if (!text || text.endsWith(":")) return null;
+  return parseIngredient(text);
 }
 
 export function createMealie(db: Db, timeoutMs: number) {
@@ -89,7 +91,14 @@ export function createMealie(db: Db, timeoutMs: number) {
         const body = await json<{ items?: MealieRecipe[]; data?: MealieRecipe[] }>(`/api/recipes?search=${encodeURIComponent(q)}&perPage=24&page=1&orderBy=name&orderDirection=asc`);
         const items = body.items ?? body.data;
         if (!Array.isArray(items)) throw new MealieError("mealie_bad");
-        return items.map(summary);
+        // One odd entry in Mealie must not break the whole search.
+        return items.flatMap((r) => {
+          try {
+            return [summary(r)];
+          } catch {
+            return [];
+          }
+        });
       }),
     recipe: (slug: string) =>
       cached(`r:${slug}`, RECIPE_TTL_MS, async (): Promise<Recipe> => {
@@ -135,6 +144,8 @@ export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie:
     const b = settingsBody.safeParse(req.body);
     if (!b.success) return reply.code(400).send({ error: "invalid_input" });
     if (b.data.listId && !(await db.select({ id: lists.id }).from(lists).where(eq(lists.id, b.data.listId))).length) return reply.code(400).send({ error: "invalid_input" });
+    // The key belongs to one server: a new address without a new key drops the old one.
+    if (b.data.url !== undefined && b.data.token === undefined && b.data.url !== (await read("mealie_url"))) await write("mealie_token", null);
     if (b.data.url !== undefined) await write("mealie_url", b.data.url);
     if (b.data.token !== undefined) await write("mealie_token", b.data.token);
     if (b.data.listId !== undefined) await write("meal_list_id", b.data.listId);

@@ -67,3 +67,26 @@ describe("pantry", () => {
     expect(isPantry("Meersalz", staples)).toBe(false);
   });
 });
+
+describe("review fixes", () => {
+  it("every recipe unit adds up on the shopping list", () => {
+    for (const unit of ["Becher", "Zehe", "Prise", "Glas", "Scheibe", "Tasse", "Würfel", "Msp", "Dose", "Packung", "Bund", "EL", "TL", "g", "kg", "ml", "l", "cl", "dl"]) {
+      const one = shoppingQuantity({ quantity: 1, unit, food: "x", note: "" });
+      const two = mergeQuantity(one, one);
+      expect(two, unit).not.toBe(one);
+    }
+    expect(mergeQuantity("1 Becher", "1 Becher")).toBe("2 Becher");
+    expect(mergeQuantity("2 cl", "3 cl")).toBe("50 ml");
+  });
+
+  it.each([
+    ["500g Hackfleisch", { quantity: 500, unit: "g", food: "Hackfleisch", note: "" }],
+    ["1,5kg Kartoffeln", { quantity: 1.5, unit: "kg", food: "Kartoffeln", note: "" }],
+    ["ca. 200 g Mehl", { quantity: 200, unit: "g", food: "Mehl", note: "ca." }],
+    ["2 – 3 Eier", { quantity: 3, unit: null, food: "Eier", note: "" }],
+    ["2 bis 3 Eier", { quantity: 3, unit: null, food: "Eier", note: "" }],
+    ["Salz nach Belieben", { quantity: null, unit: null, food: "Salz", note: "nach Belieben" }],
+  ])("reads %s", (text, expected) => {
+    expect(parseIngredient(text)).toEqual(expected);
+  });
+});

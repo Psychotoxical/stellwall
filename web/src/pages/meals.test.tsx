@@ -94,3 +94,40 @@ describe("shopping for the week", () => {
     expect(await screen.findByText(de.meals.done(1, "Wocheneinkauf"))).toBeInTheDocument();
   });
 });
+
+describe("review fixes", () => {
+  it("with Mealie down, a recipe day keeps its recipe when only the cook changes", async () => {
+    const calls = fakeApi(base([{ date: monday, recipe: veg, text: null, cookId: null, servings: 4, updatedBy: "a1" }], {
+      "GET /api/recipes?*": () => ({ status: 502, body: { error: "mealie_unreachable" } }),
+      [`PUT /api/meals/${monday}`]: (b) => ({ status: 200, body: b }),
+    }));
+    renderAt("/essen");
+    fireEvent.click(await screen.findByRole("button", { name: /Gemüsepfanne/ }));
+    fireEvent.change(await screen.findByLabelText(de.meals.cook), { target: { value: "s1" } });
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    await waitFor(() => expect(calls.find((c) => c.key === `PUT /api/meals/${monday}`)?.body).toEqual({ recipe: veg, text: null, cookId: "s1", servings: 4 }));
+  });
+
+  it("the same food in two units has two separate ticks", async () => {
+    const calls = fakeApi(base([], {
+      "POST /api/meals/shopping/preview": () => ({ status: 200, body: { listId: "l1", listName: "Liste", missing: [], pantry: [], special: [{ food: "Mehl", quantity: "300 g", display: "300 g" }, { food: "Mehl", quantity: "2 EL", display: "2 EL" }] } }),
+      "POST /api/meals/shopping/commit": (b) => ({ status: 200, body: { added: (b as { lines: unknown[] }).lines.length, listId: "l1", listName: "Liste" } }),
+    }));
+    renderAt("/essen");
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.shopWeek }));
+    const boxes = await within(await screen.findByRole("dialog")).findAllByRole("checkbox", { name: /Mehl/ });
+    fireEvent.click(boxes[0]!);
+    expect(boxes[1]).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: de.meals.putOn(1, "Liste") }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/meals/shopping/commit")?.body).toEqual({ lines: [{ food: "Mehl", quantity: "2 EL" }] }));
+  });
+
+  it("the recipe page shops for the servings set on it", async () => {
+    const calls = fakeApi(base([], { "POST /api/meals/shopping/preview": () => ({ status: 200, body: { listId: "l1", listName: "Liste", missing: [], pantry: [], special: [] } }) }));
+    renderAt(`/essen/rezept/${veg.slug}?portionen=4&tag=${monday}`);
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.more }));
+    fireEvent.click(screen.getByRole("button", { name: de.meals.more }));
+    fireEvent.click(screen.getByRole("button", { name: de.meals.shopRecipe }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/meals/shopping/preview")?.body).toEqual({ dates: [monday], servings: 6 }));
+  });
+});
