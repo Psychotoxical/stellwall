@@ -9,6 +9,8 @@ import { requireAdmin, requireMember } from "../auth/guard.ts";
 const LIST_TTL_MS = 10 * 60_000;
 const RECIPE_TTL_MS = 60 * 60_000;
 const MAX_CACHE = 200;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 20;
 
 export type RecipeSummary = { id: string; slug: string; name: string; servings: number; hasImage: boolean };
 export type Recipe = RecipeSummary & { ingredients: Ingredient[]; steps: string[] };
@@ -88,9 +90,15 @@ export function createMealie(db: Db, timeoutMs: number) {
     clear: () => cache.clear(),
     search: (q: string) =>
       cached(`s:${q.toLowerCase()}`, LIST_TTL_MS, async () => {
-        const body = await json<{ items?: MealieRecipe[]; data?: MealieRecipe[] }>(`/api/recipes?search=${encodeURIComponent(q)}&perPage=24&page=1&orderBy=name&orderDirection=asc`);
-        const items = body.items ?? body.data;
-        if (!Array.isArray(items)) throw new MealieError("mealie_bad");
+        // Every page, so that browsing without a search word shows the whole collection.
+        const items: MealieRecipe[] = [];
+        for (let page = 1; page <= MAX_PAGES; page++) {
+          const body = await json<{ items?: MealieRecipe[]; data?: MealieRecipe[]; total_pages?: number }>(`/api/recipes?search=${encodeURIComponent(q)}&perPage=${PAGE_SIZE}&page=${page}&orderBy=name&orderDirection=asc`);
+          const part = body.items ?? body.data;
+          if (!Array.isArray(part)) throw new MealieError("mealie_bad");
+          items.push(...part);
+          if (part.length < PAGE_SIZE || page >= (body.total_pages ?? 1)) break;
+        }
         // One odd entry in Mealie must not break the whole search.
         return items.flatMap((r) => {
           try {

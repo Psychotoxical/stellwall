@@ -129,6 +129,17 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
             <button key={m} type="button" aria-pressed={(m === "text") === showText} onClick={() => setMode(m)}>{de.meals.modes[m]}</button>
           ))}
         </nav>
+        {/* Who cooks and how many first: the recipe list below can be long. */}
+        <div className="row2">
+          <div className="field">
+            <label htmlFor={ids + "c"}>{de.meals.cook}</label>
+            <select id={ids + "c"} value={cookId ?? ""} onChange={(e) => setCookId(e.target.value || null)}>
+              <option value="">{de.meals.nobody}</option>
+              {members.map((m) => <option key={m.id} value={m.id}>{m.displayName}</option>)}
+            </select>
+          </div>
+          <Servings value={servings} onChange={setServings} />
+        </div>
         {mealieDown && <Notice>{mealieDown}</Notice>}
         {keepRecipe && <p className="keptrecipe">{recipe!.name}</p>}
         {!showText && !keepRecipe && (
@@ -157,16 +168,6 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
             <small>{de.meals.textHint}</small>
           </div>
         )}
-        <div className="row2">
-          <div className="field">
-            <label htmlFor={ids + "c"}>{de.meals.cook}</label>
-            <select id={ids + "c"} value={cookId ?? ""} onChange={(e) => setCookId(e.target.value || null)}>
-              <option value="">{de.meals.nobody}</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.displayName}</option>)}
-            </select>
-          </div>
-          <Servings value={servings} onChange={setServings} />
-        </div>
         {error && <Notice>{error}</Notice>}
         <div className="actions">
           {meal && <Button type="button" variant="danger" onClick={async () => { await api(`/api/meals/${date}`, { method: "DELETE" }); await onDone(); }}>{de.meals.remove}</Button>}

@@ -6,6 +6,7 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Fixed
 
+- Meal plan: without a search word all recipes are listed, not just the first 24; who cooks and servings sit above the list.
 - Mealie connection test shows how many recipes there are in total, not just the first page.
 
 ### Added

@@ -84,4 +84,10 @@ describe("Mealie connection", () => {
     await put(f.alex.cookie, { url: "https://rezepte.example.test" });
     expect((await as(app, f.alex.cookie).get("/api/settings/mealie")).json()).toMatchObject({ hasToken: false });
   });
+
+  it("without a search word every recipe is listed, not just the first page", async () => {
+    const { app, f, mealie, put } = await start();
+    await put(f.alex.cookie, { url: mealie.url, token: TOKEN });
+    expect(((await as(app, f.sam.cookie).get("/api/recipes?q=")).json() as unknown[]).length).toBe(32);
+  });
 });
