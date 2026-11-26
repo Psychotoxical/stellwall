@@ -31,6 +31,16 @@ class WorldsTest {
     }
 
     @Test
+    fun `error notes stay readable in every world, light and dark`() {
+        for ((name, w) in WORLDS) {
+            for (p in listOf(w.light, w.dark)) {
+                val (ground, text) = app.stellwall.ui.noticeColors(p)
+                assertTrue("$name notice", contrast(text, ground) >= 4.5)
+            }
+        }
+    }
+
+    @Test
     fun `oklch matches the browser`() {
         // oklch(44% 0.12 155), the Salbei button in the web app
         val c = oklch(0.44f, 0.12f, 155f)

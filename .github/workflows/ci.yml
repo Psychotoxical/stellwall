@@ -33,8 +33,8 @@ jobs:
           EVENT: ${{ github.event_name }}
           PR: ${{ github.event.pull_request.number }}
           BEFORE: ${{ github.event.before }}
-          CODE: '^(shared/|server/|web/|e2e/|package(-lock)?\.json$|tsconfig\.base\.json$|eslint\.config\.js$|playwright\.config\.ts$|Dockerfile$|\.dockerignore$|\.github/workflows/ci\.yml$)'
-          ANDROID: '^(android/|scripts/(make-worlds\.py|solar-to-android\.mjs)$|\.github/workflows/ci\.yml$)'
+          CODE: '^(contract/|shared/|server/|web/|e2e/|package(-lock)?\.json$|tsconfig\.base\.json$|eslint\.config\.js$|playwright\.config\.ts$|Dockerfile$|\.dockerignore$|\.github/workflows/ci\.yml$)'
+          ANDROID: '^(android/|contract/|scripts/(make-worlds\.py|solar-to-android\.mjs)$|\.github/workflows/ci\.yml$)'
         run: |
           case "$EVENT" in
             pull_request)

@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Android app (in progress): sign-in that stays signed in, Start with the board and areas, shopping lists with suggestions, ticking and live updates, and the calendar with month, week and upcoming views, events, series and birthdays.
+
 ## [0.1.7] - 2026-11-26
 
 ### Added

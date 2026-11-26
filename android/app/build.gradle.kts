@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.coroutines.android)
+    implementation(libs.lifecycle.runtime.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -46,5 +48,6 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.rule)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.coroutines.test)
     debugImplementation(libs.compose.ui.test.manifest)
 }
