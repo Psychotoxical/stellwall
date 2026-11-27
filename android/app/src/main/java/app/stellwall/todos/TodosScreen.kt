@@ -75,6 +75,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TodosScreen(model: TodosModel, live: Flow<LiveEvent> = emptyFlow()) {
     val s by model.state.collectAsStateWithLifecycle()
@@ -85,7 +86,7 @@ fun TodosScreen(model: TodosModel, live: Flow<LiveEvent> = emptyFlow()) {
     val p = LocalPalette.current
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(TodoText.TITLE, TodoText.PAGE)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (v in TodoView.entries) Seg(v.label, s.view == v) { scope.launch { model.setView(v) } }
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -109,7 +110,7 @@ private fun Seg(text: String, on: Boolean, onClick: () -> Unit) {
             .border(1.dp, if (on) p.primary else p.field, RoundedCornerShape(50))
             .selectable(selected = on, role = Role.Tab, onClick = onClick).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = p.ink) }
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = p.ink, maxLines = 1, softWrap = false) }
 }
 
 /** To-dos as rows: what, when, for whom; a box to tick for those that are confirmed or have no date. */

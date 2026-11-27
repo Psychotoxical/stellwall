@@ -10,11 +10,22 @@ export const FCM_PREFIX = "fcm:";
 
 const SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 
-export function readServiceAccount(file: string | null): ServiceAccount | null {
+/**
+ * Reads the service account file. A missing or broken file only switches phone messages off
+ * (with a warning): the rest of Stellwall keeps running for the family.
+ */
+export function readServiceAccount(file: string | null, warn: (msg: string) => void = console.warn): ServiceAccount | null {
   if (!file) return null;
-  const a = JSON.parse(readFileSync(file, "utf8")) as Partial<ServiceAccount>;
-  if (!a.project_id || !a.client_email || !a.private_key) throw new Error("Firebase service account file is incomplete");
-  return { project_id: a.project_id, client_email: a.client_email, private_key: a.private_key, token_uri: a.token_uri ?? "https://oauth2.googleapis.com/token" };
+  try {
+    const a = JSON.parse(readFileSync(file, "utf8")) as Partial<ServiceAccount>;
+    if (!a.project_id || !a.client_email || !a.private_key) throw new Error("incomplete");
+    return { project_id: a.project_id, client_email: a.client_email, private_key: a.private_key, token_uri: a.token_uri ?? "https://oauth2.googleapis.com/token" };
+  } catch (e) {
+    // Only the kind of error: a JSON message would quote part of the key into the log.
+    const why = (e as { code?: string }).code === "ENOENT" ? "missing" : "unreadable or incomplete";
+    warn(`Firebase service account ${file} is ${why}; Android phones get no notifications`);
+    return null;
+  }
 }
 
 const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -57,10 +68,13 @@ export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch;
       signal: AbortSignal.timeout(10_000),
     });
     if (res.ok) return { gone: false };
+    // A refused access token is fetched anew with the next message.
+    if (res.status === 401) token = null;
     const err = (await res.json().catch(() => ({}))) as { error?: { status?: string; details?: { errorCode?: string }[] } };
     const code = err.error?.details?.find((d) => d.errorCode)?.errorCode;
-    // The app was removed or the token replaced: the phone will never get it.
-    return { gone: res.status === 404 || code === "UNREGISTERED" };
+    // Only this code means the app was removed or the token replaced. A plain 404 can also be a
+    // wrong project in the service account, and that must not throw away every phone.
+    return { gone: code === "UNREGISTERED" };
   };
 }
 

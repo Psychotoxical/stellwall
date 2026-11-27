@@ -117,8 +117,9 @@ fun MealsScreen(model: MealsModel, api: MealsApi, live: Flow<LiveEvent>, onCook:
 
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = MealText.TITLE, sub = MealText.PAGE)
+        // The week on its own line, the arrows below: also fits a small phone with large text.
+        Text(s.range, style = MaterialTheme.typography.titleMedium, color = p.ink, modifier = Modifier.padding(bottom = 4.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(s.range, style = MaterialTheme.typography.titleMedium, color = p.ink, modifier = Modifier.weight(1f))
             NavButton("‹", MealText.PREV) { scope.launch { model.step(-1) } }
             Box(
                 Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(50)).background(p.field).clickable(role = Role.Button) { scope.launch { model.thisWeek() } }.padding(horizontal = 14.dp),

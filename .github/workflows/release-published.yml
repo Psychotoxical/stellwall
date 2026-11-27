@@ -14,7 +14,7 @@ jobs:
     name: Container image
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write
       packages: write
     env:
       TAG: ${{ github.event.release.tag_name }}
@@ -22,6 +22,50 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      # The Android app, signed with the family's key, goes into the image and onto the release.
+      # Without the secrets the image is built without it and phones keep their version.
+      - name: Android app
+        id: app
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          GOOGLE_SERVICES_B64: ${{ secrets.ANDROID_GOOGLE_SERVICES_B64 }}
+          STELLWALL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          STELLWALL_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STELLWALL_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$GOOGLE_SERVICES_B64" ]; then
+            echo "::warning::Android secrets are missing; the image has no app for the phones"
+            exit 0
+          fi
+          # The key files go away however the step ends.
+          trap 'rm -f "$RUNNER_TEMP/release.jks" android/app/google-services.json' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          printf '%s' "$GOOGLE_SERVICES_B64" | base64 -d > android/app/google-services.json
+          export STELLWALL_KEYSTORE="$RUNNER_TEMP/release.jks"
+          (cd android && ./gradlew --console=plain assembleRelease)
+          cp android/app/build/outputs/apk/release/app-release.apk android-dist/stellwall.apk
+          python3 - <<'PY'
+          import json, re
+          v = re.search(r'"version":\s*"(\d+)\.(\d+)\.(\d+)"', open("package.json").read()).groups()
+          code = int(v[0]) * 10000 + int(v[1]) * 100 + int(v[2])
+          json.dump({"versionCode": code, "versionName": ".".join(v)}, open("android-dist/android.json", "w"))
+          PY
+          cat android-dist/android.json
+          cp android-dist/stellwall.apk "$RUNNER_TEMP/stellwall-${TAG#v}.apk"
+          echo "built=true" >> "$GITHUB_OUTPUT"
+      # Only this step sees the token that can write to the repo, not the app build before it.
+      # A failed upload leaves the image to be built: the phones update from the server.
+      - name: Android app on the release
+        if: steps.app.outputs.built == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP/stellwall-${TAG#v}.apk" --clobber
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:

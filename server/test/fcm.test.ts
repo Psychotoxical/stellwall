@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { fcmSender, routedSender, type ServiceAccount } from "../src/push/fcm.ts";
+import { fcmSender, readServiceAccount, routedSender, type ServiceAccount } from "../src/push/fcm.ts";
 import { createTestApp, testConfig } from "./helpers.ts";
 import { as, setupFamily } from "./family.ts";
 import { contract } from "./contract.ts";
@@ -70,6 +70,25 @@ describe("FCM", () => {
     expect(await fcmSender(account, { fetch: busy.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
   });
 
+  it("a wrong project (404 without UNREGISTERED) keeps every phone", async () => {
+    const wrong = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 404, json: { error: { status: "NOT_FOUND", message: "Requested entity was not found." } } }));
+    expect(await fcmSender(account, { fetch: wrong.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
+  });
+
+  it("a refused access token is fetched again on the next message", async () => {
+    let first = true;
+    const g = fakeGoogle((c) => {
+      if (c.url === account.token_uri) return ok(c);
+      if (first) { first = false; return { status: 401, json: { error: { status: "UNAUTHENTICATED" } } }; }
+      return ok(c);
+    });
+    const send = fcmSender(account, { fetch: g.fetch });
+    const sub = { endpoint: "fcm:x", p256dh: "", auth: "" };
+    await send(sub, "{}");
+    await send(sub, "{}");
+    expect(g.calls.filter((c) => c.url === account.token_uri)).toHaveLength(2);
+  });
+
   it("browsers go to web push, phones to FCM; without a service account phone messages wait", async () => {
     const seen: string[] = [];
     const web = async (s: { endpoint: string }) => { seen.push("web:" + s.endpoint); return { gone: false }; };
@@ -78,6 +97,20 @@ describe("FCM", () => {
     await routedSender(web, fcm)({ endpoint: "fcm:tok", p256dh: "", auth: "" }, "{}");
     expect(seen).toEqual(["web:https://fcm.googleapis.com/fcm/send/abc", "fcm:fcm:tok"]);
     expect(await routedSender(web, null)({ endpoint: "fcm:tok", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
+  });
+});
+
+describe("the service account file", () => {
+  it("a missing or broken file switches phone messages off instead of stopping the server", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "stellwall-sa-"));
+    writeFileSync(join(dir, "broken.json"), "{ not json");
+    const warned: string[] = [];
+    expect(readServiceAccount(join(dir, "missing.json"), (m) => warned.push(m))).toBeNull();
+    expect(readServiceAccount(join(dir, "broken.json"), (m) => warned.push(m))).toBeNull();
+    expect(readServiceAccount(null, (m) => warned.push(m))).toBeNull();
+    expect(warned).toHaveLength(2);
+    // Nothing from inside the file reaches the log.
+    expect(warned.join(" ")).not.toContain("not json");
   });
 });
 

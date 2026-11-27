@@ -104,6 +104,12 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
         .addInterceptor { it.proceed(it.request().newBuilder().header("X-Stellwall", "1").build()) }
         .build()
 
+    /**
+     * The live connection pings every 30 s: a link that died without closing (Wi-Fi to mobile data)
+     * fails then and is opened again, instead of hanging while the app stays in front.
+     */
+    internal val liveClient: OkHttpClient by lazy { http.newBuilder().pingInterval(30, TimeUnit.SECONDS).build() }
+
     override suspend fun login(username: String, password: String): Member =
         call("POST", "api/auth/login", encode(Credentials.serializer(), Credentials(username, password))).decode(Member.serializer())
 
@@ -341,7 +347,7 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     private fun liveOnce(): Flow<LiveEvent> = callbackFlow {
         val req = Request.Builder().url(base.resolve("api/live")!!).build()
-        val ws = http.newWebSocket(req, object : WebSocketListener() {
+        val ws = liveClient.newWebSocket(req, object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val msg = runCatching { json.parseToJsonElement(text) as JsonObject }.getOrNull() ?: return
                 val event = when (msg["type"]?.jsonPrimitive?.contentOrNull) {

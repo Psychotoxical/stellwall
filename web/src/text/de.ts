@@ -152,7 +152,11 @@ export const de = {
     myTodayEmpty: "Für dich steht heute nichts an.",
   },
   update: { ready: "Eine neue Version von Stellwall ist da.", reload: "Neu laden" },
-  about: { version: (v: string) => `Version ${v}` },
+  about: {
+    version: (v: string) => `Version ${v}`,
+    android: (v: string) => `Android-App laden (Version ${v})`,
+    androidHint: "Auf dem Handy öffnen, laden und installieren. Danach meldet die App selbst, wenn es eine neue Version gibt.",
+  },
   calendar: {
     page: "Kalender",
     views: { month: "Monat", week: "Woche", upcoming: "Demnächst" },

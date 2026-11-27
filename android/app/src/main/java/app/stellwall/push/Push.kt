@@ -26,6 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /** Push on this phone: Firebase set up from the build's values, one channel per kind of message. */
 object Push {
     const val EXTRA_URL = "stellwall.url"
+    private val ids = NotificationIds()
 
     /** False when this build was made without google-services.json. */
     val available: Boolean get() = BuildConfig.FCM_APP_ID.isNotEmpty()
@@ -73,7 +74,8 @@ object Push {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_URL, url)
         }
-        val id = (url + (data["title"] ?: "")).hashCode()
+        // Each message its own id: two of the same kind (two to-dos, two birthdays) both stay.
+        val id = ids.next()
         val tap = PendingIntent.getActivity(context, id, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(context, kind)
             .setSmallIcon(R.drawable.ic_bell)
@@ -103,4 +105,10 @@ class StellwallMessaging : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         TokenStore(this).token = token
     }
+}
+
+/** Ids for notifications, different for every message in this process. */
+class NotificationIds {
+    private val next = java.util.concurrent.atomic.AtomicInteger((System.currentTimeMillis() / 1000 % 1_000_000).toInt())
+    fun next(): Int = next.incrementAndGet()
 }

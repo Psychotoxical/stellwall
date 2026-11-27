@@ -7,3 +7,8 @@ coverage/
 !.env.example
 playwright-report/
 test-results/
+
+# Filled by the release build only.
+android-dist/*
+!android-dist/.gitkeep
+!android-dist/README.md

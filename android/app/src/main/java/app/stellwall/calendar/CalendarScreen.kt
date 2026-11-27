@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,6 +71,7 @@ import kotlinx.coroutines.launch
  * The calendar: month grid with the chosen day, a week as agenda, or the next 30 days.
  * [webUrl] is the server's address; the import still lives in the browser.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CalendarScreen(
     model: CalendarModel,
@@ -102,17 +105,25 @@ fun CalendarScreen(
     }
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = s.title, sub = CalText.PAGE)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // The rows wrap on a small phone or with large text, so no button falls off the screen.
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (v in View.entries) Seg(v.label, s.view == v) { scope.launch { model.setView(v) } }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Seg(CalText.MINE, s.mine) { scope.launch { model.setMine(true) } }
-            Seg(CalText.ALL, !s.mine) { scope.launch { model.setMine(false) } }
-            Box(Modifier.weight(1f))
+        FlowRow(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Seg(CalText.MINE, s.mine) { scope.launch { model.setMine(true) } }
+                Seg(CalText.ALL, !s.mine) { scope.launch { model.setMine(false) } }
+            }
             if (s.view != View.Upcoming) {
-                Chevron(left = true, CalText.PREV) { scope.launch { model.step(-1) } }
-                Seg(CalText.TODAY, false) { scope.launch { model.goToday() } }
-                Chevron(left = false, CalText.NEXT) { scope.launch { model.step(1) } }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Chevron(left = true, CalText.PREV) { scope.launch { model.step(-1) } }
+                    Seg(CalText.TODAY, false) { scope.launch { model.goToday() } }
+                    Chevron(left = false, CalText.NEXT) { scope.launch { model.step(1) } }
+                }
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -183,7 +194,7 @@ private fun Seg(text: String, on: Boolean, onClick: () -> Unit) {
             .border(1.dp, if (on) p.primary else p.field, RoundedCornerShape(50))
             .selectable(selected = on, role = Role.Tab, onClick = onClick).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = p.ink) }
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = p.ink, maxLines = 1, softWrap = false) }
 }
 
 @Composable

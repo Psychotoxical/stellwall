@@ -17,8 +17,10 @@ android {
         applicationId = "app.stellwall"
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // The app has Stellwall's version (package.json at the repo root), so the release raises both.
+        val version = stellwallVersion()
+        versionName = version
+        versionCode = versionCodeOf(version)
 
         // Firebase for push, read from google-services.json when it is there (not in git).
         // Without it the app builds anyway and says that notifications are not set up in this build.
@@ -27,6 +29,26 @@ android {
         buildConfigField("String", "FCM_API_KEY", "\"${fcm["apiKey"]}\"")
         buildConfigField("String", "FCM_PROJECT_ID", "\"${fcm["projectId"]}\"")
         buildConfigField("String", "FCM_SENDER_ID", "\"${fcm["senderId"]}\"")
+    }
+
+    // Release builds are signed in CI with the family's key (GitHub secrets, never in git).
+    signingConfigs {
+        create("release") {
+            val store = System.getenv("STELLWALL_KEYSTORE")
+            if (store != null) {
+                storeFile = file(store)
+                storePassword = System.getenv("STELLWALL_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("STELLWALL_KEY_ALIAS")
+                keyPassword = System.getenv("STELLWALL_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (System.getenv("STELLWALL_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     buildFeatures {
@@ -82,4 +104,16 @@ fun firebaseValues(f: File): Map<String, String> {
         "projectId" to (info["project_id"] as String),
         "senderId" to (info["project_number"] as String),
     )
+}
+
+/** Stellwall's version from the repo's package.json. */
+fun stellwallVersion(): String {
+    val pkg = rootDir.resolve("../package.json").readText()
+    return Regex("\"version\":\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\"").find(pkg)!!.groupValues[1]
+}
+
+/** 0.1.8 becomes 108, 1.2.3 becomes 10203: every release counts up, as Android wants. */
+fun versionCodeOf(v: String): Int {
+    val (major, minor, patch) = v.split(".").map(String::toInt)
+    return major * 10000 + minor * 100 + patch
 }

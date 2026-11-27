@@ -31,7 +31,7 @@ class MoreScreenTest {
         var changed: Member? = null
         compose.setContent {
             StellwallTheme(world = "salbei", dark = false) {
-                MoreScreen(f, me, AppInfo(true, AppVersion(99, "0.9.0")), "https://wall.example.org", onMemberChanged = { changed = it }, onSignOut = {}, onBack = {})
+                MoreScreen(f, me, AppInfo(true, AppVersion(900, "0.9.0")), "https://wall.example.org", onMemberChanged = { changed = it }, onSignOut = {}, onBack = {})
             }
         }
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("Eine neue Version von Stellwall ist da.")).fetchSemanticsNodes().isNotEmpty() }
@@ -40,7 +40,7 @@ class MoreScreenTest {
         compose.onNodeWithText("Speichern").performScrollTo().performClick()
         compose.waitUntil(5_000) { changed != null }
         assertEquals("rose", changed?.world)
-        // This test build has no Firebase values: the app says so instead of failing.
-        compose.onNodeWithText(MoreText.NO_BUILD).performScrollTo()
+        // Without Firebase values in the build the app says so; with them it offers to allow.
+        compose.onNodeWithText(if (app.stellwall.push.Push.available) MoreText.ALLOW else MoreText.NO_BUILD).performScrollTo()
     }
 }
