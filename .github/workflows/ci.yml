@@ -149,7 +149,7 @@ jobs:
         run: |
           # Ghostscript (part of OCRmyPDF) draws a page with text as a picture; OCR has to read it back.
           docker run --rm --entrypoint sh stellwall:ci -c '
-            echo "/Helvetica findfont 48 scalefont setfont 120 200 moveto (Stadtwerke Abschlag Rechnung) show showpage" > /tmp/t.ps &&
+            echo "/Helvetica findfont 48 scalefont setfont 100 200 moveto (Abschlag Rechnung) show showpage" > /tmp/t.ps &&
             gs -q -dNOPAUSE -dBATCH -sDEVICE=pnggray -r300 -g2550x1400 -sOutputFile=/tmp/scan.png /tmp/t.ps &&
             node --input-type=module -e "
               import { ocrmypdf } from \"/app/server/src/documents/ocr.ts\";
