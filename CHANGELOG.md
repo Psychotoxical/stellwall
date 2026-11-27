@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Fixed
+
+- iPhone app: the event, birthday and shopping windows show the colour world the page shows, also right after changing it.
+
 ### Added
 
 - Android app: pull a page down to load it again; swipe a shopping row right to tick it off and left to delete it, a to-do right to tick it off; a long press on a shopping row offers the same and editing.

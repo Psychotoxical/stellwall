@@ -122,7 +122,7 @@ struct ShoppingView: View {
             try? await Task.sleep(for: .milliseconds(200))
             hints = await model.suggestions(name)
         }
-        .sheet(item: $sheet) { s in sheetView(s).themed(world: model.me.world, dark: p.ground.luminance < 0.18) }
+        .sheet(item: $sheet) { s in sheetView(s).themed(like: p) }
     }
 
     @ViewBuilder private func sheetView(_ s: SheetKind) -> some View {

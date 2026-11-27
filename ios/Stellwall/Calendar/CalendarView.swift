@@ -24,7 +24,7 @@ struct CalendarView: View {
             await model.load()
         }
         .sheet(item: $form) { f in
-            EventSheet(model: model, form: f).themed(world: model.me.world, dark: p.ground.luminance < 0.18)
+            EventSheet(model: model, form: f).themed(like: p)
         }
     }
 
