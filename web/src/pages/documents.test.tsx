@@ -39,6 +39,21 @@ describe("documents", () => {
     expect(sent.file.name).toBe("Hausrat_2026.pdf");
   });
 
+  it("choosing who may see it keeps the upload dialog open", async () => {
+    fakeApi({ ...base([]) });
+    renderAt("/dokumente");
+    fireEvent.click(await screen.findByRole("button", { name: de.documents.upload }));
+    const dialog = await screen.findByRole("dialog", { name: de.documents.upload });
+    fireEvent.click(within(dialog).getByRole("button", { name: new RegExp(de.visibility.all) }));
+    const sheet = await screen.findByRole("dialog", { name: de.visibility.title });
+    fireEvent.click(within(sheet).getByLabelText(new RegExp(de.visibility.me)));
+    fireEvent.click(within(sheet).getByRole("button", { name: de.members.save }));
+    // The sheet closes like a browser does it: with a close event on its own dialog.
+    fireEvent(sheet, new Event("close"));
+    expect(screen.getByRole("dialog", { name: de.documents.upload })).toBeTruthy();
+    expect(within(screen.getByRole("dialog", { name: de.documents.upload })).getByRole("button", { name: new RegExp(de.visibility.me) })).toBeTruthy();
+  });
+
   it("search shows the snippet", async () => {
     const calls = fakeApi({ ...base([doc({ snippet: "Beitrag «monatlich» fällig" })]) });
     renderAt("/dokumente");

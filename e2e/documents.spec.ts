@@ -13,6 +13,13 @@ test("a document is uploaded, found, opened and deleted", async ({ page }) => {
   await dialog.getByLabel("Datei").setInputFiles({ name: "Kfz-Versicherung.pdf", mimeType: "application/pdf", buffer: PDF });
   await expect(dialog.getByLabel("Name")).toHaveValue("Kfz-Versicherung");
   await dialog.getByLabel("Kategorie").selectOption("Auto");
+  // Choosing who may see it keeps the upload form open.
+  await dialog.getByRole("button", { name: /^Sehen: / }).click();
+  const who = page.getByRole("dialog", { name: "Wer darf das sehen?" });
+  await who.getByText("Nur ich").click();
+  await who.getByRole("button", { name: "Speichern" }).click();
+  await expect(who).toBeHidden();
+  await expect(dialog.getByRole("button", { name: "Sehen: Nur ich" })).toBeVisible();
   await dialog.getByRole("button", { name: "Speichern" }).click();
   await expect(dialog).toBeHidden();
 
