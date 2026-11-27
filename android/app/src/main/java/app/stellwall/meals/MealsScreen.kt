@@ -215,6 +215,8 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
     val keepRecipe = mealieDown != null && d.recipe != null && !d.useText
 
     Sheet(MealText.plan(MealText.dayName(date)), onClose) {
+        // At the top: the recipe list below can be long, and this is what people come to change.
+        if (meal != null) GhostButton(MealText.REMOVE, { scope.launch { error = model.remove(date); if (error == null) onClose() } }, Modifier.fillMaxWidth(), danger = true)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((text, on) in listOf(MealText.RECIPE to !showText, MealText.FREE_TEXT to showText)) {
                 Box(
@@ -257,7 +259,6 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
         error?.let { Notice(it) }
         PrimaryButton(MealText.SAVE, { scope.launch { error = model.save(date, d.copy(useText = showText)); if (error == null) onClose() } }, Modifier.fillMaxWidth())
         GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
-        if (meal != null) GhostButton(MealText.REMOVE, { scope.launch { error = model.remove(date); if (error == null) onClose() } }, Modifier.fillMaxWidth(), danger = true)
     }
 }
 
