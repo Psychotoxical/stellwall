@@ -30,7 +30,8 @@ export async function signInMember(page: Page, user: string, password = "member-
   const home = page.getByRole("heading", { name: /^Gute[n]? \w+, / });
   await expect(first.or(home)).toBeVisible();
   if (await first.isVisible()) {
-    await page.getByLabel("Passwort von der Verwaltung").fill(password);
+    // Right after signing in the app knows the old password and does not ask for it again.
+    await expect(page.getByLabel("Altes Passwort")).toHaveCount(0);
     await page.getByLabel("Neues Passwort").fill(password + "-own");
     await page.getByRole("button", { name: "Passwort speichern" }).click();
   }

@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 object FirstPasswordText {
     fun title(name: String) = "Hallo $name, bitte ein eigenes Passwort"
     const val LEAD = "Dein Passwort hat die Verwaltung vergeben. Wähle jetzt eins, das nur du kennst."
-    const val CURRENT = "Passwort von der Verwaltung"
+    const val CURRENT = "Altes Passwort"
     const val SUBMIT = "Passwort speichern"
 }
 
