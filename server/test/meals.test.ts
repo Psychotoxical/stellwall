@@ -81,11 +81,27 @@ describe("shopping for the meal plan", () => {
     expect(items.map((i) => [i.name, i.quantity]).sort()).toEqual([["Paprika", "2×"], ["Salz", ""]]);
   });
 
-  it("says when no list is chosen yet", async () => {
+  it("makes a family list when none is chosen yet and keeps using it", async () => {
     const { app, f } = await start();
-    const r = await as(app, f.sam.cookie).post("/api/meals/shopping/commit", { lines: [{ food: "Paprika", quantity: "1×" }] });
-    expect(r.statusCode).toBe(409);
-    expect(r.json()).toEqual({ error: "meal_list_missing" });
+    const s = as(app, f.sam.cookie);
+    const r = await s.post("/api/meals/shopping/commit", { lines: [{ food: "Paprika", quantity: "1×" }] });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ added: 1, listName: "Wocheneinkauf" });
+    const again = await as(app, f.kim.cookie).post("/api/meals/shopping/commit", { lines: [{ food: "Reis", quantity: "" }] });
+    expect(again.json().listId).toBe(r.json().listId);
+    const lists = (await as(app, f.kim.cookie).get("/api/lists")).json() as { name: string }[];
+    expect(lists.filter((l) => l.name === "Wocheneinkauf")).toHaveLength(1);
+  });
+
+  it("makes a new list when the chosen one was deleted", async () => {
+    const { app, f, list } = await withMealie();
+    expect((await as(app, f.alex.cookie).del(`/api/lists/${list}`)).statusCode).toBe(200);
+    const s = as(app, f.sam.cookie);
+    const preview = await s.post("/api/meals/shopping/preview", { dates: ["2026-11-30"] });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json().listId).not.toBe(list);
+    const r = await s.post("/api/meals/shopping/commit", { lines: [{ food: "Paprika", quantity: "1×" }] });
+    expect(r.json()).toMatchObject({ added: 1, listId: preview.json().listId, listName: "Wocheneinkauf" });
   });
 
   it("the recipe page can shop for other servings than planned", async () => {

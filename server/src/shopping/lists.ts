@@ -100,6 +100,17 @@ export async function listRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     notify.lists();
     return { ok: true };
   });
+
+  app.delete("/api/lists/:id/items", { preHandler: requireMember }, async (req, reply) => {
+    const p = idParam.safeParse(req.params);
+    if (!p.success) return reply.code(404).send({ error: "not_found" });
+    const l = await findVisibleList(db, p.data.id, req.member!.id);
+    if (!l) return reply.code(404).send({ error: "not_found" });
+    const gone = await db.delete(items).where(eq(items.listId, l.id)).returning({ id: items.id });
+    notify.list(l.id);
+    notify.lists();
+    return { removed: gone.length };
+  });
 }
 
 /**

@@ -140,4 +140,18 @@ describe("suggestions", () => {
     const own = (await a.get("/api/suggestions?q=geheim")).json() as { name: string }[];
     expect(own.map((s) => s.name)).toEqual(["Geheimrezept-Zutat"]);
   });
+
+  it("a list can be emptied at once by anyone who sees it", async () => {
+    const { app, f, listId } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    await a.post(`/api/lists/${listId}/items`, { name: "Milch" });
+    const brot = (await a.post(`/api/lists/${listId}/items`, { name: "Brot" })).json().id as string;
+    await a.patch(`/api/items/${brot}`, { checked: true });
+    const r = await as(app, f.sam.cookie).del(`/api/lists/${listId}/items`);
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ removed: 2 });
+    expect((await a.get(`/api/lists/${listId}/items`)).json()).toEqual([]);
+    const secret = (await a.post("/api/lists", { name: "Geheim", visibility: { everyone: false, memberIds: [] } })).json().id as string;
+    expect((await as(app, f.sam.cookie).del(`/api/lists/${secret}/items`)).statusCode).toBe(404);
+  });
 });

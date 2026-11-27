@@ -94,6 +94,7 @@ private sealed interface Open {
     data object NewList : Open
     data object Rename : Open
     data object Delete : Open
+    data object Clear : Open
     data object Visibility : Open
     data class NewListVisibility(val name: String) : Open
     data class EditItem(val item: Item) : Open
@@ -192,11 +193,16 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
         Open.Manage -> Sheet(ShopText.MANAGE, close) {
             GhostButton(ShopText.NEW_LIST, { open = Open.NewList }, Modifier.fillMaxWidth())
             GhostButton(ShopText.RENAME_LIST, { open = Open.Rename }, Modifier.fillMaxWidth())
+            GhostButton(ShopText.CLEAR_LIST, { open = Open.Clear }, Modifier.fillMaxWidth())
             if (list?.createdBy == model.me.id) GhostButton(ShopText.DELETE_LIST, { open = Open.Delete }, Modifier.fillMaxWidth(), danger = true)
             GhostButton(ShopText.CANCEL, close, Modifier.fillMaxWidth())
         }
         Open.NewList -> NameSheet(ShopText.NEW_LIST, "", close) { open = Open.NewListVisibility(it) }
         Open.Rename -> NameSheet(ShopText.RENAME_LIST, list?.name.orEmpty(), close) { name -> scope.launch { model.renameList(name); open = null } }
+        Open.Clear -> Sheet(ShopText.clearListConfirm(list?.name.orEmpty()), close) {
+            GhostButton(ShopText.CLEAR_LIST, { scope.launch { model.clearList(); open = null } }, Modifier.fillMaxWidth(), danger = true)
+            GhostButton(ShopText.CANCEL, close, Modifier.fillMaxWidth())
+        }
         Open.Delete -> Sheet(ShopText.deleteListConfirm(list?.name.orEmpty()), close) {
             GhostButton(ShopText.DELETE_LIST, { scope.launch { model.deleteList(); open = null } }, Modifier.fillMaxWidth(), danger = true)
             GhostButton(ShopText.CANCEL, close, Modifier.fillMaxWidth())

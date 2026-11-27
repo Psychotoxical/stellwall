@@ -96,7 +96,6 @@ object MealText {
         "mealie_auth" to "Mealie hat den Schlüssel abgelehnt. Die Verwaltung muss ihn unter Mehr → Mealie erneuern.",
         "mealie_unreachable" to "Mealie antwortet gerade nicht. Freier Text geht trotzdem.",
         "mealie_bad" to "Mealie hat eine unerwartete Antwort geschickt.",
-        "meal_list_missing" to "Die Verwaltung hat noch keine Einkaufsliste für den Essensplan gewählt (Mehr → Mealie).",
         "meal_list_hidden" to "Du siehst die Einkaufsliste für den Essensplan nicht. Die Verwaltung kann sie freigeben.",
     )
 
@@ -141,6 +140,12 @@ class MealsModel(private val api: MealsApi, private val today: () -> LocalDate =
     suspend fun onLive(e: LiveEvent) { if (e == LiveEvent.Meals || e == LiveEvent.Connected) load() }
 
     fun draft(meal: Meal?) = MealDraft(useText = meal != null && meal.recipe == null, recipe = meal?.recipe, text = meal?.text.orEmpty(), cookId = meal?.cookId, servings = meal?.servings ?: 4)
+
+    /** A tap on a recipe plans it right away; the recipe's own servings count unless they were set by hand. */
+    suspend fun pick(date: LocalDate, d: MealDraft, r: RecipeSummary, planned: Meal?, servingsTouched: Boolean): String? {
+        val servings = if (servingsTouched || planned?.recipe?.id == r.id) d.servings else r.servings
+        return save(date, d.copy(useText = false, recipe = RecipeRef(r.id, r.slug, r.name), servings = servings))
+    }
 
     /** Error to show, or null when saved. A recipe wins unless free text is chosen. */
     suspend fun save(date: LocalDate, d: MealDraft): String? {

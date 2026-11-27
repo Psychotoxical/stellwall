@@ -1,15 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { formatAmount, isPantry, itemKey, mergeIngredients, scaleIngredient, shoppingQuantity, type Ingredient } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { mealPlan, members, pantryStaples, settings } from "../db/schema.ts";
+import { lists, mealPlan, members, pantryStaples, settings } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
 import { findVisibleList } from "../shopping/visibility.ts";
 import { addToList } from "../shopping/items.ts";
 import type { Notifier } from "../shopping/notify.ts";
 import { MealieError, type Mealie } from "./mealie.ts";
 
+const MEAL_LIST_NAME = "Wocheneinkauf";
 const dateSchema = z.iso.date();
 const recipeRef = z.object({ id: z.string().regex(/^[0-9a-f-]{8,64}$/), slug: z.string().regex(/^[a-z0-9-]{1,200}$/), name: z.string().trim().min(1).max(200) });
 const mealBody = z
@@ -39,9 +40,23 @@ function dto(m: typeof mealPlan.$inferSelect) {
 export async function mealRoutes(app: FastifyInstance, opts: { db: Db; now: () => Date; mealie: Mealie; notify: Notifier }) {
   const { db, now, mealie, notify } = opts;
 
+  /** The fixed list for meal shopping; a family list is made when none is chosen or the chosen one was deleted. */
   async function mealList(me: string) {
-    const id = (await db.select().from(settings).where(eq(settings.key, "meal_list_id")))[0]?.value;
-    if (!id) return { error: "meal_list_missing" as const };
+    let id = (await db.select().from(settings).where(eq(settings.key, "meal_list_id")))[0]?.value;
+    if (!id || !(await db.select({ id: lists.id }).from(lists).where(eq(lists.id, id))).length) {
+      id = await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('meal_list_id'))`);
+        const cur = (await tx.select().from(settings).where(eq(settings.key, "meal_list_id")))[0]?.value;
+        if (cur && (await tx.select({ id: lists.id }).from(lists).where(eq(lists.id, cur))).length) return cur;
+        const [l] = await tx.insert(lists).values({ name: MEAL_LIST_NAME, everyone: true, createdBy: me, createdAt: now() }).returning();
+        await tx
+          .insert(settings)
+          .values({ key: "meal_list_id", value: l!.id, updatedAt: now() })
+          .onConflictDoUpdate({ target: settings.key, set: { value: l!.id, updatedAt: now() } });
+        return l!.id;
+      });
+      notify.lists();
+    }
     const l = await findVisibleList(db, id, me);
     if (!l) return { error: "meal_list_hidden" as const };
     return { list: l };

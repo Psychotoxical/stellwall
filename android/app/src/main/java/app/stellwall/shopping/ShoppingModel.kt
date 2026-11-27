@@ -116,6 +116,8 @@ class ShoppingModel(private val api: ShoppingApi, val me: Member) {
 
     suspend fun setVisibility(visibility: Visibility) = guard { _state.value.list?.let { api.updateList(it.id, visibility = visibility) }; refresh() }
 
+    suspend fun clearList() = guard { _state.value.list?.let { api.clearList(it.id) }; refresh() }
+
     suspend fun deleteList() = guard {
         _state.value.list?.let { api.deleteList(it.id) }
         _state.update { it.copy(list = null) }

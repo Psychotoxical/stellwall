@@ -109,12 +109,14 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
   const showText = mode === "text" || (!!mealieDown && !recipe);
   const keepRecipe = !!mealieDown && !!recipe && mode !== "text";
 
-  const save = async () => {
+  const [servingsTouched, setServingsTouched] = useState(false);
+  const save = async (picked?: { recipe: RecipeRef; servings: number }) => {
     setError(null);
-    const useRecipe = !showText && recipe;
+    const useRecipe = picked?.recipe ?? (!showText && recipe);
+    const n = picked?.servings ?? servings;
     if (!useRecipe && !text.trim()) return setError(de.errors.invalidInput);
     try {
-      await api(`/api/meals/${date}`, { method: "PUT", body: useRecipe ? { recipe, text: null, cookId, servings } : { text: text.trim(), recipe: null, cookId, servings } });
+      await api(`/api/meals/${date}`, { method: "PUT", body: useRecipe ? { recipe: useRecipe, text: null, cookId, servings: n } : { text: text.trim(), recipe: null, cookId, servings: n } });
       await onDone();
     } catch {
       setError(de.errors.generic);
@@ -138,7 +140,7 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
               {members.map((m) => <option key={m.id} value={m.id}>{m.displayName}</option>)}
             </select>
           </div>
-          <Servings value={servings} onChange={setServings} />
+          <Servings value={servings} onChange={(n) => { setServings(n); setServingsTouched(true); }} />
         </div>
         {mealieDown && <Notice>{mealieDown}</Notice>}
         {keepRecipe && <p className="keptrecipe">{recipe!.name}</p>}
@@ -151,7 +153,14 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
             <ul className="recipes" aria-label={de.meals.results}>
               {(search.data ?? []).map((r) => (
                 <li key={r.id}>
-                  <button type="button" className={"recipe" + (recipe?.id === r.id ? " on" : "")} aria-pressed={recipe?.id === r.id} onClick={() => { setRecipe({ id: r.id, slug: r.slug, name: r.name }); setServings(meal?.recipe?.id === r.id ? servings : r.servings); }}>
+                  <button type="button" className={"recipe" + (recipe?.id === r.id ? " on" : "")} aria-pressed={recipe?.id === r.id} onClick={() => {
+                    // A tap plans the recipe right away; the list can be long and Save sits below it.
+                    const picked = { id: r.id, slug: r.slug, name: r.name };
+                    const n = servingsTouched || meal?.recipe?.id === r.id ? servings : r.servings;
+                    setRecipe(picked);
+                    setServings(n);
+                    void save({ recipe: picked, servings: n });
+                  }}>
                     {r.hasImage ? <img src={recipeImage(r.id)} alt="" loading="lazy" onError={hideImage} /> : <span className="noimg" aria-hidden="true"><Icon.Essensplan className="ico" /></span>}
                     <span>{r.name}</span>
                   </button>
@@ -172,7 +181,7 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
         <div className="actions">
           {meal && <Button type="button" variant="danger" onClick={async () => { await api(`/api/meals/${date}`, { method: "DELETE" }); await onDone(); }}>{de.meals.remove}</Button>}
           <Button type="button" variant="ghost" onClick={onClose}>{de.members.cancel}</Button>
-          <Button type="button" onClick={save}>{de.members.save}</Button>
+          <Button type="button" onClick={() => void save()}>{de.members.save}</Button>
         </div>
       </div>
     </Dialog>

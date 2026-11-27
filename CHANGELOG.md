@@ -4,6 +4,15 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Shopping lists can be emptied at once ("Liste leeren"); the list itself stays.
+
+### Fixed
+
+- Meal plan: a tap on a recipe plans it right away, no more scrolling down to Save.
+- Shopping for the meal plan works again after its list was deleted: a new family list "Wocheneinkauf" is made, also when none was chosen yet.
+
 ## [0.1.8] - 2026-11-27
 
 ### Added
