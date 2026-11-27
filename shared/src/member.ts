@@ -30,7 +30,7 @@ export const roleSchema = z.enum(["admin", "member"]);
 export const PERSON_COLORS = ["person-mint", "person-lilac", "person-peach", "person-sky"] as const;
 
 /** Colour worlds a person can give the whole app. */
-export const WORLDS = ["salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink"] as const;
+export const WORLDS = ["salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink", "psysonic"] as const;
 export type World = (typeof WORLDS)[number];
 
 const WORLD_OF_COLOR: Record<string, World> = { "person-mint": "salbei", "person-lilac": "flieder", "person-peach": "pfirsich", "person-sky": "himmel" };

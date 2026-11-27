@@ -15,7 +15,7 @@ class WorldsTest {
 
     @Test
     fun `the seven worlds of the web app exist`() {
-        assertEquals(listOf("salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink"), WORLDS.keys.toList())
+        assertEquals(listOf("salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink", "psysonic"), WORLDS.keys.toList())
     }
 
     @Test
