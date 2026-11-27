@@ -9,6 +9,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -98,6 +100,7 @@ private sealed interface Open {
     data object Visibility : Open
     data class NewListVisibility(val name: String) : Open
     data class EditItem(val item: Item) : Open
+    data object Learned : Open
 }
 
 @Composable
@@ -194,6 +197,7 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
             GhostButton(ShopText.NEW_LIST, { open = Open.NewList }, Modifier.fillMaxWidth())
             GhostButton(ShopText.RENAME_LIST, { open = Open.Rename }, Modifier.fillMaxWidth())
             GhostButton(ShopText.CLEAR_LIST, { open = Open.Clear }, Modifier.fillMaxWidth())
+            GhostButton(ShopText.LEARNED, { open = Open.Learned }, Modifier.fillMaxWidth())
             if (list?.createdBy == model.me.id) GhostButton(ShopText.DELETE_LIST, { open = Open.Delete }, Modifier.fillMaxWidth(), danger = true)
             GhostButton(ShopText.CANCEL, close, Modifier.fillMaxWidth())
         }
@@ -217,6 +221,7 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
         is Open.NewListVisibility -> VisibilitySheet(
             lead = ShopText.NEW_LIST + ": " + o.name, value = Visibility(true, emptyList()), members = s.members, meId = model.me.id, readOnly = false, onClose = close,
         ) { v -> scope.launch { model.createList(o.name, v); open = null } }
+        Open.Learned -> LearnedSheet(model, close)
         is Open.EditItem -> EditItemSheet(o.item, close, onDelete = { scope.launch { model.delete(o.item); open = null } }) { name, qty, cat ->
             scope.launch { if (model.edit(o.item, name, qty, cat)) open = null }
         }
@@ -263,9 +268,9 @@ private fun AddItem(model: ShoppingModel) {
     val p = LocalPalette.current
     val scope = rememberCoroutineScope()
     var name by rememberSaveable { mutableStateOf("") }
-    var quantity by rememberSaveable { mutableStateOf("") }
     var sugg by remember { mutableStateOf<List<Suggestion>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
+    var pick by remember { mutableStateOf<Pick?>(null) }
     LaunchedEffect(name) {
         if (name.isBlank()) {
             sugg = emptyList()
@@ -274,16 +279,24 @@ private fun AddItem(model: ShoppingModel) {
         delay(120)
         sugg = model.suggestions(name)
     }
+    // No amount field beside the search: a pick asks how many, with one tap.
     val add = { picked: Suggestion? ->
         if (!busy && (picked != null || name.isNotBlank())) {
             busy = true
             scope.launch {
-                if (model.add(name, quantity, picked)) {
+                pick = model.pick(name, picked, sugg)
+                busy = false
+            }
+        }
+    }
+    pick?.let { pk ->
+        AmountSheet(pk, onClose = { pick = null }) { quantity, category ->
+            scope.launch {
+                if (model.add(pk, quantity, category)) {
+                    pick = null
                     name = ""
-                    quantity = ""
                     sugg = emptyList()
                 }
-                busy = false
             }
         }
     }
@@ -298,26 +311,29 @@ private fun AddItem(model: ShoppingModel) {
                 keyboardActions = KeyboardActions(onDone = { add(null) }),
                 modifier = Modifier.weight(1f).semantics { contentDescription = ShopText.ADD },
             )
-            OutlinedTextField(
-                quantity, { quantity = it.take(30) }, Modifier.width(92.dp), singleLine = true, colors = fieldColors(),
-                placeholder = { Text(ShopText.QUANTITY, maxLines = 1) },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { add(null) }),
-            )
         }
         if (sugg.isNotEmpty()) {
             Surface(shape = RadiusSm, color = p.surface, border = BorderStroke(1.dp, p.rule), shadowElevation = 4.dp) {
                 Column {
                     sugg.forEachIndexed { i, sg ->
                         if (i > 0) RowDivider()
-                        Row(
-                            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { add(sg) }.padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(sg.name, style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
-                            Text(sg.category, style = MaterialTheme.typography.bodySmall, color = p.inkSoft)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button) { add(sg) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(sg.name, style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
+                                Text(sg.category, style = MaterialTheme.typography.bodySmall, color = p.inkSoft)
+                            }
+                            if (sg.learned) {
+                                Box(
+                                    Modifier.size(48.dp).clickable(role = Role.Button, onClickLabel = ShopText.forget(sg.name)) {
+                                        scope.launch { if (model.forget(sg)) sugg = sugg - sg }
+                                    }.semantics { contentDescription = ShopText.forget(sg.name) },
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("×", style = MaterialTheme.typography.titleLarge, color = p.inkSoft) }
+                            }
                         }
                     }
                 }
@@ -325,6 +341,90 @@ private fun AddItem(model: ShoppingModel) {
         }
         // Below the suggestions, so they sit right under the field and above the keyboard.
         PrimaryButton(ShopText.ADD_BUTTON, { add(null) }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && !busy)
+    }
+}
+
+/** One tap on a number puts the item on the list; a new name also gets its section here. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AmountSheet(pick: Pick, onClose: () -> Unit, onAdd: (String, String) -> Unit) {
+    val p = LocalPalette.current
+    var category by rememberSaveable(pick) { mutableStateOf(pick.category) }
+    var other by rememberSaveable(pick) { mutableStateOf("") }
+    Sheet(pick.name, onClose) {
+        if (!pick.known) {
+            Text(ShopText.SECTION_FOR, style = MaterialTheme.typography.labelLarge, color = p.inkSoft)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (c in CATEGORIES) {
+                    val on = c == category
+                    Box(
+                        Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(if (on) p.field else p.surface)
+                            .border(if (on) 2.dp else 1.dp, if (on) p.primary else p.rule, RoundedCornerShape(50))
+                            .selectable(selected = on, role = Role.RadioButton) { category = c }.padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(c, style = MaterialTheme.typography.bodyMedium, color = p.ink) }
+                }
+            }
+        }
+        Text(ShopText.HOW_MANY, style = MaterialTheme.typography.labelLarge, color = p.inkSoft)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (n in 1..5) {
+                Box(
+                    Modifier.weight(1f).heightIn(min = 56.dp).clip(RadiusSm).background(p.surface).border(1.5.dp, p.rule, RadiusSm)
+                        .clickable(role = Role.Button) { onAdd(n.toString(), category) },
+                    contentAlignment = Alignment.Center,
+                ) { Text(n.toString(), style = MaterialTheme.typography.headlineSmall, color = p.ink) }
+            }
+        }
+        OutlinedTextField(
+            other, { other = it.take(30) }, Modifier.fillMaxWidth(), label = { Text(ShopText.OTHER_AMOUNT) }, singleLine = true, colors = fieldColors(),
+            placeholder = { Text(ShopText.OTHER_AMOUNT_HINT) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (other.isNotBlank()) onAdd(other.trim(), category) }),
+        )
+        PrimaryButton(ShopText.ADD_BUTTON, { onAdd(other.trim(), category) }, Modifier.fillMaxWidth(), enabled = other.isNotBlank())
+        GhostButton(ShopText.CANCEL, onClose, Modifier.fillMaxWidth())
+    }
+}
+
+/** What the family typed in themselves: move it to its section for good, or forget a misspelling. */
+@Composable
+private fun LearnedSheet(model: ShoppingModel, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    val scope = rememberCoroutineScope()
+    var rows by remember { mutableStateOf<List<app.stellwall.api.LearnedEntry>?>(null) }
+    var menu by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { rows = model.learned() }
+    Sheet(ShopText.LEARNED, onClose) {
+        Text(ShopText.LEARNED_LEAD, style = MaterialTheme.typography.bodyMedium, color = p.inkSoft)
+        val list = rows
+        if (list != null && list.isEmpty()) Text(ShopText.LEARNED_EMPTY, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
+        list?.forEach { r ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(r.name, style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
+                Box {
+                    Box(
+                        Modifier.heightIn(min = 44.dp).clip(RadiusSm).border(1.dp, p.rule, RadiusSm)
+                            .clickable(role = Role.DropdownList, onClickLabel = ShopText.sectionOf(r.name)) { menu = r.name }.padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(r.category + " ▾", style = MaterialTheme.typography.bodyMedium, color = p.ink) }
+                    DropdownMenu(expanded = menu == r.name, onDismissRequest = { menu = null }, containerColor = p.surface) {
+                        for (c in CATEGORIES) DropdownMenuItem(text = { Text(c, color = p.ink) }, onClick = {
+                            menu = null
+                            rows = rows?.map { if (it.name == r.name) it.copy(category = c) else it }
+                            scope.launch { model.moveLearned(r.name, c) }
+                        })
+                    }
+                }
+                Box(
+                    Modifier.size(48.dp).clickable(role = Role.Button, onClickLabel = ShopText.forget(r.name)) {
+                        scope.launch { if (model.forgetLearned(r.name)) rows = rows?.filter { it.name != r.name } }
+                    }.semantics { contentDescription = ShopText.forget(r.name) },
+                    contentAlignment = Alignment.Center,
+                ) { Text("×", style = MaterialTheme.typography.titleLarge, color = p.inkSoft) }
+            }
+        }
+        GhostButton(ShopText.LEARNED_DONE, onClose, Modifier.fillMaxWidth())
     }
 }
 

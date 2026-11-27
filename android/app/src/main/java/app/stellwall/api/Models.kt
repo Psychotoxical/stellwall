@@ -44,8 +44,19 @@ data class Item(
     val checkedBy: String?,
 )
 
+/** learned: typed in by the family, so it can be forgotten again. */
 @Serializable
-data class Suggestion(val name: String, val category: String)
+data class Suggestion(val name: String, val category: String, val learned: Boolean = false)
+
+/** The section a name would get; known: the catalog or the family has it, so nobody has to choose. */
+@Serializable
+data class CatalogGuess(val name: String, val category: String, val known: Boolean)
+
+@Serializable
+data class LearnedEntry(val name: String, val category: String)
+
+@Serializable
+internal data class LearnedChange(val name: String, val category: String)
 
 /** Only the fields that are set are sent. */
 @Serializable

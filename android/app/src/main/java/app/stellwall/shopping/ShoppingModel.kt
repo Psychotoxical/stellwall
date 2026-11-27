@@ -4,6 +4,7 @@ import app.stellwall.api.quietly
 import app.stellwall.api.BoardRow
 import app.stellwall.api.CATEGORIES
 import app.stellwall.api.Item
+import app.stellwall.api.LearnedEntry
 import app.stellwall.api.ItemChange
 import app.stellwall.api.LiveEvent
 import app.stellwall.api.Member
@@ -16,6 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 data class Group(val category: String, val items: List<Item>)
+
+/** What the amount sheet is about; known false: the section still has to be chosen. */
+data class Pick(val name: String, val category: String, val known: Boolean)
 
 data class ShoppingState(
     val loaded: Boolean = false,
@@ -77,13 +81,29 @@ class ShoppingModel(private val api: ShoppingApi, val me: Member) {
         quietly { api.boardSeen() }
     }
 
-    /** False when there was nothing to add or it failed. */
-    suspend fun add(name: String, quantity: String, picked: Suggestion? = null): Boolean {
-        val n = (picked?.name ?: name).trim()
-        val list = _state.value.list ?: return false
-        if (n.isEmpty()) return false
-        return guard { api.addItem(list.id, n, quantity.trim(), picked?.category); refresh() }
+    /** A suggestion knows its section; a typed name asks the server what it would get. Null: nothing to add. */
+    suspend fun pick(name: String, picked: Suggestion?, shown: List<Suggestion>): Pick? {
+        if (picked != null) return Pick(picked.name, picked.category, true)
+        val n = name.trim()
+        if (n.isEmpty()) return null
+        shown.firstOrNull { it.name.equals(n, ignoreCase = true) }?.let { return Pick(it.name, it.category, true) }
+        val g = quietly { api.guess(n) } ?: return Pick(n, CATEGORIES.last(), false)
+        return Pick(g.name, g.category, g.known)
     }
+
+    /** False when it failed. */
+    suspend fun add(pick: Pick, quantity: String, category: String): Boolean {
+        val list = _state.value.list ?: return false
+        return guard { api.addItem(list.id, pick.name, quantity.trim(), category); refresh() }
+    }
+
+    suspend fun forget(s: Suggestion) = guard { api.forgetLearned(s.name) }
+
+    suspend fun learned(): List<LearnedEntry> = quietly { api.learned() } ?: emptyList()
+
+    suspend fun moveLearned(name: String, category: String) = guard { api.moveLearned(name, category) }
+
+    suspend fun forgetLearned(name: String) = guard { api.forgetLearned(name) }
 
     /** Shown at once; goes back if the server says no. */
     suspend fun toggle(item: Item) {

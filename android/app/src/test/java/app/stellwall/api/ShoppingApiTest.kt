@@ -67,6 +67,36 @@ class ShoppingApiTest {
         assertEquals(Suggestion("Milch", "Kühlregal"), s.first())
     }
 
+    @Test fun `learned suggestions are marked, a guess says whether the name is known`() = runTest {
+        server.enqueue(Contract.response("suggestions-learned"))
+        val s = api().suggestions("schinken")
+        assertEquals(Suggestion("Schinkenwurst", "Sonstiges", learned = true), s.first())
+        assertEquals(false, s[1].learned)
+        server.takeRequest()
+        server.enqueue(Contract.response("catalog-guess"))
+        assertEquals(CatalogGuess("Zwiebeln", "Obst & Gemüse", true), api().guess("Zwiebel(n)"))
+        assertEquals("Zwiebel(n)", server.takeRequest().url.queryParameter("name"))
+        server.enqueue(Contract.response("catalog-guess-unknown"))
+        assertEquals(false, api().guess("Kaffeefilter Größe 4").known)
+        server.takeRequest()
+    }
+
+    @Test fun `learned suggestions are listed, moved and forgotten`() = runTest {
+        server.enqueue(Contract.response("catalog-learned"))
+        assertEquals(listOf(LearnedEntry("Schinkenwurst", "Sonstiges")), api().learned())
+        server.takeRequest()
+        server.enqueue(Contract.response("catalog-learned-moved"))
+        api().moveLearned("Schinkenwurst", "Fleisch & Fisch")
+        val moved = server.takeRequest()
+        assertEquals("PATCH", moved.method)
+        assertEquals("""{"name":"Schinkenwurst","category":"Fleisch & Fisch"}""", moved.body?.utf8())
+        server.enqueue(Contract.response("catalog-learned-forgotten"))
+        api().forgetLearned("Schinkenwurst")
+        val gone = server.takeRequest()
+        assertEquals("DELETE", gone.method)
+        assertEquals("Schinkenwurst", gone.url.queryParameter("name"))
+    }
+
     @Test fun `the board reads all three kinds, newest first`() = runTest {
         server.enqueue(Contract.response("board"))
         val rows = api().board()

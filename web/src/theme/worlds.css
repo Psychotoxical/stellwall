@@ -421,10 +421,10 @@
 }
 
 :root[data-world="psysonic"] {
-  --ground: #e6e9ef;
-  --surface: #eff1f5;
-  --field: #dce0e8;
-  --rule: #bcc0cc;
+  --ground: #eff1f5;
+  --surface: #f9fafc;
+  --field: #e6e9ef;
+  --rule: #ccd0da;
   --ink: #4c4f69;
   --ink-soft: #5c5f77;
   --board: #1e1e2e;

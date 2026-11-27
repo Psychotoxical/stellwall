@@ -8,7 +8,8 @@ VIVID = {"pink"}
 FIXED = {
     "psysonic": {
         "light": {
-            "ground": "#e6e9ef", "surface": "#eff1f5", "field": "#dce0e8", "rule": "#bcc0cc",
+            # Base as the ground keeps Latte's text above 7:1; cards a touch lighter than Base.
+            "ground": "#eff1f5", "surface": "#f9fafc", "field": "#e6e9ef", "rule": "#ccd0da",
             "ink": "#4c4f69", "ink-soft": "#5c5f77",
             "board": "#1e1e2e", "board-ink": "#cdd6f4", "board-soft": "#a6adc8", "board-rule": "#45475a",
             "change": "#df8e1d", "change-soft": "#f6e6c8", "change-ink": "#4c4f69",
