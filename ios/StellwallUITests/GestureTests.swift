@@ -6,7 +6,7 @@ final class GestureTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-shopping"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Milch"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Milch bearbeiten"].waitForExistence(timeout: 10))
         return app
     }
 
@@ -29,14 +29,36 @@ final class GestureTests: XCTestCase {
         app.buttons["Milch bearbeiten"].tap()
         let title = app.staticTexts["Eintrag bearbeiten"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
-        title.swipeDown(velocity: .fast)
+        let window = app.windows.firstMatch
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)), withVelocity: .fast, thenHoldForDuration: 0)
         expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: title)
+        waitForExpectations(timeout: 5)
+    }
+
+    /** People grab the window where it is: often on a text field. */
+    func testTheEditWindowCanBeSwipedAwayStartingOnATextField() {
+        let app = launch()
+        app.buttons["Milch bearbeiten"].tap()
+        let title = app.staticTexts["Eintrag bearbeiten"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        let window = app.windows.firstMatch
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)), withVelocity: .fast, thenHoldForDuration: 0)
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: title)
+        waitForExpectations(timeout: 5)
+    }
+
+    func testARowSwipedLeftIsDeleted() {
+        let app = launch()
+        app.buttons["Milch bearbeiten"].swipeLeft(velocity: .fast)
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Milch bearbeiten"])
         waitForExpectations(timeout: 5)
     }
 
     func testARowSwipedRightIsTickedOff() {
         let app = launch()
-        app.staticTexts["Bananen"].swipeRight(velocity: .fast)
+        app.buttons["Bananen bearbeiten"].swipeRight(velocity: .fast)
         XCTAssertTrue(app.buttons["Bananen wieder offen"].waitForExistence(timeout: 5))
     }
 }
