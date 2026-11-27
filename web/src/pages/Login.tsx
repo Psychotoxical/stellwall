@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { keepSignInPassword } from "../signInPassword.ts";
 import { useNavigate } from "react-router";
 import type { MemberDto } from "@stellwall/shared";
 import { ApiError, api } from "../api.ts";
@@ -20,7 +21,10 @@ export function Login() {
     setBusy(true);
     setError(null);
     try {
-      setMe(await api<MemberDto>("/api/auth/login", { method: "POST", body: { username, password } }));
+      const me = await api<MemberDto>("/api/auth/login", { method: "POST", body: { username, password } });
+      // Someone with a password from the administration picks an own one next; that page uses this one.
+      if (me.mustChangePassword) keepSignInPassword(password);
+      setMe(me);
       nav("/", { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === "locked" && typeof err.data.until === "string") {
