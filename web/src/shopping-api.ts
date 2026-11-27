@@ -28,7 +28,8 @@ export type TodoRule = {
   id: string; title: string; visibility: Visibility; createdBy: string; assignees: string[]; startDate: string | null;
   time: string | null; recurrence: Recurrence; until: string | null; needsConfirm: boolean; reminders: number[];
 };
-export type Suggestion = { name: string; category: string };
+/** learned: typed in by the family, so it can be forgotten again. */
+export type Suggestion = { name: string; category: string; learned?: boolean };
 
 export const useLists = () => useQuery({ queryKey: ["lists"], queryFn: () => api<ListDto[]>("/api/lists") });
 export const useItems = (listId: string | undefined) =>
