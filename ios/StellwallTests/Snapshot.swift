@@ -9,6 +9,9 @@ import XCTest
  */
 @MainActor
 func snap<V: View>(_ view: V, world: String = "flieder", dark: Bool = false, text: UIContentSizeCategory = .large, named name: String, file: StaticString = #filePath, testName: String = #function, line: UInt = #line) {
+    // The fonts size themselves from the phone's text size; the picture's size is handed to them directly.
+    Fonts.textSize = text == .large ? nil : text
+    defer { Fonts.textSize = nil }
     let host = UIHostingController(rootView: view.themed(world: world, dark: dark))
     host.overrideUserInterfaceStyle = dark ? .dark : .light
     assertSnapshot(
