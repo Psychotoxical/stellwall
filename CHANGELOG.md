@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- A new colour world "Pink": a candy pink ground with berry buttons, light and dark.
+
 ### Changed
 
 - The image check for text recognition leaves more margin around its test page.

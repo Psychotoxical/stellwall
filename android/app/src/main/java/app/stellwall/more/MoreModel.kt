@@ -21,7 +21,7 @@ object MoreText {
     const val COLOR_HINT = "Deine Kennfarbe: daran erkennen dich die anderen, zum Beispiel im Kalender."
     const val WORLD = "Deine Farbwelt"
     const val WORLD_HINT = "Die App nimmt deine Farbe an, auf allen deinen Geräten."
-    val WORLDS = listOf("salbei" to "Salbei", "flieder" to "Flieder", "pfirsich" to "Pfirsich", "himmel" to "Himmel", "rose" to "Rosé", "sonne" to "Sonne")
+    val WORLDS = listOf("salbei" to "Salbei", "flieder" to "Flieder", "pfirsich" to "Pfirsich", "himmel" to "Himmel", "rose" to "Rosé", "sonne" to "Sonne", "pink" to "Pink")
     val COLORS = listOf("person-mint", "person-lilac", "person-peach", "person-sky")
     const val THEME = "Darstellung"
     const val THEME_HINT = "Gilt für dieses Gerät."
