@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-27
+
 ### Added
 
 - Shopping lists can be emptied at once ("Liste leeren"); the list itself stays.
