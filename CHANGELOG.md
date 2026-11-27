@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Changed
+
+- The image check for text recognition leaves more margin around its test page.
+
 ## [0.1.10] - 2026-11-27
 
 ### Added
