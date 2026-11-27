@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import Stellwall
 
 let alexMember = Member(id: "me", username: "alex", displayName: "Alex", role: "admin", color: "person-mint", world: "salbei")

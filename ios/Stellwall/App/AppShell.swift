@@ -14,6 +14,8 @@ struct AppShell: View {
     @State private var documents = false
     @State private var start: StartModel
     @State private var shopping: ShoppingModel
+    @State private var calendar: CalendarModel
+    @State private var birthdays: BirthdaysModel
     @Environment(\.scenePhase) private var phase
     @Environment(\.palette) private var p
 
@@ -25,6 +27,8 @@ struct AppShell: View {
         self.onSignOut = onSignOut
         _start = State(initialValue: StartModel(board: { try await api.board() }))
         _shopping = State(initialValue: ShoppingModel(api: api, me: me))
+        _calendar = State(initialValue: CalendarModel(api: api, me: me))
+        _birthdays = State(initialValue: BirthdaysModel(api: api, me: me))
     }
 
     func go(_ t: Target) {
@@ -50,6 +54,7 @@ struct AppShell: View {
             for await e in api.live() {
                 await start.onLive(e)
                 await shopping.onLive(e)
+                await calendar.onLive(e)
             }
         }
         .onChange(of: tab) { old, _ in if old == .einkauf { Task { await shopping.leave() } } }
@@ -64,6 +69,9 @@ struct AppShell: View {
                 StartView(member: me, model: start, onMore: { more = true }, banner: { EmptyView() }, mine: { EmptyView() }) { go($0) }
             case .einkauf:
                 ShoppingView(model: shopping, listId: listId)
+            case .kalender:
+                CalendarView(model: calendar, birthdays: birthdays, startDate: target?.date.map { Day($0) }, openBirthdays: target?.birthdays == true)
+                    .id(target.map { "\($0.date?.timeIntervalSince1970 ?? 0)\($0.birthdays)" } ?? "")
             default:
                 VStack(alignment: .leading) {
                     Wordmark()
