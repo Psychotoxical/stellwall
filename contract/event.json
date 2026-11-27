@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "Training",
+    "location": "",
+    "notes": "",
+    "allDay": false,
+    "start": "2026-12-01T17:00:00.000Z",
+    "end": "2026-12-01T18:30:00.000Z",
+    "startDate": "2026-12-01",
+    "endDate": "2026-12-01",
+    "rrule": "FREQ=WEEKLY;BYDAY=TU",
+    "forWhom": [
+      "00000000-0000-4000-8000-000000000002"
+    ],
+    "seeAll": false,
+    "createdBy": "00000000-0000-4000-8000-000000000003",
+    "reminders": [],
+    "imported": false
+  }
+}

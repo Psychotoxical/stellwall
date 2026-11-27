@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "Blumen gießen",
+    "visibility": {
+      "everyone": true,
+      "memberIds": []
+    },
+    "createdBy": "00000000-0000-4000-8000-000000000002",
+    "assignees": [
+      "00000000-0000-4000-8000-000000000003"
+    ],
+    "startDate": "2026-11-20",
+    "time": "08:00",
+    "recurrence": {
+      "kind": "daily"
+    },
+    "until": null,
+    "needsConfirm": true,
+    "reminders": []
+  }
+}

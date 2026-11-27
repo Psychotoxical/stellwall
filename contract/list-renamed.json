@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "name": "Wocheneinkauf",
+    "visibility": {
+      "everyone": true,
+      "memberIds": []
+    },
+    "createdBy": "00000000-0000-4000-8000-000000000002",
+    "openCount": 1
+  }
+}

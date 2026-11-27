@@ -11,12 +11,14 @@ export const testConfig: Config = {
   cookieSecure: false,
   webDir: null,
   timeZone: "Europe/Berlin",
+  appDir: null,
+  firebaseAccountFile: null,
 };
 
-export async function createTestApp(opts: { client?: PGlite; now?: () => Date; mealieTimeoutMs?: number | undefined; pushSender?: PushSender } = {}) {
+export async function createTestApp(opts: { client?: PGlite; now?: () => Date; mealieTimeoutMs?: number | undefined; pushSender?: PushSender; config?: Config } = {}) {
   const client = opts.client ?? new PGlite();
   const database: Database = await openPglite(client);
   await database.migrate();
-  const app = await buildApp({ config: testConfig, db: database.db, now: opts.now, mealieTimeoutMs: opts.mealieTimeoutMs, pushSender: opts.pushSender ?? (async () => ({ gone: false })), timers: false });
+  const app = await buildApp({ config: opts.config ?? testConfig, db: database.db, now: opts.now, mealieTimeoutMs: opts.mealieTimeoutMs, pushSender: opts.pushSender ?? (async () => ({ gone: false })), timers: false });
   return { app, db: database.db, client };
 }

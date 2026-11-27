@@ -5,6 +5,7 @@ import type { Db } from "../db/client.ts";
 import { notificationPrefs, pushSubscriptions } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
 import { KINDS, vapidKeys, type PushSender } from "./outbox.ts";
+import { FCM_PREFIX } from "./fcm.ts";
 
 /** The browsers' push services; nothing else gets the server to send anywhere. */
 const PUSH_HOSTS = /^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|([a-z0-9-]+\.)*push\.apple\.com|([a-z0-9-]+\.)*notify\.windows\.com)$/;
@@ -14,6 +15,8 @@ const subBody = z.object({
   keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
   label: z.string().trim().max(60).default(""),
 });
+/** An Android phone's FCM registration token (Google's tokens are a few hundred characters). */
+const fcmBody = z.object({ token: z.string().regex(/^[A-Za-z0-9_:-]{20,4096}$/), label: z.string().trim().max(60).default("") });
 const prefsBody = z.strictObject(Object.fromEntries(KINDS.map((k) => [k, z.boolean().optional()])) as Record<(typeof KINDS)[number], z.ZodOptional<z.ZodBoolean>>);
 const idParam = z.object({ id: z.uuid() });
 
@@ -33,6 +36,14 @@ export async function pushRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const values = { memberId: req.member!.id, p256dh: b.data.keys.p256dh, auth: b.data.keys.auth, label: b.data.label, createdAt: now() };
     // The same device signed in as someone else now belongs to that person.
     const [row] = await db.insert(pushSubscriptions).values({ endpoint: b.data.endpoint, ...values }).onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: values }).returning();
+    return { id: row!.id };
+  });
+
+  app.post("/api/push/fcm", { preHandler: requireMember }, async (req, reply) => {
+    const b = fcmBody.safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: "invalid_input" });
+    const values = { memberId: req.member!.id, p256dh: "", auth: "", label: b.data.label, createdAt: now() };
+    const [row] = await db.insert(pushSubscriptions).values({ endpoint: FCM_PREFIX + b.data.token, ...values }).onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: values }).returning();
     return { id: row!.id };
   });
 
@@ -62,12 +73,12 @@ export async function pushRoutes(app: FastifyInstance, opts: { db: Db; now: () =
 
   app.post("/api/push/test", { preHandler: requireMember }, async (req) => {
     const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.memberId, req.member!.id));
-    const payload = JSON.stringify({ title: "Stellwall", body: "Stellwall kann dir jetzt Bescheid geben.", url: "/mehr" });
+    const payload = JSON.stringify({ title: "Stellwall", body: "Stellwall kann dir jetzt Bescheid geben.", url: "/mehr", kind: "test" });
     let devices = 0;
     for (const s of subs) {
       const r = await sender(s, payload).catch(() => ({ gone: false }));
       if (r.gone) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));
-      else devices++;
+      else if (!("skipped" in r && r.skipped)) devices++;
     }
     return { devices };
   });

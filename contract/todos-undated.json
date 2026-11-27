@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Fahrrad reparieren",
+      "date": null,
+      "at": null,
+      "overdue": false,
+      "done": null,
+      "assignees": [],
+      "needsConfirm": false,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000002"
+    }
+  ]
+}

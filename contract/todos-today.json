@@ -1,0 +1,19 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "todoId": "00000000-0000-4000-8000-000000000001",
+      "title": "Blumen gießen",
+      "date": "2026-11-27",
+      "at": "2026-11-27T07:00:00.000Z",
+      "overdue": false,
+      "done": null,
+      "assignees": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "needsConfirm": true,
+      "everyone": true,
+      "createdBy": "00000000-0000-4000-8000-000000000003"
+    }
+  ]
+}

@@ -11,6 +11,10 @@ services:
       DATABASE_URL: postgres://stellwall:${POSTGRES_PASSWORD}@db:5432/stellwall
       PUBLIC_URL: ${PUBLIC_URL}
       TZ: ${TZ:-Europe/Berlin}
+      # Notifications to Android phones: the Firebase service account file in ./secrets.
+      FIREBASE_ACCOUNT_FILE: ${FIREBASE_ACCOUNT_FILE:-}
+    volumes:
+      - ./secrets:/run/stellwall:ro
     ports:
       - "127.0.0.1:8470:8080"
 

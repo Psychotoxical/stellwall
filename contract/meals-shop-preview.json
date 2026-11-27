@@ -1,0 +1,32 @@
+{
+  "status": 200,
+  "body": {
+    "listId": "00000000-0000-4000-8000-000000000001",
+    "listName": "Wocheneinkauf",
+    "special": [
+      {
+        "food": "Paprika",
+        "quantity": "1×",
+        "display": "1"
+      }
+    ],
+    "pantry": [
+      {
+        "food": "Reis",
+        "quantity": "100 g",
+        "display": "100 g"
+      },
+      {
+        "food": "Öl",
+        "quantity": "0,75 EL",
+        "display": "¾ EL"
+      },
+      {
+        "food": "Salz",
+        "quantity": "",
+        "display": ""
+      }
+    ],
+    "missing": []
+  }
+}

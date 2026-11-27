@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "Zahnarzt",
+    "location": "Praxis",
+    "notes": "Karte mitnehmen",
+    "allDay": false,
+    "start": "2026-12-02T14:30:00.000Z",
+    "end": "2026-12-02T15:30:00.000Z",
+    "startDate": "2026-12-02",
+    "endDate": "2026-12-02",
+    "rrule": null,
+    "forWhom": [
+      "00000000-0000-4000-8000-000000000002",
+      "00000000-0000-4000-8000-000000000003"
+    ],
+    "seeAll": false,
+    "createdBy": "00000000-0000-4000-8000-000000000002",
+    "reminders": [
+      60
+    ],
+    "imported": false
+  }
+}

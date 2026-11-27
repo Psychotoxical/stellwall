@@ -11,7 +11,8 @@ import { todoVisibleTo } from "../todos/routes.ts";
 export const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Ref = { type: "event" | "list" | "todo" | "birthday" | "meal" | "test"; id: string };
-export type PushSender = (sub: { endpoint: string; p256dh: string; auth: string }, payload: string) => Promise<{ gone: boolean }>;
+/** gone: the device will never get anything again; skipped: this server cannot reach such devices. */
+export type PushSender = (sub: { endpoint: string; p256dh: string; auth: string }, payload: string) => Promise<{ gone: boolean; skipped?: boolean }>;
 
 type Entry = {
   memberIds: string[];
@@ -142,7 +143,7 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
         if (!(await wanted([n.memberId], null, n.kind as Kind)).length) continue;
         if (!(await stillVisible(n.memberId, { type: n.refType as Ref["type"], id: n.refId }))) continue;
         const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.memberId, n.memberId));
-        const payload = JSON.stringify({ title: n.title, body: n.body, url: n.url });
+        const payload = JSON.stringify({ title: n.title, body: n.body, url: n.url, kind: n.kind });
         for (const s of subs) {
           const r = await sender(s, payload).catch(() => ({ gone: false }));
           if (r.gone) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));

@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "name": "Müll rausbringen"
+    },
+    {
+      "name": "Mülleimer leeren"
+    },
+    {
+      "name": "Mülleimer sauber machen"
+    },
+    {
+      "name": "Mülltonnen reinholen"
+    },
+    {
+      "name": "Biomüll rausbringen"
+    },
+    {
+      "name": "Papiermüll rausbringen"
+    }
+  ]
+}

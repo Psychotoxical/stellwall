@@ -1,11 +1,17 @@
 import { Link } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api.ts";
 import { Icon } from "../icons.ts";
 import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
 import { Header } from "./Home.tsx";
 
+type AppInfo = { fcm: boolean; android: { versionCode: number; versionName: string } | null };
+
 export function More() {
   const me = useMe().data!;
+  // The Android app for a first install; after that it updates itself.
+  const app = useQuery({ queryKey: ["app-info"], queryFn: () => api<AppInfo>("/api/app/info"), retry: false }).data;
   return (
     <>
       <Header title={de.nav.mehr} />
@@ -42,6 +48,13 @@ export function More() {
       </div>
       <div className="sechead"><h2>Über Stellwall</h2></div>
       <p className="lead">{de.about.version(__APP_VERSION__)}</p>
+      {app?.android && (
+        <p className="lead">
+          <a href="/api/app/android" download>{de.about.android(app.android.versionName)}</a>
+          <br />
+          <small>{de.about.androidHint}</small>
+        </p>
+      )}
       <p className="lead">
         Icons: Solar von 480 Design, Lizenz{" "}
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.

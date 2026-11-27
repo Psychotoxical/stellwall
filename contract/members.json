@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "username": "alex",
+      "displayName": "Alex",
+      "role": "admin",
+      "color": "person-mint",
+      "world": "salbei"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "username": "sam",
+      "displayName": "Sam",
+      "role": "member",
+      "color": "person-lilac",
+      "world": "flieder"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "username": "kim",
+      "displayName": "Kim",
+      "role": "member",
+      "color": "person-lilac",
+      "world": "flieder"
+    }
+  ]
+}

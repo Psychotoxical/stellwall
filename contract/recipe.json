@@ -1,0 +1,40 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "slug": "gemuese-pfanne",
+    "name": "Gemüsepfanne",
+    "servings": 4,
+    "hasImage": true,
+    "ingredients": [
+      {
+        "quantity": 200,
+        "unit": "g",
+        "food": "Reis",
+        "note": ""
+      },
+      {
+        "quantity": 1.5,
+        "unit": "EL",
+        "food": "Öl",
+        "note": ""
+      },
+      {
+        "quantity": 2,
+        "unit": null,
+        "food": "Paprika",
+        "note": "in Streifen"
+      },
+      {
+        "quantity": null,
+        "unit": null,
+        "food": "Salz",
+        "note": ""
+      }
+    ],
+    "steps": [
+      "Reis kochen.",
+      "Gemüse anbraten und würzen."
+    ]
+  }
+}

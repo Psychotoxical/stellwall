@@ -5,6 +5,10 @@ export type Config = {
   cookieSecure: boolean;
   webDir: string | null;
   timeZone: string;
+  /** Folder with the Android app (stellwall.apk, android.json) the phones update from. */
+  appDir: string | null;
+  /** Firebase service account JSON for sending to Android phones; without it they get nothing. */
+  firebaseAccountFile: string | null;
 };
 
 function required(env: Record<string, string | undefined>, name: string): string {
@@ -21,5 +25,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     cookieSecure: env.COOKIE_SECURE !== "false",
     webDir: env.WEB_DIR ?? null,
     timeZone: env.TZ || "Europe/Berlin",
+    appDir: env.APP_DIR ?? null,
+    firebaseAccountFile: env.FIREBASE_ACCOUNT_FILE ?? null,
   };
 }

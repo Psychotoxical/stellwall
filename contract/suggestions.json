@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "name": "Milch",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Milch Barista",
+      "category": "Getränke"
+    },
+    {
+      "name": "Milchbrötchen",
+      "category": "Backwaren"
+    },
+    {
+      "name": "Milchkaffee gekühlt",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Milchreis",
+      "category": "Vorrat"
+    },
+    {
+      "name": "Milchreis fertig",
+      "category": "Kühlregal"
+    }
+  ]
+}
