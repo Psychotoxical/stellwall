@@ -43,6 +43,13 @@ final class PicturesTests: XCTestCase {
         snap(CalendarView(model: m, birthdays: BirthdaysModel(api: FakeCalendar(), me: alexMember)), world: "himmel", named: "month")
     }
 
+    /** Large text, as on Frank's iPhone: chips move on to the next line and "ganztägig" stays whole. */
+    func testTheCalendarWithLargeText() async {
+        let m = CalendarModel(api: FakeCalendar(), me: alexMember, zone: TimeZone(identifier: "Europe/Berlin")!, today: { Day(2026, 12, 2) }, now: { Day(2026, 12, 2).at(Clock(10, 0)) })
+        await m.setView(.upcoming)
+        snap(CalendarView(model: m, birthdays: BirthdaysModel(api: FakeCalendar(), me: alexMember)), world: "pink", text: .extraExtraLarge, named: "upcoming-large-text")
+    }
+
     func testToDosForToday() async {
         let m = TodosModel(api: FakeTodos(), me: alexMember)
         await m.load()

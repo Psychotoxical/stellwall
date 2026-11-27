@@ -14,13 +14,12 @@ struct TodosView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 PageHead(title: TodoText.title, sub: TodoText.page)
-                HStack(spacing: 8) {
+                WrapLayout(spacing: 8) {
                     ForEach(TodoView.allCases, id: \.self) { v in Chip(text: v.label, on: model.view == v) { Task { await model.setView(v) } } }
                 }
-                HStack(spacing: 8) {
+                WrapLayout(spacing: 8) {
                     Chip(text: TodoText.mine, on: model.mine) { Task { await model.setMine(true) } }
                     Chip(text: TodoText.all, on: !model.mine) { Task { await model.setMine(false) } }
-                    Spacer()
                 }
                 PrimaryButton(TodoText.new) { form = TodoFormItem(rule: nil) }
                 if let e = model.error { Notice(e) }
@@ -128,7 +127,7 @@ private struct TodoSheet: View {
             Text(TodoText.repeat).font(.swSmall).foregroundStyle(p.inkSoft.color)
             Picker(TodoText.repeat, selection: $d.repeat) { ForEach(TodoText.repeats, id: \.0) { Text($0.1).tag($0.0) } }.pickerStyle(.menu).tint(p.ink.color)
             if d.repeat == "weekly" {
-                HStack(spacing: 6) {
+                WrapLayout(spacing: 8) {
                     ForEach(1...7, id: \.self) { w in
                         Chip(text: TodoText.weekdays[w - 1], on: d.weekdays.contains(w)) { if d.weekdays.contains(w) { d.weekdays.remove(w) } else { d.weekdays.insert(w) } }
                     }
@@ -146,7 +145,7 @@ private struct TodoSheet: View {
             }
             if d.startDate != nil {
                 Text(TodoText.reminders).font(.swSmall).foregroundStyle(p.inkSoft.color)
-                HStack(spacing: 8) {
+                WrapLayout(spacing: 8) {
                     ForEach(TodoText.reminderChips, id: \.0) { m, label in
                         Chip(text: label, on: d.reminders.contains(m)) { d.reminders = d.reminders.contains(m) ? d.reminders.filter { $0 != m } : (d.reminders + [m]).sorted(by: >) }
                     }
