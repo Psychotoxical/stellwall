@@ -94,6 +94,8 @@ enum ThemeChoice: String, CaseIterable {
 struct Themed: ViewModifier {
     let world: String
     let dark: Bool
+    /** Set when the person chose light or dark; nil follows the system. */
+    let scheme: ColorScheme?
 
     func body(content: Content) -> some View {
         let p = Palette.of(world: world, dark: dark)
@@ -101,10 +103,14 @@ struct Themed: ViewModifier {
             .environment(\.palette, p)
             .tint(p.primary.color)
             .foregroundStyle(p.ink.color)
-            .preferredColorScheme(dark ? .dark : .light)
+            .preferredColorScheme(scheme)
     }
 }
 
 extension View {
-    func themed(world: String, dark: Bool) -> some View { modifier(Themed(world: world, dark: dark)) }
+    func themed(world: String, dark: Bool) -> some View { modifier(Themed(world: world, dark: dark, scheme: dark ? .dark : .light)) }
+    func themed(world: String, choice: ThemeChoice, system: ColorScheme) -> some View {
+        let forced: ColorScheme? = choice == .system ? nil : (choice == .dark ? .dark : .light)
+        return modifier(Themed(world: world, dark: choice.isDark(system: system == .dark), scheme: forced))
+    }
 }
