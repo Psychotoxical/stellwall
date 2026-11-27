@@ -6,6 +6,7 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Added
 
+- Android app: pull a page down to load it again; swipe a shopping row right to tick it off and left to delete it, a to-do right to tick it off; a long press on a shopping row offers the same and editing.
 - iPhone app: swipe from the left edge to go back; pull a page down to load it again; swipe a row right to tick it off and left to delete it (shopping, to-dos, meal plan); a long press on a row offers the same; tapping the open tab again starts it afresh at the top; light taps when ticking, adding and deleting; small windows open at half height.
 
 ## [0.1.14] - 2026-11-27

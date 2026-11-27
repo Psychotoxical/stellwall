@@ -25,6 +25,8 @@ object ShopText {
     const val NAME = "Name"
     const val CATEGORY = "Bereich im Laden"
     const val DELETE_ITEM = "Eintrag löschen"
+    const val TICK = "Abhaken"
+    const val UNTICK = "Wieder offen"
     const val RENAME_LIST = "Liste umbenennen"
     const val DELETE_LIST = "Liste löschen"
     const val CLEAR_LIST = "Liste leeren"

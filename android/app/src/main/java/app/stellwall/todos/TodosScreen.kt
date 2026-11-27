@@ -74,6 +74,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import app.stellwall.ui.SwipeRow
+import app.stellwall.ui.RefreshPage
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -84,7 +86,8 @@ fun TodosScreen(model: TodosModel, live: Flow<LiveEvent> = emptyFlow()) {
     LaunchedEffect(model) { model.load() }
     LaunchedEffect(model, live) { live.collect { model.onLive(it) } }
     val p = LocalPalette.current
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
+    RefreshPage({ model.load() }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(TodoText.TITLE, TodoText.PAGE)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (v in TodoView.entries) Seg(v.label, s.view == v) { scope.launch { model.setView(v) } }
@@ -98,6 +101,7 @@ fun TodosScreen(model: TodosModel, live: Flow<LiveEvent> = emptyFlow()) {
         val list = s.list
         if (list != null && list.isEmpty()) BoxCard { Text(s.view.empty, color = p.inkSoft, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(14.dp)) }
         if (!list.isNullOrEmpty()) TodoList(list, s.members, onToggle = { scope.launch { model.toggle(it) } }, onOpen = { o -> scope.launch { model.rule(o.todoId)?.let { form = true to it } } })
+    }
     }
     form?.let { (_, rule) -> TodoSheet(model, rule, s.members) { form = null } }
 }
@@ -121,6 +125,7 @@ fun TodoList(list: List<Occurrence>, members: List<Member>, onToggle: (Occurrenc
         list.forEachIndexed { n, o ->
             if (n > 0) RowDivider()
             val done = o.done != null
+            SwipeRow(onStart = { onToggle(o) }, startLabel = if (done) TodoText.uncheck(o.title) else TodoText.check(o.title)) {
             Row(Modifier.fillMaxWidth().background(if (o.overdue) p.changeSoft else p.surface).padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button, onClick = { onOpen(o) }).padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.Center) {
                     Text(o.title, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp, textDecoration = if (done) TextDecoration.LineThrough else null), color = if (done) p.inkSoft else p.ink)
@@ -151,6 +156,7 @@ fun TodoList(list: List<Occurrence>, members: List<Member>, onToggle: (Occurrenc
                 } else {
                     Box(Modifier.size(12.dp))
                 }
+            }
             }
         }
     }

@@ -85,6 +85,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import app.stellwall.ui.RefreshPage
 
 /** Where the meal area is: the week, a recipe (with the day it is planned for), or the pantry. */
 sealed interface MealPage {
@@ -115,7 +116,8 @@ fun MealsScreen(model: MealsModel, api: MealsApi, live: Flow<LiveEvent>, onCook:
     val p = LocalPalette.current
     val today = s.today
 
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
+    RefreshPage({ model.load() }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = MealText.TITLE, sub = MealText.PAGE)
         // The week on its own line, the arrows below: also fits a small phone with large text.
         Text(s.range, style = MaterialTheme.typography.titleMedium, color = p.ink, modifier = Modifier.padding(bottom = 4.dp))
@@ -163,6 +165,7 @@ fun MealsScreen(model: MealsModel, api: MealsApi, live: Flow<LiveEvent>, onCook:
         }
         PrimaryButton(MealText.SHOP_WEEK, { shop = s.days }, Modifier.fillMaxWidth().padding(top = 14.dp))
         GhostButton(MealText.STAPLES, onPantry, Modifier.fillMaxWidth().padding(top = 8.dp))
+    }
     }
 
     edit?.let { d ->

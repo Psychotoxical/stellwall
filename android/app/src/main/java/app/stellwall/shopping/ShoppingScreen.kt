@@ -90,6 +90,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import app.stellwall.ui.SwipeRow
+import app.stellwall.ui.RefreshPage
 
 private sealed interface Open {
     data object Manage : Open
@@ -116,7 +122,8 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
     val list = s.list
     val nameOf = { id: String? -> s.members.firstOrNull { it.id == id }?.displayName ?: "?" }
 
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
+    RefreshPage({ model.load(s.list?.id ?: listId) }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = list?.name ?: ShopText.TITLE, sub = if (list != null) ShopText.TITLE else null)
         if (s.loaded && list == null) {
             s.error?.let { Notice(it) }
@@ -174,6 +181,7 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
                         item, isNew = item.id in s.unseen,
                         meta = if (item.addedBy != model.me.id) ShopText.from(nameOf(item.addedBy)) else null,
                         onToggle = { scope.launch { model.toggle(item) } }, onEdit = { open = Open.EditItem(item) },
+                        onDelete = { scope.launch { model.delete(item) } },
                     )
                 }
             }
@@ -184,10 +192,11 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
             BoxCard {
                 s.checked.forEachIndexed { i, item ->
                     if (i > 0) RowDivider()
-                    ItemRow(item, isNew = false, meta = ShopText.checkedBy(nameOf(item.checkedBy)), onToggle = { scope.launch { model.toggle(item) } }, onEdit = { open = Open.EditItem(item) })
+                    ItemRow(item, isNew = false, meta = ShopText.checkedBy(nameOf(item.checkedBy)), onToggle = { scope.launch { model.toggle(item) } }, onEdit = { open = Open.EditItem(item) }, onDelete = { scope.launch { model.delete(item) } })
                 }
             }
         }
+    }
     }
 
     val close = { open = null }
@@ -229,11 +238,27 @@ fun ShoppingScreen(model: ShoppingModel, listId: String? = null, live: Flow<Live
 }
 
 @Composable
-private fun ItemRow(item: Item, isNew: Boolean, meta: String?, onToggle: () -> Unit, onEdit: () -> Unit) {
-    val p = LocalPalette.current
+private fun ItemRow(item: Item, isNew: Boolean, meta: String?, onToggle: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val done = item.checkedAt != null
+    var menu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    SwipeRow(onStart = onToggle, startLabel = if (done) ShopText.UNTICK else ShopText.TICK, onEnd = onDelete, endLabel = ShopText.DELETE_ITEM) {
+        ItemRowBody(item, isNew, meta, done, onToggle, onEdit, onMenu = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true })
+        // A long press offers the same as the swipes, and editing.
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = LocalPalette.current.surface) {
+            DropdownMenuItem(text = { Text(if (done) ShopText.UNTICK else ShopText.TICK) }, onClick = { menu = false; onToggle() })
+            DropdownMenuItem(text = { Text(ShopText.EDIT_ITEM) }, onClick = { menu = false; onEdit() })
+            DropdownMenuItem(text = { Text(ShopText.DELETE_ITEM) }, onClick = { menu = false; onDelete() })
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ItemRowBody(item: Item, isNew: Boolean, meta: String?, done: Boolean, onToggle: () -> Unit, onEdit: () -> Unit, onMenu: () -> Unit) {
+    val p = LocalPalette.current
     Row(Modifier.fillMaxWidth().background(if (isNew) p.changeSoft else p.surface).padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f).heightIn(min = 52.dp).clickable(role = Role.Button, onClickLabel = ShopText.EDIT_ITEM, onClick = onEdit).padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.Center) {
+        Column(Modifier.weight(1f).heightIn(min = 52.dp).combinedClickable(role = Role.Button, onClickLabel = ShopText.EDIT_ITEM, onLongClick = onMenu, onClick = onEdit).padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.Center) {
             Text(
                 item.name, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp, textDecoration = if (done) TextDecoration.LineThrough else null),
                 color = if (done) p.inkSoft else p.ink,

@@ -66,6 +66,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import app.stellwall.ui.RefreshPage
 
 /**
  * The calendar: month grid with the chosen day, a week as agenda, or the next 30 days.
@@ -103,7 +104,8 @@ fun CalendarScreen(
         }
         Unit
     }
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
+    RefreshPage({ model.load() }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = s.title, sub = CalText.PAGE)
         // The rows wrap on a small phone or with large text, so no button falls off the screen.
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -175,6 +177,7 @@ fun CalendarScreen(
                 }
             }
         }
+    }
     }
 
     form?.let { f ->

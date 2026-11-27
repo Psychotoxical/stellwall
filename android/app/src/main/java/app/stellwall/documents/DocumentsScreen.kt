@@ -71,6 +71,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import app.stellwall.ui.RefreshPage
 
 /** The documents area: the list, one document, the form after a scan or a picked file. */
 @Composable
@@ -118,7 +119,8 @@ fun DocumentsScreen(model: DocumentsModel, today: LocalDate = LocalDate.now(), o
         onScanUnavailable = { canScan = false },
     )
 
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    RefreshPage({ model.load() }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BackLink("Start", onBack)
         PageHead(DocText.PAGE)
         if (s.notConfigured) {
@@ -157,6 +159,7 @@ fun DocumentsScreen(model: DocumentsModel, today: LocalDate = LocalDate.now(), o
                 }
             }
         }
+    }
     }
     picked?.let { f ->
         DocumentSheet(model, doc = null, file = f, onClose = { picked = null })
