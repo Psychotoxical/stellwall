@@ -13,6 +13,7 @@ struct CalendarView: View {
         Group {
             if showBirthdays {
                 BirthdaysView(model: birthdays) { showBirthdays = false }
+                    .backSwipe { showBirthdays = false }
             } else {
                 page
             }
@@ -76,6 +77,8 @@ struct CalendarView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
     }
 
     private func open(_ i: CalendarInstance) {

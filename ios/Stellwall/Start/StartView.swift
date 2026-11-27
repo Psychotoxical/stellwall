@@ -155,6 +155,8 @@ struct StartView<Banner: View, Today: View>: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
         .task { await model.load() }
     }
 

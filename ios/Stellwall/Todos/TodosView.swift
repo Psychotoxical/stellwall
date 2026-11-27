@@ -33,6 +33,8 @@ struct TodosView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
         .task { await model.load() }
         .sheet(item: $form) { f in TodoSheet(model: model, rule: f.rule).environment(\.palette, p) }
     }
@@ -68,7 +70,7 @@ struct TodoList: View {
                             if let m = members.first(where: { $0.id == id }) { PersonChip(name: m.displayName, color: m.color) }
                         }
                     }
-                    Button { onToggle(o) } label: {
+                    Button { Haptic.tap(); onToggle(o) } label: {
                         Image(systemName: o.done != nil ? "checkmark.square.fill" : "square").font(.system(size: 26))
                             .foregroundStyle((o.done != nil ? p.primary : p.ink).color).frame(width: 44, height: 44)
                     }
@@ -76,6 +78,11 @@ struct TodoList: View {
                     .accessibilityLabel(o.done != nil ? TodoText.uncheck(o.title) : TodoText.check(o.title))
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8)
+                .swipeRow(leading: SwipeAction(label: o.done != nil ? TodoText.uncheck(o.title) : TodoText.check(o.title), symbol: o.done != nil ? "arrow.uturn.backward" : "checkmark", danger: false) { onToggle(o) })
+                .contextMenu {
+                    Button(o.done != nil ? TodoText.uncheck(o.title) : TodoText.check(o.title), systemImage: o.done != nil ? "arrow.uturn.backward" : "checkmark") { onToggle(o) }
+                    Button(TodoText.edit, systemImage: "pencil") { onOpen(o) }
+                }
             }
         }
     }

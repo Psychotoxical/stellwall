@@ -13,8 +13,8 @@ struct MealsArea: View {
         Group {
             switch page {
             case .week: MealsView(model: model, onCook: { page = .cook($0) }, onPantry: { page = .pantry }, onOpenList: onOpenList)
-            case let .cook(c): RecipeView(api: model.api, target: c, onBack: { page = .week }, onOpenList: onOpenList)
-            case .pantry: PantryView(model: PantryModel(api: model.api), onBack: { page = .week })
+            case let .cook(c): RecipeView(api: model.api, target: c, onBack: { page = .week }, onOpenList: onOpenList).backSwipe { page = .week }
+            case .pantry: PantryView(model: PantryModel(api: model.api), onBack: { page = .week }).backSwipe { page = .week }
             }
         }
         .onAppear { if let cook { page = .cook(cook) } }
@@ -60,6 +60,8 @@ struct MealsView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
         .task { await model.load() }
         .sheet(item: $editing) { e in MealSheet(model: model, date: e.date, meal: model.meals[e.date]).environment(\.palette, p) }
         .sheet(isPresented: Binding(get: { shopping != nil }, set: { if !$0 { shopping = nil } })) {
@@ -96,7 +98,8 @@ struct MealsView: View {
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
-        .background(d == model.today ? p.field.color : .clear)
+        .background(d == model.today ? p.field.color : p.surface.color)
+        .swipeRow(trailing: m == nil ? nil : SwipeAction(label: MealText.remove, symbol: "trash", danger: true) { Task { _ = await model.remove(d) } })
         // A long press takes the day's meal out without opening the sheet.
         .contextMenu {
             if m != nil {
