@@ -35,5 +35,5 @@ export function renderAt(path: string) {
   );
 }
 
-export const alex = { id: "a1", username: "alex", displayName: "Alex", role: "admin", color: "person-mint", world: "salbei" };
-export const sam = { id: "s1", username: "sam", displayName: "Sam", role: "member", color: "person-lilac", world: "flieder" };
+export const alex = { id: "a1", username: "alex", displayName: "Alex", role: "admin", color: "person-mint", world: "salbei", mustChangePassword: false };
+export const sam = { id: "s1", username: "sam", displayName: "Sam", role: "member", color: "person-lilac", world: "flieder", mustChangePassword: false };

@@ -28,6 +28,10 @@ class AppModel<B : Backend>(private val prefs: Prefs, private val backendFor: (H
     var backend: B? = null
         private set
 
+    /** The password typed at sign-in, kept in memory only, so the first own password needs no second typing. */
+    var signInPassword: String? = null
+        private set
+
     /** The server address, for links into the web app. */
     val server: String? get() = prefs.server
 
@@ -57,6 +61,7 @@ class AppModel<B : Backend>(private val prefs: Prefs, private val backendFor: (H
             val me = b.login(username, password)
             prefs.server = url.toString()
             backend = b
+            signInPassword = password
             _state.value = AppState.SignedIn(me)
             null
         } catch (e: Exception) {
@@ -70,6 +75,7 @@ class AppModel<B : Backend>(private val prefs: Prefs, private val backendFor: (H
     }
 
     suspend fun signOut(pushEndpoint: String? = null) {
+        signInPassword = null
         backend?.logout(pushEndpoint)
         backend = null
         _state.value = AppState.SignedOut(prefs.server)

@@ -83,7 +83,7 @@ class ShoppingScreenTest {
         val api = SampleShopping()
         compose.setContent {
             StellwallTheme(world = "salbei", dark = true) {
-                StartScreen(api.me, StartModel(board = { api.board() }), today = LocalDate.of(2026, 11, 27)) {}
+                StartScreen(api.me, StartModel(board = { api.board() }), today = LocalDate.of(2026, 11, 27), hour = 9) {}
             }
         }
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Sam hat dir „Müll rausbringen“ gegeben")).fetchSemanticsNodes().isNotEmpty() }

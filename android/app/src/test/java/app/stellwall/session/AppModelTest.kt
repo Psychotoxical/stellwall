@@ -54,6 +54,9 @@ class AppModelTest {
         assertEquals("https://wall.example.org/", used.toString())
         assertEquals("https://wall.example.org/", prefs.server)
         assertEquals(AppState.SignedIn(alex), model.state.value)
+        assertEquals("pw", model.signInPassword)
+        model.signOut()
+        assertNull(model.signInPassword)
     }
 
     @Test fun `a bad address is an error and nothing is stored`() = runTest {

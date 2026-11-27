@@ -1,14 +1,10 @@
 import { expect, test, type Browser } from "@playwright/test";
-import { signInAlex } from "./helpers.ts";
+import { signInAlex, signInMember } from "./helpers.ts";
 
 async function signedIn(browser: Browser, user: string) {
   const ctx = await browser.newContext({ baseURL: "http://localhost:5173" });
   const page = await ctx.newPage();
-  await page.goto("/anmelden");
-  await page.getByLabel("Benutzername").fill(user);
-  await page.getByLabel("Passwort").fill("member-pass-1");
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page.getByRole("heading", { name: /^Hallo/ })).toBeVisible();
+  await signInMember(page, user);
   return { ctx, page };
 }
 

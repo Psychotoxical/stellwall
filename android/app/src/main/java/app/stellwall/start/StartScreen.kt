@@ -69,6 +69,7 @@ fun StartScreen(
     model: StartModel,
     live: Flow<LiveEvent> = emptyFlow(),
     today: LocalDate = LocalDate.now(),
+    hour: Int = java.time.LocalTime.now().hour,
     mine: TodayModel? = null,
     onMore: (() -> Unit)? = null,
     banner: @Composable () -> Unit = {},
@@ -94,7 +95,7 @@ fun StartScreen(
                 ) { Text(member.displayName.take(1).uppercase(), color = app.stellwall.ui.PersonColors.INK, style = MaterialTheme.typography.titleMedium) }
             }
         }
-        Column(Modifier.padding(top = 14.dp)) { PageHead(title = StartText.hello(member.displayName), sub = StartText.today(today)) }
+        Column(Modifier.padding(top = 14.dp)) { PageHead(title = StartText.hello(member.displayName, hour), sub = StartText.today(today)) }
         banner()
         Box(Modifier.padding(top = 10.dp)) { Board(rows.orEmpty(), onOpen) }
         if (mine != null) MyToday(mine, today, onOpen)

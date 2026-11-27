@@ -5,6 +5,7 @@ import { Shell } from "./components/Shell.tsx";
 import { useMe, useSetupStatus } from "./session.ts";
 import { Setup } from "./pages/Setup.tsx";
 import { Login } from "./pages/Login.tsx";
+import { FirstPassword } from "./pages/FirstPassword.tsx";
 import { Home } from "./pages/Home.tsx";
 import { Members } from "./pages/Members.tsx";
 import { Account } from "./pages/Account.tsx";
@@ -34,6 +35,7 @@ function RequireMember() {
     if (setup.isPending) return null;
     return <Navigate to={setup.data?.needed ? "/einrichten" : "/anmelden"} replace />;
   }
+  if (me.data.mustChangePassword) return <FirstPassword me={me.data} />;
   return <Shell />;
 }
 

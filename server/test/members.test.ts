@@ -59,6 +59,22 @@ describe("members", () => {
     expect((await app.inject({ method: "GET", url: "/api/me", headers: { cookie } })).statusCode).toBe(401);
   });
 
+  it("a new or reset password is changed after the first login", async () => {
+    const { app } = await createTestApp();
+    const { cookie, res } = await setupAdmin(app);
+    expect(res.json().mustChangePassword).toBe(false);
+    const sam = (await addMember(app, cookie, "sam")).json().id as string;
+    const first = await login(app, "sam", "member-pass-1");
+    expect(first.json().mustChangePassword).toBe(true);
+    const samCookie = cookieOf(first);
+    expect((await app.inject({ method: "GET", url: "/api/me", headers: { cookie: samCookie } })).json().mustChangePassword).toBe(true);
+    const change = await app.inject({ method: "POST", url: "/api/me/password", headers: { ...H, cookie: samCookie }, payload: { current: "member-pass-1", next: "my-own-secret-9" } });
+    expect(change.statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: "/api/me", headers: { cookie: samCookie } })).json().mustChangePassword).toBe(false);
+    await app.inject({ method: "POST", url: `/api/members/${sam}/reset-password`, headers: { ...H, cookie }, payload: { password: "fresh-pass-22" } });
+    expect((await login(app, "sam", "fresh-pass-22")).json().mustChangePassword).toBe(true);
+  });
+
   it("reset password ends that member's sessions", async () => {
     const { app } = await createTestApp();
     const { cookie } = await setupAdmin(app);

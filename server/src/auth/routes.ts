@@ -129,7 +129,7 @@ export async function authRoutes(app: FastifyInstance, opts: Opts) {
     if (!rows[0] || !(await verifyPassword(rows[0].passwordHash, body.data.current))) {
       return reply.code(401).send({ error: "invalid" });
     }
-    await db.update(members).set({ passwordHash: await hashPassword(body.data.next) }).where(eq(members.id, req.member!.id));
+    await db.update(members).set({ passwordHash: await hashPassword(body.data.next), mustChangePassword: false }).where(eq(members.id, req.member!.id));
     await deleteOtherSessions(db, req.member!.id, req.sessionId!);
     return { ok: true };
   });

@@ -6,6 +6,7 @@
     "displayName": "Sammy",
     "role": "member",
     "color": "person-sky",
-    "world": "rose"
+    "world": "rose",
+    "mustChangePassword": true
   }
 }

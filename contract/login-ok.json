@@ -6,6 +6,7 @@
     "displayName": "Alex",
     "role": "admin",
     "color": "person-mint",
-    "world": "salbei"
+    "world": "salbei",
+    "mustChangePassword": false
   }
 }

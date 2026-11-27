@@ -25,6 +25,13 @@ export const de = {
     invalid: "Benutzername oder Passwort stimmt nicht.",
     locked: (time: string) => `Zu viele Fehlversuche. Anmelden geht wieder ab ${time}.`,
   },
+  firstPassword: {
+    title: (name: string) => `Hallo ${name}, bitte ein eigenes Passwort`,
+    lead: "Dein Passwort hat die Verwaltung vergeben. Wähle jetzt eins, das nur du kennst.",
+    current: "Passwort von der Verwaltung",
+    submit: "Passwort speichern",
+    wrong: "Das Passwort von der Verwaltung stimmt nicht.",
+  },
   fields: {
     username: "Benutzername",
     displayName: "Anzeigename",
@@ -38,7 +45,9 @@ export const de = {
   roles: { admin: "Verwaltung", member: "Mitglied" },
   colors: { "person-mint": "Mint", "person-lilac": "Flieder", "person-peach": "Pfirsich", "person-sky": "Himmel" },
   home: {
-    hello: (name: string) => `Hallo ${name}`,
+    /** A greeting for the time of day. */
+    hello: (name: string, hour = new Date().getHours()) =>
+      `${hour >= 5 && hour < 11 ? "Guten Morgen" : hour >= 11 && hour < 14 ? "Guten Mittag" : hour >= 14 && hour < 18 ? "Guten Tag" : hour >= 18 && hour < 22 ? "Guten Abend" : "Gute Nacht"}, ${name}`,
     board: "Seit du zuletzt hier warst",
     boardEmpty: "Noch nichts Neues. Sobald jemand etwas einträgt, steht es hier.",
     areas: "Bereiche",
