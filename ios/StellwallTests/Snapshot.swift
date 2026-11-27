@@ -14,6 +14,7 @@ func snap<V: View>(_ view: V, world: String = "flieder", dark: Bool = false, nam
     assertSnapshot(
         of: host,
         // Drawn from the window, as on screen: layer rendering draws stray marks at the ends of round chips.
+        // The window capture shifts colours slightly (sRGB 0,101,51 comes out as 42,99,56); WorldsTests checks the exact values.
         as: .image(drawHierarchyInKeyWindow: true, precision: 0.99, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 844), traits: UITraitCollection(preferredContentSizeCategory: .large)),
         named: name, file: file, testName: testName, line: line
     )
