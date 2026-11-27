@@ -138,4 +138,15 @@ class ShoppingModelTest {
         assertEquals("Nur ich", visibilityLabel(Visibility(false, listOf("me")), members, "me"))
         assertEquals("Alex, Sam", visibilityLabel(Visibility(false, listOf("me", "sam")), members, "me"))
     }
+
+    @Test fun `a cancelled search stays cancelled`() = runTest {
+        val f = object : ShoppingApi by fake() {
+            override suspend fun suggestions(q: String): List<Suggestion> = throw kotlinx.coroutines.CancellationException("left the page")
+        }
+        try {
+            ShoppingModel(f, me).suggestions("mil")
+            throw AssertionError("expected CancellationException")
+        } catch (_: kotlinx.coroutines.CancellationException) {
+        }
+    }
 }

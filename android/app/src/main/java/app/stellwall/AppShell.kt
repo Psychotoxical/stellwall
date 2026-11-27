@@ -1,5 +1,6 @@
 package app.stellwall
 
+import app.stellwall.api.quietly
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,11 +108,11 @@ fun AppShell(
     // Once per start: is there a newer app, and does this phone still get messages?
     LaunchedEffect(accountApi) {
         val a = accountApi ?: return@LaunchedEffect
-        info = runCatching { a.appInfo() }.getOrNull()
+        info = quietly { a.appInfo() }
         if (info?.fcm == true && Push.available && Push.allowed(context)) {
             Push.token()?.let { t ->
                 TokenStore(context).token = t
-                runCatching { a.registerFcm(t, deviceLabel()) }
+                quietly { a.registerFcm(t, deviceLabel()) }
             }
         }
     }

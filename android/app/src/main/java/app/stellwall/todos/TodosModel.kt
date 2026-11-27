@@ -1,5 +1,6 @@
 package app.stellwall.todos
 
+import app.stellwall.api.quietly
 import app.stellwall.api.LiveEvent
 import app.stellwall.api.Member
 import app.stellwall.api.Occurrence
@@ -147,7 +148,7 @@ class TodosModel(private val api: TodosApi, val me: Member) {
         }
     }
 
-    suspend fun suggestions(q: String): List<String> = if (q.isBlank()) emptyList() else runCatching { api.todoSuggestions(q.trim()) }.getOrDefault(emptyList()).filter { it != q }
+    suspend fun suggestions(q: String): List<String> = if (q.isBlank()) emptyList() else (quietly { api.todoSuggestions(q.trim()) } ?: emptyList()).filter { it != q }
 }
 
 data class TodoDraft(

@@ -58,6 +58,8 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // Times in the screenshots are the family's, on every machine (CI runs in UTC).
+        unitTests.all { it.systemProperty("user.timezone", "Europe/Berlin") }
     }
 }
 

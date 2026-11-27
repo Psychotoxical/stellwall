@@ -168,6 +168,14 @@ jobs:
           git diff --exit-code web/src/theme/worlds.css android/app/src/main/java/app/stellwall/theme/Worlds.kt
       - name: Unit and screenshot tests, debug build
         run: ./gradlew --console=plain testDebugUnitTest verifyRoborazziDebug assembleDebug
+      # On a screenshot mismatch the reference, the new picture and the difference side by side.
+      - name: Screenshot comparison
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-screenshots
+          path: android/app/build/outputs/roborazzi/
+          retention-days: 7
 
   ci-ok:
     name: ci-ok

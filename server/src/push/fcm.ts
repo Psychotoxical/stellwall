@@ -70,11 +70,14 @@ export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch;
     if (res.ok) return { gone: false };
     // A refused access token is fetched anew with the next message.
     if (res.status === 401) token = null;
-    const err = (await res.json().catch(() => ({}))) as { error?: { status?: string; details?: { errorCode?: string }[] } };
+    const err = (await res.json().catch(() => ({}))) as { error?: { status?: string; message?: string; details?: { errorCode?: string }[] } };
     const code = err.error?.details?.find((d) => d.errorCode)?.errorCode;
     // Only this code means the app was removed or the token replaced. A plain 404 can also be a
     // wrong project in the service account, and that must not throw away every phone.
-    return { gone: code === "UNREGISTERED" };
+    // A 400 about the registration token is a token Google never issued; a 400 about anything
+    // else is a fault in the message, and the phone stays.
+    const badToken = res.status === 400 && code === "INVALID_ARGUMENT" && /registration token/i.test(err.error?.message ?? "");
+    return { gone: code === "UNREGISTERED" || badToken };
   };
 }
 
@@ -82,6 +85,6 @@ export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch;
 export function routedSender(web: PushSender, fcm: PushSender | null): PushSender {
   return async (sub, payload) => {
     if (!sub.endpoint.startsWith(FCM_PREFIX)) return web(sub, payload);
-    return fcm ? fcm(sub, payload) : { gone: false };
+    return fcm ? fcm(sub, payload) : { gone: false, skipped: true };
   };
 }

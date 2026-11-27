@@ -1,5 +1,6 @@
 package app.stellwall.meals
 
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -44,8 +45,9 @@ class MealsScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("So geht es")).fetchSemanticsNodes().isNotEmpty() }
         // Planned for 2, the recipe is for 4: half the rice.
         compose.onNodeWithText("100 g").assertExists()
-        compose.onNodeWithText("Reis kochen.").performClick()
+        // The picture before the tap: a tap leaves a ripple that differs between machines.
         compose.onRoot().captureRoboImage("src/test/screenshots/recipe.png")
+        compose.onNode(hasText("Reis kochen.") and androidx.compose.ui.test.isToggleable()).performClick().assertIsOn()
     }
 
     @Test fun `to-dos and today on Start`() {

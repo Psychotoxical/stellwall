@@ -7,7 +7,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import app.stellwall.theme.StellwallTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -37,7 +37,9 @@ class LoginScreenTest {
         compose.onNodeWithText("Serveradresse").performTextInput("wall.example.org")
         compose.onNodeWithText("Benutzername").performTextInput("alex")
         compose.onNodeWithText("Passwort").performTextInput("correct-horse-1")
-        compose.onNode(button).assertIsEnabled().performClick()
+        compose.onNode(button).assertIsEnabled()
+        // Sent with the keyboard's Done key: a tap would leave a ripple that differs between machines.
+        compose.onNodeWithText("Passwort").performImeAction()
         compose.waitForIdle()
         assertEquals(Triple("wall.example.org", "alex", "correct-horse-1"), sent)
         compose.onNodeWithText("Benutzername oder Passwort stimmt nicht.").assertExists()

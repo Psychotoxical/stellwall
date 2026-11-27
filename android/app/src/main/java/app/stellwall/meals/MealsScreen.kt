@@ -113,7 +113,7 @@ fun MealsScreen(model: MealsModel, api: MealsApi, live: Flow<LiveEvent>, onCook:
     LaunchedEffect(model) { model.load() }
     LaunchedEffect(model, live) { live.collect { model.onLive(it) } }
     val p = LocalPalette.current
-    val today = LocalDate.now()
+    val today = s.today
 
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         PageHead(title = MealText.TITLE, sub = MealText.PAGE)
@@ -182,10 +182,10 @@ private fun NavButton(text: String, label: String, onClick: () -> Unit) {
 @Composable
 fun RecipeImage(api: MealsApi, id: String, modifier: Modifier) {
     val img by produceState<ImageBitmap?>(ImageCache.get(id), id) {
-        if (value == null) value = runCatching {
+        if (value == null) value = app.stellwall.api.quietly {
             val bytes = api.recipeImage(id)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()?.also { ImageCache.put(id, it) }
-        }.getOrNull()
+        }
     }
     img?.let { Image(it, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop) }
 }

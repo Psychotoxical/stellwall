@@ -78,7 +78,7 @@ export async function pushRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     for (const s of subs) {
       const r = await sender(s, payload).catch(() => ({ gone: false }));
       if (r.gone) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));
-      else devices++;
+      else if (!("skipped" in r && r.skipped)) devices++;
     }
     return { devices };
   });

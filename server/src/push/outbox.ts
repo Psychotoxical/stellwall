@@ -11,7 +11,8 @@ import { todoVisibleTo } from "../todos/routes.ts";
 export const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal"] as const;
 export type Kind = (typeof KINDS)[number];
 export type Ref = { type: "event" | "list" | "todo" | "birthday" | "meal" | "test"; id: string };
-export type PushSender = (sub: { endpoint: string; p256dh: string; auth: string }, payload: string) => Promise<{ gone: boolean }>;
+/** gone: the device will never get anything again; skipped: this server cannot reach such devices. */
+export type PushSender = (sub: { endpoint: string; p256dh: string; auth: string }, payload: string) => Promise<{ gone: boolean; skipped?: boolean }>;
 
 type Entry = {
   memberIds: string[];

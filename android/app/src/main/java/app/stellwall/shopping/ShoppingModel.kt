@@ -1,5 +1,6 @@
 package app.stellwall.shopping
 
+import app.stellwall.api.quietly
 import app.stellwall.api.BoardRow
 import app.stellwall.api.CATEGORIES
 import app.stellwall.api.Item
@@ -73,7 +74,7 @@ class ShoppingModel(private val api: ShoppingApi, val me: Member) {
     /** Leaving the page marks everything as seen. */
     suspend fun leave() {
         unseenFrozen = null
-        runCatching { api.boardSeen() }
+        quietly { api.boardSeen() }
     }
 
     /** False when there was nothing to add or it failed. */
@@ -121,7 +122,7 @@ class ShoppingModel(private val api: ShoppingApi, val me: Member) {
         refresh()
     }
 
-    suspend fun suggestions(q: String): List<Suggestion> = if (q.isBlank()) emptyList() else runCatching { api.suggestions(q.trim()) }.getOrDefault(emptyList())
+    suspend fun suggestions(q: String): List<Suggestion> = if (q.isBlank()) emptyList() else quietly { api.suggestions(q.trim()) } ?: emptyList()
 
     fun clearError() = _state.update { it.copy(error = null) }
 

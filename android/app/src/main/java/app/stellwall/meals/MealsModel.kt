@@ -106,6 +106,7 @@ object MealText {
 
 data class MealsState(
     val week: LocalDate,
+    val today: LocalDate = LocalDate.now(),
     val meals: Map<LocalDate, Meal> = emptyMap(),
     val members: List<Member> = emptyList(),
     val error: String? = null,
@@ -120,11 +121,11 @@ data class MealDraft(val useText: Boolean, val recipe: RecipeRef?, val text: Str
 data class Search(val recipes: List<RecipeSummary>, val error: String?)
 
 class MealsModel(private val api: MealsApi, private val today: () -> LocalDate = { LocalDate.now() }) {
-    private val _state = MutableStateFlow(MealsState(Days.weekStart(today())))
+    private val _state = MutableStateFlow(MealsState(Days.weekStart(today()), today()))
     val state: StateFlow<MealsState> = _state
 
     suspend fun load() {
-        val s = _state.value
+        val s = _state.value.copy(today = today())
         try {
             val members = s.members.ifEmpty { api.members() }
             val meals = api.meals(s.week.toString()).associateBy { LocalDate.parse(it.date) }

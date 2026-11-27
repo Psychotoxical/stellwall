@@ -70,6 +70,16 @@ describe("FCM", () => {
     expect(await fcmSender(account, { fetch: busy.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
   });
 
+  it("a token Google calls invalid is gone too", async () => {
+    const bad = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 400, json: { error: { status: "INVALID_ARGUMENT", details: [{ errorCode: "INVALID_ARGUMENT" }], message: "The registration token is not a valid FCM registration token" } } }));
+    expect(await fcmSender(account, { fetch: bad.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: true });
+  });
+
+  it("a message Google cannot read keeps the phone", async () => {
+    const broken = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 400, json: { error: { status: "INVALID_ARGUMENT", details: [{ errorCode: "INVALID_ARGUMENT" }], message: "Invalid value at 'message.data'" } } }));
+    expect(await fcmSender(account, { fetch: broken.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
+  });
+
   it("a wrong project (404 without UNREGISTERED) keeps every phone", async () => {
     const wrong = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 404, json: { error: { status: "NOT_FOUND", message: "Requested entity was not found." } } }));
     expect(await fcmSender(account, { fetch: wrong.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
@@ -96,7 +106,7 @@ describe("FCM", () => {
     await routedSender(web, fcm)({ endpoint: "https://fcm.googleapis.com/fcm/send/abc", p256dh: "k", auth: "a" }, "{}");
     await routedSender(web, fcm)({ endpoint: "fcm:tok", p256dh: "", auth: "" }, "{}");
     expect(seen).toEqual(["web:https://fcm.googleapis.com/fcm/send/abc", "fcm:fcm:tok"]);
-    expect(await routedSender(web, null)({ endpoint: "fcm:tok", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
+    expect(await routedSender(web, null)({ endpoint: "fcm:tok", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false, skipped: true });
   });
 });
 
@@ -115,6 +125,15 @@ describe("the service account file", () => {
 });
 
 describe("phones and the app download", () => {
+  it("the test message does not count phones the server cannot reach", async () => {
+    // As on a server without the Firebase file: browsers would be sent to, phones not.
+    const { app } = await createTestApp({ pushSender: routedSender(async () => ({ gone: false }), null) });
+    const f = await setupFamily(app);
+    const alex = as(app, f.alex.cookie);
+    await alex.post("/api/push/fcm", { token: "device-token-1-0123456789abcdef", label: "Galaxy" });
+    expect((await alex.post("/api/push/test")).json()).toEqual({ devices: 0 });
+  });
+
   it("a phone registers its token, the test message reaches it", async () => {
     const sent: string[] = [];
     const { app } = await createTestApp({ pushSender: async (s) => { sent.push(s.endpoint); return { gone: false }; } });
