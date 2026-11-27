@@ -16,6 +16,10 @@ export type Notifier = {
   calendarGone(audience: string[] | null): void;
   /** The meal plan changed (it is for everyone). */
   meals(): void;
+  /** A document was added or changed. */
+  documents(documentId: string): void;
+  /** A document was deleted or hidden; audience is who could see it (null: everyone). */
+  documentsGone(audience: string[] | null): void;
   /** Push: people were made the ones an event is for, or their event changed. */
   eventFor(eventId: string, memberIds: string[], actor: Actor, changed: boolean, date?: string): void;
   /** Push: people were given a to-do. */
@@ -31,4 +35,4 @@ export type Actor = { id: string; displayName: string };
 /** The part the live hub fills in: hints to open pages. */
 export type LiveNotifier = Omit<Notifier, "eventFor" | "todoGiven" | "itemsAdded" | "cook">;
 
-export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {}, calendar: () => {}, birthday: () => {}, calendarGone: () => {}, meals: () => {}, eventFor: () => {}, todoGiven: () => {}, itemsAdded: () => {}, cook: () => {} };
+export const silent: Notifier = { list: () => {}, lists: () => {}, todo: () => {}, todoGone: () => {}, calendar: () => {}, birthday: () => {}, calendarGone: () => {}, meals: () => {}, documents: () => {}, documentsGone: () => {}, eventFor: () => {}, todoGiven: () => {}, itemsAdded: () => {}, cook: () => {} };

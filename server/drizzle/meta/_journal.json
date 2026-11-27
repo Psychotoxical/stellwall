@@ -57,6 +57,13 @@
       "when": 1795769326415,
       "tag": "0007_first_password",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795773827364,
+      "tag": "0008_documents",
+      "breakpoints": true
     }
   ]
 }

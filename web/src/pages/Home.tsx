@@ -23,12 +23,13 @@ const AREAS: { key: keyof typeof de.areas; icon: ComponentType<SVGProps<SVGSVGEl
   { key: "essensplan", icon: Icon.Essensplan },
 ];
 
-const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage", essensplan: "/essen" };
+const LINKS: Partial<Record<keyof typeof de.areas, string>> = { einkauf: "/einkauf", todos: "/todos", kalender: "/kalender", geburtstage: "/kalender/geburtstage", essensplan: "/essen", dokumente: "/dokumente" };
 
 /** Where the back button of a page leads: the area or page it belongs to. */
 const PARENTS: [RegExp, string, string][] = [
   [/^\/kalender\/.+/, "/kalender", de.nav.kalender],
   [/^\/essen\/.+/, "/essen", de.meals.page],
+  [/^\/dokumente\/.+/, "/dokumente", de.documents.page],
   [/^\/(konto|mitglieder|mealie|benachrichtigungen)$/, "/mehr", de.nav.mehr],
   [/^\/mehr$/, "/", de.nav.start],
 ];

@@ -16,6 +16,8 @@ import { Calendar } from "./pages/Calendar.tsx";
 import { Birthdays } from "./pages/Birthdays.tsx";
 import { Import } from "./pages/Import.tsx";
 import { Meals } from "./pages/Meals.tsx";
+import { Documents } from "./pages/Documents.tsx";
+import { DocumentView } from "./pages/DocumentView.tsx";
 import { RecipeView } from "./pages/Recipe.tsx";
 import { Pantry } from "./pages/Pantry.tsx";
 import { MealieSettings } from "./pages/MealieSettings.tsx";
@@ -70,6 +72,8 @@ export const routes: RouteObject[] = [
       { path: "/kalender/geburtstage", element: <Birthdays /> },
       { path: "/kalender/import", element: <Import /> },
       { path: "/essen", element: <Meals /> },
+      { path: "/dokumente", element: <Documents /> },
+      { path: "/dokumente/:id", element: <DocumentView /> },
       { path: "/essen/rezept/:slug", element: <RecipeView /> },
       { path: "/essen/grundvorrat", element: <Pantry /> },
       { path: "/benachrichtigungen", element: <Notifications /> },

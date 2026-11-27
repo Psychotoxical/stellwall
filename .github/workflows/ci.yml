@@ -145,6 +145,19 @@ jobs:
           done
           docker logs app
           exit 1
+      - name: Text recognition works in the image
+        run: |
+          # Ghostscript (part of OCRmyPDF) draws a page with text as a picture; OCR has to read it back.
+          docker run --rm --entrypoint sh stellwall:ci -c '
+            echo "/Helvetica findfont 40 scalefont setfont 40 300 moveto (Stadtwerke Abschlag Rechnung) show showpage" > /tmp/t.ps &&
+            gs -q -dNOPAUSE -dBATCH -sDEVICE=pnggray -r300 -g2550x1400 -sOutputFile=/tmp/scan.png /tmp/t.ps &&
+            node --input-type=module -e "
+              import { ocrmypdf } from \"/app/server/src/documents/ocr.ts\";
+              const r = await ocrmypdf(\"/tmp/scan.png\", \"image/png\", AbortSignal.timeout(120000));
+              console.log(JSON.stringify(r));
+              if (!/Stadtwerke/.test(r.text) || r.pages !== 1) process.exit(1);
+            "
+          '
 
   android:
     name: Android app

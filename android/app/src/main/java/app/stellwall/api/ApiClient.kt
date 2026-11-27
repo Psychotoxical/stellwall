@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -21,6 +22,7 @@ import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -50,6 +52,19 @@ interface ShoppingApi {
     suspend fun updateItem(id: String, change: ItemChange): Item
     suspend fun deleteItem(id: String)
     suspend fun suggestions(q: String): List<Suggestion>
+}
+
+/** Documents: list and search, upload, the file itself. */
+interface DocumentsApi {
+    suspend fun members(): List<Member>
+    suspend fun documents(q: String, category: String?): List<DocumentDto>
+    suspend fun document(id: String): DocumentDto
+    suspend fun documentCategories(): List<String>
+    suspend fun uploadDocument(meta: DocumentMeta, file: DocumentFile): DocumentDto
+    suspend fun updateDocument(id: String, meta: DocumentMeta): DocumentDto
+    suspend fun deleteDocument(id: String)
+    /** Writes the file to [to] and returns it. */
+    suspend fun documentFile(id: String, to: java.io.File): java.io.File
 }
 
 /** Calendar and birthdays. Bodies of events are built by the form logic, so they travel as JSON. */
@@ -95,7 +110,7 @@ interface TodosApi {
 }
 
 /** Talks to one Stellwall server; the session lives in [store]. */
-class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi, MealsApi, TodosApi, AccountApi {
+class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi, MealsApi, TodosApi, AccountApi, DocumentsApi {
     private val jar = SessionCookieJar(store)
     private val http = OkHttpClient.Builder()
         .cookieJar(jar)
@@ -317,6 +332,59 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun pushTest() = call("POST", "api/push/test", "{}").decode(DeviceCount.serializer()).devices
 
+    override suspend fun documents(q: String, category: String?): List<DocumentDto> {
+        val u = base.newBuilder().addPathSegments("api/documents")
+        if (q.isNotBlank()) u.addQueryParameter("q", q.trim())
+        if (category != null) u.addQueryParameter("category", category)
+        return send("GET", u.build(), null).decode(ListSerializer(DocumentDto.serializer()))
+    }
+
+    override suspend fun document(id: String) = call("GET", "api/documents/${seg(id)}").decode(DocumentDto.serializer())
+
+    override suspend fun documentCategories() = call("GET", "api/document-categories").decode(ListSerializer(String.serializer()))
+
+    override suspend fun uploadDocument(meta: DocumentMeta, file: DocumentFile): DocumentDto = withContext(Dispatchers.IO) {
+        val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("meta", metaJson(meta))
+            .addFormDataPart("file", file.name, file.bytes.toRequestBody(file.mime.toMediaType()))
+            .build()
+        val req = Request.Builder().url(base.resolve("api/documents")!!).post(body).build()
+        http.newBuilder().writeTimeout(2, TimeUnit.MINUTES).readTimeout(2, TimeUnit.MINUTES).build().newCall(req).execute().use { res ->
+            val text = res.body.string()
+            if (!res.isSuccessful) {
+                val err = runCatching { json.decodeFromString(ErrorBody.serializer(), text) }.getOrDefault(ErrorBody())
+                throw ApiException(res.code, err.error, err.until)
+            }
+            json.decodeFromString(DocumentDto.serializer(), text)
+        }
+    }
+
+    override suspend fun updateDocument(id: String, meta: DocumentMeta) =
+        call("PATCH", "api/documents/${seg(id)}", metaJson(meta)).decode(DocumentDto.serializer())
+
+    /** Category and date go as null when cleared; visibility only when it may be changed. */
+    private fun metaJson(m: DocumentMeta): String = kotlinx.serialization.json.buildJsonObject {
+        put("name", kotlinx.serialization.json.JsonPrimitive(m.name))
+        put("category", kotlinx.serialization.json.JsonPrimitive(m.category))
+        put("validUntil", kotlinx.serialization.json.JsonPrimitive(m.validUntil))
+        put("remindDays", kotlinx.serialization.json.JsonPrimitive(m.remindDays))
+        m.visibility?.let { put("visibility", json.encodeToJsonElement(Visibility.serializer(), it)) }
+    }.toString()
+
+    override suspend fun deleteDocument(id: String) {
+        call("DELETE", "api/documents/${seg(id)}")
+    }
+
+    override suspend fun documentFile(id: String, to: java.io.File): java.io.File = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(base.resolve("api/documents/${seg(id)}/file")!!).build()
+        http.newBuilder().readTimeout(2, TimeUnit.MINUTES).build().newCall(req).execute().use { res ->
+            if (!res.isSuccessful) throw ApiException(res.code, runCatching { json.decodeFromString(ErrorBody.serializer(), res.body.string()).error }.getOrDefault(""))
+            to.parentFile?.mkdirs()
+            to.outputStream().use { out -> res.body.byteStream().copyTo(out) }
+            to
+        }
+    }
+
     override suspend fun appInfo() = call("GET", "api/app/info").decode(AppInfo.serializer())
 
     /** Streams the APK to [to], so a large file never sits in memory. */
@@ -362,6 +430,7 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
                     "calendar" -> LiveEvent.Calendar
                     "todos" -> LiveEvent.Todos
                     "meals" -> LiveEvent.Meals
+                    "documents" -> LiveEvent.Documents
                     else -> null
                 }
                 if (event != null) trySend(event)

@@ -8,6 +8,7 @@ import { todoMemberIds } from "../todos/routes.ts";
 import { eventAudience } from "../calendar/events.ts";
 import { birthdayAudience } from "../calendar/birthdays.ts";
 import { listMemberIds } from "../shopping/visibility.ts";
+import { documentAudience } from "../documents/routes.ts";
 import type { LiveNotifier as Notifier } from "../shopping/notify.ts";
 
 /**
@@ -55,6 +56,8 @@ export function createHub(db: Db) {
     birthday: (id) => void birthdayAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "calendar" })).catch(() => {}),
     calendarGone: (audience) => send(audience ?? [...sockets.keys()], { type: "calendar" }),
     meals: () => send([...sockets.keys()], { type: "meals" }),
+    documents: (id) => void documentAudience(db, id).then((a) => send(a ?? [...sockets.keys()], { type: "documents" })).catch(() => {}),
+    documentsGone: (audience) => send(audience ?? [...sockets.keys()], { type: "documents" }),
   };
 
   return { add, notifier };

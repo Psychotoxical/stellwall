@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.doc.scanner)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

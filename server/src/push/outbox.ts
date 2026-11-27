@@ -2,15 +2,16 @@ import { and, eq, inArray, isNull, like, lt, lte } from "drizzle-orm";
 import webpush from "web-push";
 import { bundleDue, quietUntil } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { birthdays, events, lists, members, notificationPrefs, notifications, pushSubscriptions, settings, todos } from "../db/schema.ts";
+import { birthdays, documents, events, lists, members, notificationPrefs, notifications, pushSubscriptions, settings, todos } from "../db/schema.ts";
 import { eventVisibleTo } from "../calendar/events.ts";
 import { birthdayVisibleTo } from "../calendar/birthdays.ts";
 import { listVisibleTo } from "../shopping/visibility.ts";
 import { todoVisibleTo } from "../todos/routes.ts";
+import { documentVisibleTo } from "../documents/routes.ts";
 
-export const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal"] as const;
+export const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal", "document_expiry"] as const;
 export type Kind = (typeof KINDS)[number];
-export type Ref = { type: "event" | "list" | "todo" | "birthday" | "meal" | "test"; id: string };
+export type Ref = { type: "event" | "list" | "todo" | "birthday" | "meal" | "document" | "test"; id: string };
 /** gone: the device will never get anything again; skipped: this server cannot reach such devices. */
 export type PushSender = (sub: { endpoint: string; p256dh: string; auth: string }, payload: string) => Promise<{ gone: boolean; skipped?: boolean }>;
 
@@ -99,6 +100,8 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
         return one(db.select({ id: todos.id }).from(todos).where(and(eq(todos.id, ref.id), todoVisibleTo(memberId))).limit(1));
       case "birthday":
         return one(db.select({ id: birthdays.id }).from(birthdays).where(and(eq(birthdays.id, ref.id), birthdayVisibleTo(memberId))).limit(1));
+      case "document":
+        return one(db.select({ id: documents.id }).from(documents).where(and(eq(documents.id, ref.id), documentVisibleTo(memberId))).limit(1));
       default:
         return true;
     }

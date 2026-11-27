@@ -14,7 +14,13 @@ export function fakeApi(table: FakeApi) {
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const key = (init?.method ?? "GET") + " " + url;
-      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      // Uploads go as form data: fields as text (JSON parsed when it is JSON), files as they are.
+      const body =
+        init?.body instanceof FormData
+          ? Object.fromEntries([...init.body.entries()].map(([k, v]) => [k, typeof v === "string" ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v]))
+          : init?.body
+            ? JSON.parse(String(init.body))
+            : undefined;
       calls.push({ key, body });
       const h = table[key] ?? table[key.split("?")[0] + "?*"];
       if (!h) return new Response(JSON.stringify({ error: "not_found" }), { status: 404 });

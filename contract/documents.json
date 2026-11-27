@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Hausrat",
+      "category": "Versicherung",
+      "validUntil": "2027-03-01",
+      "remindDays": 30,
+      "visibility": {
+        "everyone": true,
+        "memberIds": []
+      },
+      "createdBy": "00000000-0000-4000-8000-000000000002",
+      "createdAt": "2026-11-27T10:00:00.000Z",
+      "updatedAt": "2026-11-27T10:00:00.000Z",
+      "mime": "application/pdf",
+      "size": 201,
+      "pages": 2,
+      "ocr": "done"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Zeugnis",
+      "category": null,
+      "validUntil": null,
+      "remindDays": 30,
+      "visibility": {
+        "everyone": false,
+        "memberIds": [
+          "00000000-0000-4000-8000-000000000004",
+          "00000000-0000-4000-8000-000000000002"
+        ]
+      },
+      "createdBy": "00000000-0000-4000-8000-000000000002",
+      "createdAt": "2026-11-27T10:00:00.000Z",
+      "updatedAt": "2026-11-27T10:00:00.000Z",
+      "mime": "application/pdf",
+      "size": 201,
+      "pages": null,
+      "ocr": "pending"
+    }
+  ]
+}

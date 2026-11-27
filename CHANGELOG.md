@@ -6,6 +6,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Added
 
+- Documents: upload PDF, JPG or PNG (up to 30 MB) on the web, scan with the phone's document scanner or pick a file in the Android app. Each document has a name, a category, an optional "gültig bis" with a reminder 1 week, 1 month or 3 months before, and who may see it.
+- The text of every document is recognized in the background (German and English), so the search finds words inside scans too.
+- A notification at 09:00 when a document runs out, with the switch "Ablaufende Dokumente".
+- Documents are stored encrypted; the key lives apart from the data (`DOCS_KEY_FILE`, see `deploy/compose.yaml`).
 - Members whose password the administration chose pick an own one right after signing in (web and Android); this also applies to accounts that exist already.
 - Android app: light, dark or as the system has it, under Mehr → Darstellung.
 - Start greets by the time of day: "Guten Morgen", "Guten Mittag", "Guten Tag", "Guten Abend", "Gute Nacht".

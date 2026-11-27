@@ -101,6 +101,7 @@ sealed interface LiveEvent {
     data object Calendar : LiveEvent
     data object Todos : LiveEvent
     data object Meals : LiveEvent
+    data object Documents : LiveEvent
 }
 
 /** Store sections in shop order, as the server's shared code has them (checked against contract/categories.json). */

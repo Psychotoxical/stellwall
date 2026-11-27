@@ -84,6 +84,7 @@ fun AppShell(
     mealsApi: MealsApi? = null,
     todosApi: TodosApi? = null,
     accountApi: AccountApi? = null,
+    documentsApi: app.stellwall.api.DocumentsApi? = null,
     live: Flow<LiveEvent> = emptyFlow(),
     webUrl: String? = null,
     link: String? = null,
@@ -95,6 +96,8 @@ fun AppShell(
     var listId by rememberSaveable { mutableStateOf<String?>(null) }
     var calTarget by remember { mutableStateOf<Target?>(null) }
     var more by rememberSaveable { mutableStateOf(false) }
+    var docs by rememberSaveable { mutableStateOf(false) }
+    var docId by rememberSaveable { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<AppInfo?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val go = { target: Target ->
@@ -102,6 +105,8 @@ fun AppShell(
         listId = target.listId
         calTarget = target
         more = target.more
+        docs = target.documents
+        docId = target.documentId
     }
     // A tapped notification opens where it belongs.
     LaunchedEffect(link) { link?.let { go(Links.target(it)); onLinkHandled() } }
@@ -133,7 +138,8 @@ fun AppShell(
     val birthdays = remember(calendarApi, member) { if (calendarApi != null && member != null) BirthdaysModel(calendarApi, member) else null }
 
     // Back leads to Start first, as the web app's back buttons do.
-    BackHandler(enabled = tab != Tab.Start || more) { if (more) more = false else tab = Tab.Start }
+    val documents = remember(documentsApi, member) { if (documentsApi != null && member != null) app.stellwall.documents.DocumentsModel(documentsApi, member) else null }
+    BackHandler(enabled = tab != Tab.Start || more || docs) { if (more) more = false else if (docs) docs = false else tab = Tab.Start }
 
     Scaffold(
         containerColor = p.ground,
@@ -145,6 +151,7 @@ fun AppShell(
                         onClick = {
                             tab = t
                             more = false
+                            docs = false
                             if (t == Tab.Einkauf) listId = null
                             calTarget = null
                         },
@@ -158,6 +165,9 @@ fun AppShell(
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
             when {
+                docs && documents != null -> androidx.compose.runtime.key(docId) {
+                    app.stellwall.documents.DocumentsArea(documents, hints, docId) { docs = false; docId = null }
+                }
                 more && member != null && accountApi != null -> MoreScreen(accountApi, member, info, webUrl, onMemberChanged, onSignOut, onBack = { more = false })
                 tab == Tab.Start && start != null && member != null -> StartScreen(
                     member, start, hints, mine = mine, onMore = { more = true },

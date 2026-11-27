@@ -1,7 +1,7 @@
-import { inArray, sql } from "drizzle-orm";
-import { birthdaysBetween, eveningBefore, expandEvent, localDate, occurrences, type Exception, type Recurrence } from "@stellwall/shared";
+import { eq, inArray, isNull, sql } from "drizzle-orm";
+import { birthdaysBetween, eveningBefore, expandEvent, localDate, occurrences, zonedTime, type Exception, type Recurrence } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
-import { birthdays, eventExceptions, eventFor, events, todoAssignees, todoDone, todos } from "../db/schema.ts";
+import { birthdays, documentMembers, documents, eventExceptions, eventFor, events, members, todoAssignees, todoDone, todos } from "../db/schema.ts";
 import type { Outbox } from "./outbox.ts";
 
 const DAY = 86_400_000;
@@ -89,5 +89,24 @@ export async function remind(db: Db, outbox: Outbox, now: Date, tz: string) {
       const body = `${b.name} hat ${rel} Geburtstag${o.age !== null ? ` und wird ${o.age}` : ""}`;
       await outbox.enqueue({ memberIds: b.remindWho as string[], actor: null, kind: "birthday", ref: { type: "birthday", id: b.id }, title: "Geburtstag", body, url: "/kalender/geburtstage", dueAt: at, dedupe: `rem:b:${b.id}:${o.date}`, quiet: false });
     }
+  }
+
+  // Documents that run out: 09:00 on the day remindDays before, to everyone who sees them.
+  const docs = await db.select().from(documents).where(sql`${documents.validUntil} is not null and ${documents.validUntil} >= ${today}`);
+  for (const d of docs) {
+    let at = zonedTime(addDays(d.validUntil!, -d.remindDays), "09:00", tz);
+    // Saved already inside its window: the next 09:00 after saving.
+    if (at < d.updatedAt) {
+      const day = localDate(d.updatedAt, tz);
+      at = zonedTime(day, "09:00", tz);
+      if (at < d.updatedAt) at = zonedTime(addDays(day, 1), "09:00", tz);
+      if (localDate(at, tz) > d.validUntil!) continue;
+    }
+    if (!due(at)) continue;
+    const people = d.everyone
+      ? (await db.select({ id: members.id }).from(members).where(isNull(members.removedAt))).map((m) => m.id)
+      : (await db.select({ id: documentMembers.memberId }).from(documentMembers).where(eq(documentMembers.documentId, d.id))).map((m) => m.id);
+    const [y, m, day] = d.validUntil!.split("-");
+    await outbox.enqueue({ memberIds: people, actor: null, kind: "document_expiry", ref: { type: "document", id: d.id }, title: "Dokumente", body: `„${d.name}“ läuft am ${day}.${m}.${y} ab`, url: `/dokumente/${d.id}`, dueAt: at, dedupe: `rem:d:${d.id}:${d.validUntil}:${d.remindDays}`, quiet: false });
   }
 }
