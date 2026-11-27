@@ -20,12 +20,12 @@ final class FakeShopping: ShoppingAPI {
     func board() async throws -> [BoardRow] { board }
     func boardSeen() async throws { calls.append("seen") }
     func lists() async throws -> [ShoppingList] { lists }
-    func createList(name: String, visibility: Visibility) async throws -> ShoppingList {
+    func createList(name: String, visibility: Stellwall.Visibility) async throws -> ShoppingList {
         let l = ShoppingList(id: "l3", name: name, visibility: visibility, createdBy: "me", openCount: 0)
         lists.append(l)
         return l
     }
-    func updateList(id: String, name: String?, visibility: Visibility?) async throws { calls.append("updateList:\(id):\(name ?? "-")") }
+    func updateList(id: String, name: String?, visibility: Stellwall.Visibility?) async throws { calls.append("updateList:\(id):\(name ?? "-")") }
     func deleteList(id: String) async throws { calls.append("deleteList:\(id)"); lists.removeAll { $0.id == id } }
     func clearList(id: String) async throws { calls.append("clearList:\(id)"); items[id] = [] }
     func items(listId: String) async throws -> [Item] { items[listId] ?? [] }

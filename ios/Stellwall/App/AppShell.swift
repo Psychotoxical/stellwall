@@ -5,6 +5,7 @@ struct AppShell: View {
     let me: Member
     let api: APIClient
     var webUrl: String? = nil
+    @Binding var theme: ThemeChoice
     let onMemberChanged: (Member) -> Void
     let onSignOut: () -> Void
     @State private var tab: Tab = .start
@@ -21,10 +22,11 @@ struct AppShell: View {
     @Environment(\.scenePhase) private var phase
     @Environment(\.palette) private var p
 
-    init(me: Member, api: APIClient, webUrl: String? = nil, onMemberChanged: @escaping (Member) -> Void, onSignOut: @escaping () -> Void) {
+    init(me: Member, api: APIClient, webUrl: String? = nil, theme: Binding<ThemeChoice>, onMemberChanged: @escaping (Member) -> Void, onSignOut: @escaping () -> Void) {
         self.me = me
         self.api = api
         self.webUrl = webUrl
+        _theme = theme
         self.onMemberChanged = onMemberChanged
         self.onSignOut = onSignOut
         _start = State(initialValue: StartModel(board: { try await api.board() }))
@@ -64,11 +66,22 @@ struct AppShell: View {
             }
         }
         .onChange(of: tab) { old, _ in if old == .einkauf { Task { await shopping.leave() } } }
+        // A tapped notification opens where it belongs.
+        .onChange(of: LinkInbox.shared.url, initial: true) { _, url in
+            guard let url else { return }
+            go(Links.target(url))
+            LinkInbox.shared.url = nil
+        }
+        // Once per start: does this phone still get messages?
+        .task {
+            guard Push.available, await Push.allowed(), let t = await Push.token() else { return }
+            try? await api.registerFcm(token: t, label: Push.label)
+        }
     }
 
     @ViewBuilder private func area(_ t: Tab) -> some View {
         if t == .start && more {
-            MorePlaceholder(onBack: { more = false }, onSignOut: onSignOut)
+            MoreView(api: api, member: me, webUrl: webUrl, theme: $theme, onMemberChanged: onMemberChanged, onSignOut: onSignOut, onBack: { more = false })
         } else {
             switch t {
             case .start:
@@ -85,23 +98,5 @@ struct AppShell: View {
                 TodosView(model: todos)
             }
         }
-    }
-}
-
-/** Replaced by Mehr in a later step. */
-struct MorePlaceholder: View {
-    let onBack: () -> Void
-    let onSignOut: () -> Void
-    @Environment(\.palette) private var p
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            BackLink(parent: "Start", action: onBack)
-            PageHead(title: "Mehr")
-            GhostButton("Auf diesem Gerät abmelden", action: onSignOut)
-            Spacer()
-        }
-        .padding(16)
-        .background(p.ground.color.ignoresSafeArea())
     }
 }

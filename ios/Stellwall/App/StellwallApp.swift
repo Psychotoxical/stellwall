@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct StellwallApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel()
     @State private var theme = DevicePrefs().theme
 
@@ -50,9 +51,9 @@ struct RootView: View {
                     } catch {
                         return passwordChangeError(error)
                     }
-                }, onSignOut: { Task { await model.signOut() } })
+                }, onSignOut: { Task { await model.signOut(pushEndpoint: await Push.endpoint()) } })
             } else if let api = model.api {
-                AppShell(me: me, api: api, webUrl: model.server, onMemberChanged: model.memberChanged, onSignOut: { Task { await model.signOut() } })
+                AppShell(me: me, api: api, webUrl: model.server, theme: $theme, onMemberChanged: model.memberChanged, onSignOut: { Task { await model.signOut(pushEndpoint: await Push.endpoint()) } })
                     .id(me.id)
             }
         }

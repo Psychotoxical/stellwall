@@ -63,8 +63,16 @@ export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch;
     const res = await http(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${await accessToken()}` },
-      // Data only: the app builds the notification itself, with its channel and where a tap leads.
-      body: JSON.stringify({ message: { token: sub.endpoint.slice(FCM_PREFIX.length), data, android: { priority: "HIGH", ttl: "86400s" } } }),
+      // Android gets data only and builds the notification itself, with its channel and where a tap leads.
+      // iPhones only show what the message carries, so it has an alert for them; the data says where a tap leads.
+      body: JSON.stringify({
+        message: {
+          token: sub.endpoint.slice(FCM_PREFIX.length),
+          data,
+          android: { priority: "HIGH", ttl: "86400s" },
+          apns: { headers: { "apns-priority": "10" }, payload: { aps: { alert: { title: data.title ?? "", body: data.body ?? "" }, sound: "default", "thread-id": data.kind ?? "stellwall" } } },
+        },
+      }),
       signal: AbortSignal.timeout(10_000),
     });
     if (res.ok) return { gone: false };

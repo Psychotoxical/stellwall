@@ -17,13 +17,23 @@ settings:
 packages:
   SnapshotTesting:
     url: https://github.com/pointfreeco/swift-snapshot-testing
-    from: "1.18.0"
+    from: "1.19.7"
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "13.2.0"
 targets:
   Stellwall:
     type: application
     platform: iOS
     sources:
       - path: Stellwall
+    dependencies:
+      - package: Firebase
+        product: FirebaseMessaging
+    entitlements:
+      path: Stellwall/Stellwall.entitlements
+      properties:
+        aps-environment: production
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.stellwall
@@ -43,6 +53,8 @@ targets:
         UIAppFonts: [sofia_sans.ttf, sofia_sans_condensed.ttf, fredoka.ttf]
         ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: Zum Scannen von Dokumenten.
+        UIBackgroundModes: [remote-notification]
+        FirebaseAppDelegateProxyEnabled: true
   StellwallTests:
     type: bundle.unit-test
     platform: iOS

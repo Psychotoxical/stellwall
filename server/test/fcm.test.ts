@@ -29,7 +29,7 @@ function fakeGoogle(answer: (c: Call) => { status: number; json: object }) {
 const ok = (c: Call) => (c.url === account.token_uri ? { status: 200, json: { access_token: "access-1", expires_in: 3600 } } : { status: 200, json: { name: "projects/family-test/messages/1" } });
 
 describe("FCM", () => {
-  it("signs in with the service account and sends a data message", async () => {
+  it("signs in with the service account and sends a data message, with an alert for iPhones", async () => {
     const g = fakeGoogle(ok);
     const send = fcmSender(account, { fetch: g.fetch, now: () => new Date("2026-11-27T10:00:00Z") });
     const r = await send({ endpoint: "fcm:device-token-1", p256dh: "", auth: "" }, JSON.stringify({ title: "Einkauf", body: "Sam hat 2 Sachen gesetzt", url: "/einkauf", kind: "shopping" }));
@@ -46,7 +46,13 @@ describe("FCM", () => {
     expect(msg.url).toBe("https://fcm.googleapis.com/v1/projects/family-test/messages:send");
     expect(msg.auth).toBe("Bearer access-1");
     expect(JSON.parse(msg.body)).toEqual({
-      message: { token: "device-token-1", data: { title: "Einkauf", body: "Sam hat 2 Sachen gesetzt", url: "/einkauf", kind: "shopping" }, android: { priority: "HIGH", ttl: "86400s" } },
+      message: {
+        token: "device-token-1",
+        data: { title: "Einkauf", body: "Sam hat 2 Sachen gesetzt", url: "/einkauf", kind: "shopping" },
+        android: { priority: "HIGH", ttl: "86400s" },
+        // iPhones only show what the message itself carries; Android reads the data and ignores this.
+        apns: { headers: { "apns-priority": "10" }, payload: { aps: { alert: { title: "Einkauf", body: "Sam hat 2 Sachen gesetzt" }, sound: "default", "thread-id": "shopping" } } },
+      },
     });
   });
 
