@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-11-27
+
 ### Changed
 
 - Server: when Firebase refuses a message to a phone, the log says why (status and error code, never the phone's token).
