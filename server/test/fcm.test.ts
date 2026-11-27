@@ -86,6 +86,17 @@ describe("FCM", () => {
     expect(await fcmSender(account, { fetch: broken.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });
   });
 
+  it("a refused message is written to the log with its codes, never with the token", async () => {
+    const lines: string[] = [];
+    const apple = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 401, json: { error: { status: "UNAUTHENTICATED", message: "Auth error from APNS or Web Push Service", details: [{ errorCode: "THIRD_PARTY_AUTH_ERROR" }] } } }));
+    await fcmSender(account, { fetch: apple.fetch, warn: (m) => lines.push(m) })({ endpoint: "fcm:secret-phone-token", p256dh: "", auth: "" }, "{}");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("401");
+    expect(lines[0]).toContain("THIRD_PARTY_AUTH_ERROR");
+    expect(lines[0]).toContain("Auth error from APNS");
+    expect(lines[0]).not.toContain("secret-phone-token");
+  });
+
   it("a wrong project (404 without UNREGISTERED) keeps every phone", async () => {
     const wrong = fakeGoogle((c) => (c.url === account.token_uri ? ok(c) : { status: 404, json: { error: { status: "NOT_FOUND", message: "Requested entity was not found." } } }));
     expect(await fcmSender(account, { fetch: wrong.fetch })({ endpoint: "fcm:x", p256dh: "", auth: "" }, "{}")).toEqual({ gone: false });

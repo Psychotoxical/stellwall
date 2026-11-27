@@ -34,8 +34,9 @@ const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
  * Sends to Android phones through FCM (HTTP v1). The access token comes from a JWT signed with the
  * service account's key and is kept until a minute before it runs out.
  */
-export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch; now?: () => Date } = {}): PushSender {
+export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch; now?: () => Date; warn?: (msg: string) => void } = {}): PushSender {
   const http = opts.fetch ?? fetch;
+  const warn = opts.warn ?? console.warn;
   const now = opts.now ?? (() => new Date());
   let token: { value: string; until: number } | null = null;
 
@@ -80,6 +81,10 @@ export function fcmSender(account: ServiceAccount, opts: { fetch?: typeof fetch;
     if (res.status === 401) token = null;
     const err = (await res.json().catch(() => ({}))) as { error?: { status?: string; message?: string; details?: { errorCode?: string }[] } };
     const code = err.error?.details?.find((d) => d.errorCode)?.errorCode;
+    // Without this a phone that never gets anything leaves no trace. The token stays out of the log.
+    const phone = sub.endpoint.slice(FCM_PREFIX.length);
+    const why = (err.error?.message ?? "").split(phone).join("<token>").slice(0, 200);
+    warn(`FCM refused a message: ${res.status} ${err.error?.status ?? ""} ${code ?? ""} ${why}`.replace(/\s+/g, " ").trim());
     // Only this code means the app was removed or the token replaced. A plain 404 can also be a
     // wrong project in the service account, and that must not throw away every phone.
     // A 400 about the registration token is a token Google never issued; a 400 about anything
