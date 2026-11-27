@@ -108,7 +108,9 @@ struct MoreView: View {
                         } else {
                             PrimaryButton(MoreText.allow) {
                                 Task {
-                                    if await Push.ask() || (await Push.allowed()) {
+                                    let asked = await Push.ask()
+                                    let ok = asked ? true : await Push.allowed()
+                                    if ok {
                                         allowed = true
                                         if let t = await Push.token() { await notify.register(token: t, label: Push.label) }
                                     } else {
