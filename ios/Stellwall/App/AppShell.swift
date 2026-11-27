@@ -19,6 +19,7 @@ struct AppShell: View {
     @State private var birthdays: BirthdaysModel
     @State private var meals: MealsModel
     @State private var todos: TodosModel
+    @State private var docs: DocumentsModel
     @Environment(\.scenePhase) private var phase
     @Environment(\.palette) private var p
 
@@ -35,6 +36,7 @@ struct AppShell: View {
         _birthdays = State(initialValue: BirthdaysModel(api: api, me: me))
         _meals = State(initialValue: MealsModel(api: api))
         _todos = State(initialValue: TodosModel(api: api, me: me))
+        _docs = State(initialValue: DocumentsModel(api: api, me: me))
     }
 
     func go(_ t: Target) {
@@ -63,6 +65,7 @@ struct AppShell: View {
                 await calendar.onLive(e)
                 await meals.onLive(e)
                 await todos.onLive(e)
+                await docs.onLive(e)
             }
         }
         .onChange(of: tab) { old, _ in if old == .einkauf { Task { await shopping.leave() } } }
@@ -80,7 +83,10 @@ struct AppShell: View {
     }
 
     @ViewBuilder private func area(_ t: Tab) -> some View {
-        if t == .start && more {
+        if t == .start && documents {
+            DocumentsArea(model: docs, startId: target?.documentId) { documents = false }
+                .id(target?.documentId ?? "")
+        } else if t == .start && more {
             MoreView(api: api, member: me, webUrl: webUrl, theme: $theme, onMemberChanged: onMemberChanged, onSignOut: onSignOut, onBack: { more = false })
         } else {
             switch t {
