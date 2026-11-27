@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-27
+
 ### Added
 
 - A new colour world "Pink": a candy pink ground with berry buttons, light and dark.
