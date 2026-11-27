@@ -8,7 +8,11 @@ struct StellwallApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if UITestHost.shopping { UITestShopping() } else { RootView(model: model, theme: $theme) }
+            #else
             RootView(model: model, theme: $theme)
+            #endif
         }
     }
 }
