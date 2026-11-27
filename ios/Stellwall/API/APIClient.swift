@@ -152,3 +152,6 @@ enum ServerAddress {
         return s
     }
 }
+
+/** A value for a JSON body, or JSON null. */
+func orNull(_ v: Any?) -> Any { v ?? NSNull() }

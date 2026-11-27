@@ -297,7 +297,7 @@ enum EventForms {
             "title": d.title.trimmingCharacters(in: .whitespaces),
             "location": d.location.trimmingCharacters(in: .whitespaces),
             "notes": d.notes.trimmingCharacters(in: .whitespacesAndNewlines),
-            "rrule": ruleFor(d, nil, d.startDate) ?? NSNull(),
+            "rrule": orNull(ruleFor(d, nil, d.startDate)),
             "forWhom": d.forWhom,
             "seeAll": d.seeAll,
             "reminders": d.reminders,
@@ -352,7 +352,7 @@ enum EventForms {
         }
         if scope != .one {
             let rule = ruleFor(d, ev, seriesStart)
-            if rule != ev.rrule { body["rrule"] = rule ?? NSNull() }
+            if rule != ev.rrule { body["rrule"] = orNull(rule) }
         }
         return body
     }

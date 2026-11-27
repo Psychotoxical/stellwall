@@ -70,6 +70,7 @@ struct Target: Equatable {
     var listId: String? = nil
     var date: Date? = nil
     var birthdays = false
+    var cook: CookTarget? = nil
     var more = false
     var documents = false
     var documentId: String? = nil

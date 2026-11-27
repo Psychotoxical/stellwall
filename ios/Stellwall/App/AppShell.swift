@@ -16,6 +16,8 @@ struct AppShell: View {
     @State private var shopping: ShoppingModel
     @State private var calendar: CalendarModel
     @State private var birthdays: BirthdaysModel
+    @State private var meals: MealsModel
+    @State private var todos: TodosModel
     @Environment(\.scenePhase) private var phase
     @Environment(\.palette) private var p
 
@@ -29,6 +31,8 @@ struct AppShell: View {
         _shopping = State(initialValue: ShoppingModel(api: api, me: me))
         _calendar = State(initialValue: CalendarModel(api: api, me: me))
         _birthdays = State(initialValue: BirthdaysModel(api: api, me: me))
+        _meals = State(initialValue: MealsModel(api: api))
+        _todos = State(initialValue: TodosModel(api: api, me: me))
     }
 
     func go(_ t: Target) {
@@ -55,6 +59,8 @@ struct AppShell: View {
                 await start.onLive(e)
                 await shopping.onLive(e)
                 await calendar.onLive(e)
+                await meals.onLive(e)
+                await todos.onLive(e)
             }
         }
         .onChange(of: tab) { old, _ in if old == .einkauf { Task { await shopping.leave() } } }
@@ -72,15 +78,11 @@ struct AppShell: View {
             case .kalender:
                 CalendarView(model: calendar, birthdays: birthdays, startDate: target?.date.map { Day($0) }, openBirthdays: target?.birthdays == true)
                     .id(target.map { "\($0.date?.timeIntervalSince1970 ?? 0)\($0.birthdays)" } ?? "")
-            default:
-                VStack(alignment: .leading) {
-                    Wordmark()
-                    PageHead(title: t.rawValue).padding(.top, 14)
-                    Spacer()
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(p.ground.color.ignoresSafeArea())
+            case .essen:
+                MealsArea(model: meals, cook: target?.cook) { id in go(Target(tab: .einkauf, listId: id)) }
+                    .id(target?.cook?.slug ?? "")
+            case .todos:
+                TodosView(model: todos)
             }
         }
     }
