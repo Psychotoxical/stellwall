@@ -49,6 +49,24 @@ final class GestureTests: XCTestCase {
         waitForExpectations(timeout: 5)
     }
 
+    /** Someone was typing: the keyboard is up, and the window is pulled down anyway. */
+    func testTheEditWindowCanBeSwipedAwayWithTheKeyboardOpen() {
+        let app = launch()
+        app.buttons["Milch bearbeiten"].tap()
+        let title = app.staticTexts["Eintrag bearbeiten"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        app.textFields.firstMatch.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let window = app.windows.firstMatch
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)), withVelocity: .fast, thenHoldForDuration: 0)
+        // The first pull may only take the keyboard away; a second one must close the window.
+        if title.exists {
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.0)), withVelocity: .fast, thenHoldForDuration: 0)
+        }
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: title)
+        waitForExpectations(timeout: 5)
+    }
+
     func testARowSwipedLeftIsDeleted() {
         let app = launch()
         app.buttons["Milch bearbeiten"].swipeLeft(velocity: .fast)
