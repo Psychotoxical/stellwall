@@ -1,0 +1,69 @@
+# The iPhone app. The Xcode project is made from this file in CI: xcodegen generate
+name: Stellwall
+options:
+  bundleIdPrefix: app
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.11"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+packages:
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    from: "1.18.0"
+targets:
+  Stellwall:
+    type: application
+    platform: iOS
+    sources:
+      - path: Stellwall
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.stellwall
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Stellwall/Info.plist
+      properties:
+        CFBundleDisplayName: Stellwall
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIAppFonts: [sofia_sans.ttf, sofia_sans_condensed.ttf, fredoka.ttf]
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Zum Scannen von Dokumenten.
+  StellwallTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: StellwallTests
+        excludes: ["**/__Snapshots__/**"]
+    dependencies:
+      - target: Stellwall
+      - package: SnapshotTesting
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.stellwall.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Stellwall.app/Stellwall
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  Stellwall:
+    build:
+      targets:
+        Stellwall: all
+        StellwallTests: [test]
+    test:
+      targets: [StellwallTests]
+      environmentVariables:
+        TZ: Europe/Berlin

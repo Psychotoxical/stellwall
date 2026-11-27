@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- iPhone app (in progress): built and tested in CI on the iOS simulator.
+
 ## [0.1.11] - 2026-11-27
 
 ### Added

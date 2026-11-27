@@ -26,6 +26,7 @@ jobs:
     outputs:
       code: ${{ steps.files.outputs.code }}
       android: ${{ steps.files.outputs.android }}
+      ios: ${{ steps.files.outputs.ios }}
     steps:
       - id: files
         env:
@@ -35,6 +36,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           CODE: '^(contract/|shared/|server/|web/|e2e/|package(-lock)?\.json$|tsconfig\.base\.json$|eslint\.config\.js$|playwright\.config\.ts$|Dockerfile$|\.dockerignore$|\.github/workflows/ci\.yml$)'
           ANDROID: '^(android/|contract/|scripts/(make-worlds\.py|solar-to-android\.mjs)$|\.github/workflows/ci\.yml$)'
+          IOS: '^(ios/|contract/|scripts/make-worlds\.py$|\.github/workflows/ci\.yml$)'
         run: |
           case "$EVENT" in
             pull_request)
@@ -58,8 +60,13 @@ jobs:
             android=true
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          ios=false
+          if [ "$files" = ALL ] || grep -qE "$IOS" <<< "$files"; then
+            ios=true
+          fi
           echo "android=$android" >> "$GITHUB_OUTPUT"
-          echo "::notice::Tests: $code, Android: $android"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
+          echo "::notice::Tests: $code, Android: $android, iPhone: $ios"
 
   changelog:
     name: Changelog entry
@@ -190,9 +197,40 @@ jobs:
           path: android/app/build/outputs/roborazzi/
           retention-days: 7
 
+  ios:
+    name: iPhone app
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v7
+      - name: Xcode and XcodeGen
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          brew install xcodegen
+          xcodegen generate
+      - name: Build and test on the simulator
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild test -project Stellwall.xcodeproj -scheme Stellwall             -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5'             -resultBundlePath build/tests.xcresult CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/test.log | grep -E "error:|warning: unre|Test Case.*(passed|failed)|Executed|BUILD|TEST" | tail -150
+      - name: Upload pictures and results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-tests
+          path: |
+            ios/StellwallTests/**/__Snapshots__/
+            ios/build/test.log
+          retention-days: 3
+
   ci-ok:
     name: ci-ok
-    needs: [changes, changelog, lint, tests, image, android]
+    needs: [changes, changelog, lint, tests, image, android, ios]
     if: always()
     runs-on: ubuntu-24.04
     steps:
