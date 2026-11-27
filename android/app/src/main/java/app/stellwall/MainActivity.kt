@@ -13,5 +13,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             Root((application as StellwallApp).model, dark = isSystemInDarkTheme())
         }
+        link(intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        link(intent)
+    }
+
+    private fun link(intent: android.content.Intent?) {
+        intent?.getStringExtra(app.stellwall.push.Push.EXTRA_URL)?.let { (application as StellwallApp).links.value = it }
     }
 }

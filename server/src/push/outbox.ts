@@ -142,7 +142,7 @@ export function createOutbox(db: Db, opts: { now: () => Date; timeZone: string; 
         if (!(await wanted([n.memberId], null, n.kind as Kind)).length) continue;
         if (!(await stillVisible(n.memberId, { type: n.refType as Ref["type"], id: n.refId }))) continue;
         const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.memberId, n.memberId));
-        const payload = JSON.stringify({ title: n.title, body: n.body, url: n.url });
+        const payload = JSON.stringify({ title: n.title, body: n.body, url: n.url, kind: n.kind });
         for (const s of subs) {
           const r = await sender(s, payload).catch(() => ({ gone: false }));
           if (r.gone) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));

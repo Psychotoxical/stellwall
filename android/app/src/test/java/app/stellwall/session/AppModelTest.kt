@@ -17,7 +17,7 @@ class AppModelTest {
         var loggedOut = false
         override suspend fun me() = me.invoke()
         override suspend fun login(username: String, password: String) = login.invoke()
-        override suspend fun logout() { loggedOut = true }
+        override suspend fun logout(pushEndpoint: String?) { loggedOut = true }
     }
 
     private class FakePrefs(override var server: String? = null) : Prefs

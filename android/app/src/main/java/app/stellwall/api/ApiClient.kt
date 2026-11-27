@@ -30,7 +30,9 @@ import okhttp3.WebSocketListener
 interface Backend {
     suspend fun login(username: String, password: String): Member
     suspend fun me(): Member?
-    suspend fun logout()
+
+    /** [pushEndpoint]: this phone's push registration, removed on the server along with the session. */
+    suspend fun logout(pushEndpoint: String? = null)
 }
 
 /** Start and shopping. */
@@ -92,7 +94,7 @@ interface TodosApi {
 }
 
 /** Talks to one Stellwall server; the session lives in [store]. */
-class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi, MealsApi, TodosApi {
+class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, ShoppingApi, CalendarApi, MealsApi, TodosApi, AccountApi {
     private val jar = SessionCookieJar(store)
     private val http = OkHttpClient.Builder()
         .cookieJar(jar)
@@ -113,9 +115,9 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
     }
 
     /** Signs out on the server if it answers; the cookie is forgotten either way. */
-    override suspend fun logout() {
+    override suspend fun logout(pushEndpoint: String?) {
         try {
-            call("POST", "api/auth/logout", "{}")
+            call("POST", "api/auth/logout", encode(LogoutBody.serializer(), LogoutBody(pushEndpoint)))
         } catch (_: IOException) {
         } catch (_: ApiException) {
         } finally {
@@ -277,6 +279,45 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun todoSuggestions(q: String) =
         send("GET", url("api/todo-suggestions", "q" to q), null).decode(ListSerializer(NameOnly.serializer())).map { it.name }
+
+    override suspend fun updateMember(id: String, change: MemberChange) =
+        call("PATCH", "api/members/${seg(id)}", encode(MemberChange.serializer(), change)).decode(Member.serializer())
+
+    override suspend fun changePassword(current: String, next: String) {
+        call("POST", "api/me/password", encode(PasswordChange.serializer(), PasswordChange(current, next)))
+    }
+
+    override suspend fun notificationPrefs(): Map<String, Boolean> =
+        (json.parseToJsonElement(call("GET", "api/notification-prefs")) as JsonObject).mapValues { (_, v) -> v.jsonPrimitive.content == "true" }
+
+    override suspend fun setNotificationPref(kind: String, on: Boolean) {
+        call("PUT", "api/notification-prefs", JsonObject(mapOf(kind to kotlinx.serialization.json.JsonPrimitive(on))).toString())
+    }
+
+    override suspend fun pushDevices() = call("GET", "api/push/subscriptions").decode(ListSerializer(PushDevice.serializer()))
+
+    override suspend fun deletePushDevice(id: String) {
+        call("DELETE", "api/push/subscriptions/${seg(id)}")
+    }
+
+    override suspend fun registerFcm(token: String, label: String) {
+        call("POST", "api/push/fcm", encode(FcmRegistration.serializer(), FcmRegistration(token, label)))
+    }
+
+    override suspend fun pushTest() = call("POST", "api/push/test", "{}").decode(DeviceCount.serializer()).devices
+
+    override suspend fun appInfo() = call("GET", "api/app/info").decode(AppInfo.serializer())
+
+    /** Streams the APK to [to], so a large file never sits in memory. */
+    override suspend fun downloadApk(to: java.io.File): Unit = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(base.resolve("api/app/android")!!).build()
+        http.newBuilder().readTimeout(5, TimeUnit.MINUTES).build().newCall(req).execute().use { res ->
+            if (!res.isSuccessful) throw ApiException(res.code, "")
+            to.parentFile?.mkdirs()
+            to.outputStream().use { out -> res.body.byteStream().copyTo(out) }
+            Unit
+        }
+    }
 
     /**
      * Change hints for as long as it is collected. A dropped connection is opened again,

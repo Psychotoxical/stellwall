@@ -47,7 +47,15 @@ fun Root(model: AppModel<ApiClient>, dark: Boolean) {
             is AppState.SignedIn -> {
                 val api = model.backend
                 val live = remember(api) { api?.live() ?: emptyFlow() }
-                AppShell(member = s.member, api = api, calendarApi = api, mealsApi = api, todosApi = api, live = live, webUrl = model.server)
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val links = (context.applicationContext as StellwallApp).links
+                val link by links.collectAsStateWithLifecycle()
+                AppShell(
+                    member = s.member, api = api, calendarApi = api, mealsApi = api, todosApi = api, accountApi = api, live = live, webUrl = model.server,
+                    link = link, onLinkHandled = { links.value = null },
+                    onMemberChanged = model::memberChanged,
+                    onSignOut = { scope.launch { model.signOut(app.stellwall.push.Push.endpoint(context)) } },
+                )
             }
         }
     }

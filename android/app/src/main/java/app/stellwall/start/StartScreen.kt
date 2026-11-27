@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 /** Where a tap on Start leads. */
-data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null)
+data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null, val more: Boolean = false)
 
 private data class Area(val label: String, val icon: Int, val target: Target?)
 
@@ -63,7 +64,16 @@ private val AREAS = listOf(
 )
 
 @Composable
-fun StartScreen(member: Member, model: StartModel, live: Flow<LiveEvent> = emptyFlow(), today: LocalDate = LocalDate.now(), mine: TodayModel? = null, onOpen: (Target) -> Unit) {
+fun StartScreen(
+    member: Member,
+    model: StartModel,
+    live: Flow<LiveEvent> = emptyFlow(),
+    today: LocalDate = LocalDate.now(),
+    mine: TodayModel? = null,
+    onMore: (() -> Unit)? = null,
+    banner: @Composable () -> Unit = {},
+    onOpen: (Target) -> Unit,
+) {
     val rows by model.rows.collectAsStateWithLifecycle()
     LaunchedEffect(model) { model.load() }
     LaunchedEffect(model, live) { live.collect { model.onLive(it) } }
@@ -73,9 +83,20 @@ fun StartScreen(member: Member, model: StartModel, live: Flow<LiveEvent> = empty
     }
     val p = LocalPalette.current
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp)) {
-        Wordmark(size = 22)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { Wordmark(size = 22) }
+            // The round picture top right leads to Mehr, as in the web app.
+            if (onMore != null) {
+                Box(
+                    Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(app.stellwall.ui.PersonColors.of(member.color))
+                        .clickable(role = Role.Button, onClick = onMore).semantics { contentDescription = "Mehr" },
+                    contentAlignment = Alignment.Center,
+                ) { Text(member.displayName.take(1).uppercase(), color = app.stellwall.ui.PersonColors.INK, style = MaterialTheme.typography.titleMedium) }
+            }
+        }
         Column(Modifier.padding(top = 14.dp)) { PageHead(title = StartText.hello(member.displayName), sub = StartText.today(today)) }
-        Board(rows.orEmpty(), onOpen)
+        banner()
+        Box(Modifier.padding(top = 10.dp)) { Board(rows.orEmpty(), onOpen) }
         if (mine != null) MyToday(mine, today, onOpen)
         SectionHead(StartText.AREAS)
         BoxCard {

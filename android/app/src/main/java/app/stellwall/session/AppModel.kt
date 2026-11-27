@@ -64,8 +64,13 @@ class AppModel<B : Backend>(private val prefs: Prefs, private val backendFor: (H
         }
     }
 
-    suspend fun signOut() {
-        backend?.logout()
+    /** After a change to one's own profile: the new name and world show at once. */
+    fun memberChanged(m: Member) {
+        if (_state.value is AppState.SignedIn) _state.value = AppState.SignedIn(m)
+    }
+
+    suspend fun signOut(pushEndpoint: String? = null) {
+        backend?.logout(pushEndpoint)
         backend = null
         _state.value = AppState.SignedOut(prefs.server)
     }

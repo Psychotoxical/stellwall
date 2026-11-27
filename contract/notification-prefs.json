@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "event": true,
+    "event_reminder": true,
+    "todo": true,
+    "todo_reminder": true,
+    "shopping": true,
+    "birthday": true,
+    "meal": true
+  }
+}

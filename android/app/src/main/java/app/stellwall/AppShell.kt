@@ -34,7 +34,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import app.stellwall.api.LiveEvent
 import app.stellwall.api.Member
+import app.stellwall.api.AccountApi
+import app.stellwall.api.AppInfo
 import app.stellwall.api.CalendarApi
+import app.stellwall.more.MoreScreen
+import app.stellwall.more.UpdateBanner
+import app.stellwall.more.deviceLabel
+import app.stellwall.push.Links
+import app.stellwall.push.Push
+import app.stellwall.push.TokenStore
 import app.stellwall.api.MealsApi
 import app.stellwall.api.ShoppingApi
 import app.stellwall.api.TodosApi
@@ -74,12 +82,39 @@ fun AppShell(
     calendarApi: CalendarApi? = null,
     mealsApi: MealsApi? = null,
     todosApi: TodosApi? = null,
+    accountApi: AccountApi? = null,
     live: Flow<LiveEvent> = emptyFlow(),
     webUrl: String? = null,
+    link: String? = null,
+    onLinkHandled: () -> Unit = {},
+    onMemberChanged: (Member) -> Unit = {},
+    onSignOut: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Start) }
     var listId by rememberSaveable { mutableStateOf<String?>(null) }
     var calTarget by remember { mutableStateOf<Target?>(null) }
+    var more by rememberSaveable { mutableStateOf(false) }
+    var info by remember { mutableStateOf<AppInfo?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val go = { target: Target ->
+        tab = target.tab
+        listId = target.listId
+        calTarget = target
+        more = target.more
+    }
+    // A tapped notification opens where it belongs.
+    LaunchedEffect(link) { link?.let { go(Links.target(it)); onLinkHandled() } }
+    // Once per start: is there a newer app, and does this phone still get messages?
+    LaunchedEffect(accountApi) {
+        val a = accountApi ?: return@LaunchedEffect
+        info = runCatching { a.appInfo() }.getOrNull()
+        if (info?.fcm == true && Push.available && Push.allowed(context)) {
+            Push.token()?.let { t ->
+                TokenStore(context).token = t
+                runCatching { a.registerFcm(t, deviceLabel()) }
+            }
+        }
+    }
     val p = LocalPalette.current
     val scope = rememberCoroutineScope()
 
@@ -97,7 +132,7 @@ fun AppShell(
     val birthdays = remember(calendarApi, member) { if (calendarApi != null && member != null) BirthdaysModel(calendarApi, member) else null }
 
     // Back leads to Start first, as the web app's back buttons do.
-    BackHandler(enabled = tab != Tab.Start) { tab = Tab.Start }
+    BackHandler(enabled = tab != Tab.Start || more) { if (more) more = false else tab = Tab.Start }
 
     Scaffold(
         containerColor = p.ground,
@@ -108,6 +143,7 @@ fun AppShell(
                         selected = tab == t,
                         onClick = {
                             tab = t
+                            more = false
                             if (t == Tab.Einkauf) listId = null
                             calTarget = null
                         },
@@ -121,11 +157,11 @@ fun AppShell(
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
             when {
-                tab == Tab.Start && start != null && member != null -> StartScreen(member, start, hints, mine = mine) { target ->
-                    tab = target.tab
-                    listId = target.listId
-                    calTarget = target
-                }
+                more && member != null && accountApi != null -> MoreScreen(accountApi, member, info, webUrl, onMemberChanged, onSignOut, onBack = { more = false })
+                tab == Tab.Start && start != null && member != null -> StartScreen(
+                    member, start, hints, mine = mine, onMore = { more = true },
+                    banner = { if (accountApi != null) UpdateBanner(accountApi, info) },
+                ) { target -> go(target) }
                 tab == Tab.Einkauf && shopping != null -> ShoppingScreen(shopping, listId, hints, leaveScope = scope)
                 tab == Tab.Essen && meals != null && mealsApi != null -> androidx.compose.runtime.key(calTarget) {
                     MealsArea(meals, mealsApi, hints, calTarget?.cook ?: MealPage.Week) { id -> tab = Tab.Einkauf; listId = id }
