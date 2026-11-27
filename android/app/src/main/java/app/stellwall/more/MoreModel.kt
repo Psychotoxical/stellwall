@@ -30,7 +30,7 @@ object MoreText {
     const val NEW = "Neues Passwort"
     const val HINT = "Mindestens 10 Zeichen."
     const val CHANGED = "Passwort geändert."
-    const val WRONG = "Das alte Passwort stimmt nicht."
+    const val WRONG = "Das aktuelle Passwort stimmt nicht."
     const val SAVED = "Gespeichert."
     const val SAVE = "Speichern"
     const val LOGOUT = "Auf diesem Gerät abmelden"
