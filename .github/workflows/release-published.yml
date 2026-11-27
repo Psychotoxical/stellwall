@@ -102,8 +102,10 @@ jobs:
           API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GOOGLE_SERVICE_INFO_B64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_B64 }}
-          BUILD: ${{ github.run_number }}
+          BUILD: ${{ github.run_number }}.${{ github.run_attempt }}
         run: |
+          # A failing xcodebuild must fail the step, not hide behind `tail`.
+          set -o pipefail
           if [ -z "$API_KEY_B64" ] || [ -z "$API_KEY_ID" ] || [ -z "$API_ISSUER" ] || [ -z "$TEAM_ID" ]; then
             echo "::warning::Apple secrets are missing; no iPhone build this time"
             exit 0

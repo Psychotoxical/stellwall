@@ -78,9 +78,10 @@ struct AppShell: View {
             go(Links.target(url))
             LinkInbox.shared.url = nil
         }
-        // Once per start: does this phone still get messages?
-        .task {
-            guard Push.available, await Push.allowed(), let t = await Push.token() else { return }
+        // Once per start, and whenever Firebase hands over a new token: this phone gets messages.
+        .task(id: LinkInbox.shared.token) {
+            guard Push.available, await Push.allowed() else { return }
+            guard let t = LinkInbox.shared.token ?? (await Push.token()) else { return }
             try? await api.registerFcm(token: t, label: Push.label)
         }
     }

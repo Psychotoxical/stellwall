@@ -30,6 +30,12 @@ struct RootView: View {
             .task { if model.state == .loading { await model.start() } }
     }
 
+    /** Tells the server to drop this phone, then drops the token itself. */
+    private func signOut() async {
+        await model.signOut(pushEndpoint: await Push.endpoint())
+        await Push.forget()
+    }
+
     @ViewBuilder private var content: some View {
         switch model.state {
         case .loading:
@@ -51,9 +57,9 @@ struct RootView: View {
                     } catch {
                         return passwordChangeError(error)
                     }
-                }, onSignOut: { Task { await model.signOut(pushEndpoint: await Push.endpoint()) } })
+                }, onSignOut: { Task { await signOut() } })
             } else if let api = model.api {
-                AppShell(me: me, api: api, webUrl: model.server, theme: $theme, onMemberChanged: model.memberChanged, onSignOut: { Task { await model.signOut(pushEndpoint: await Push.endpoint()) } })
+                AppShell(me: me, api: api, webUrl: model.server, theme: $theme, onMemberChanged: model.memberChanged, onSignOut: { Task { await signOut() } })
                     .id(me.id)
             }
         }

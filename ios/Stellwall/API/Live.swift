@@ -24,13 +24,19 @@ extension APIClient {
                             ws.sendPing { error in if error != nil { ws.cancel(with: .goingAway, reason: nil) } }
                         }
                     }
-                    do {
-                        while !Task.isCancelled {
-                            let msg = try await ws.receive()
-                            wait = 1
-                            if case let .string(text) = msg, let e = LiveEvent.parse(text) { continuation.yield(e) }
-                        }
-                    } catch {}
+                    // receive() does not end by itself when the task is cancelled; closing the socket ends it.
+                    await withTaskCancellationHandler {
+                        do {
+                            while !Task.isCancelled {
+                                let msg = try await ws.receive()
+                                wait = 1
+                                if case let .string(text) = msg, let e = LiveEvent.parse(text) { continuation.yield(e) }
+                            }
+                        } catch {}
+                    } onCancel: {
+                        pinger.cancel()
+                        ws.cancel(with: .goingAway, reason: nil)
+                    }
                     pinger.cancel()
                     ws.cancel(with: .goingAway, reason: nil)
                     if Task.isCancelled { break }

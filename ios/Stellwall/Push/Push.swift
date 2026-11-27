@@ -39,6 +39,12 @@ enum Push {
     static func endpoint() async -> String? { await token().map { "fcm:\($0)" } }
 
     static var label: String { "iPhone · \(UIDevice.current.name)" }
+
+    /** At sign-out: the token is dropped at Firebase, so this phone gets nothing more even if the server missed the sign-out. */
+    static func forget() async {
+        guard available else { return }
+        try? await Messaging.messaging().deleteToken()
+    }
 }
 
 /** Where tapped notifications lead; the shell takes a link and clears it. */
@@ -47,11 +53,14 @@ enum Push {
 final class LinkInbox {
     static let shared = LinkInbox()
     var url: String?
+    /** The newest FCM token Firebase handed over; the shell registers it with the server. */
+    var token: String?
 }
 
-final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         Push.configure()
+        if Push.available { Messaging.messaging().delegate = self }
         UNUserNotificationCenter.current().delegate = self
         if Push.available { application.registerForRemoteNotifications() }
         return true
@@ -59,6 +68,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         if Push.available { Messaging.messaging().apnsToken = deviceToken }
+    }
+
+    /** The token often comes only after APNs answered: on the first start, or when it changes. */
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken else { return }
+        Task { @MainActor in LinkInbox.shared.token = fcmToken }
     }
 
     /** Shown while the app is open too, as on Android. */
