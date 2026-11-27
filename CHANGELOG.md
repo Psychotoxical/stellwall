@@ -8,6 +8,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 - The image check for text recognition leaves more margin around its test page.
 
+### Fixed
+
+- Choosing who may see something no longer closes the form it was opened from (documents, birthdays, to-dos, shopping lists).
+
 ## [0.1.10] - 2026-11-27
 
 ### Added

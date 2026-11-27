@@ -57,8 +57,13 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
       ref={ref}
       className="sheet"
       aria-labelledby={tid}
-      onClose={onClose}
+      // React passes these events up to every dialog around this one; only our own counts,
+      // or closing "Wer darf das sehen?" would close the form it sits in.
+      onClose={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onCancel={(e) => {
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         onClose();
       }}
