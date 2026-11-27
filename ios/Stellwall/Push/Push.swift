@@ -38,7 +38,8 @@ enum Push {
     /** "fcm:<token>", as the server stores phones; sent at sign-out so this phone gets nothing more. */
     static func endpoint() async -> String? { await token().map { "fcm:\($0)" } }
 
-    static var label: String { "iPhone · \(UIDevice.current.name)" }
+    /** iOS gives apps only "iPhone" as the device name, so the label says what it is. */
+    static var label: String { "iPhone-App" }
 
     /** At sign-out: the token is dropped at Firebase, so this phone gets nothing more even if the server missed the sign-out. */
     static func forget() async {

@@ -97,6 +97,12 @@ struct MealsView: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background(d == model.today ? p.field.color : .clear)
+        // A long press takes the day's meal out without opening the sheet.
+        .contextMenu {
+            if m != nil {
+                Button(role: .destructive) { Task { _ = await model.remove(d) } } label: { Label(MealText.remove, systemImage: "trash") }
+            }
+        }
     }
 }
 
@@ -125,6 +131,15 @@ struct MealSheet: View {
     var body: some View {
         let showText = d.useText || (searchError != nil && d.recipe == nil)
         SheetBody(title: MealText.plan(MealText.dayName(date))) {
+            // At the top: the recipe list below can be long, and this is what people come to change.
+            if meal != nil {
+                GhostButton(MealText.remove, danger: true) {
+                    Task {
+                        error = await model.remove(date)
+                        if error == nil { dismiss() }
+                    }
+                }
+            }
             HStack(spacing: 8) {
                 Chip(text: MealText.recipe, on: !showText) { d.useText = false }
                 Chip(text: MealText.freeText, on: showText) { d.useText = true }
@@ -180,14 +195,6 @@ struct MealSheet: View {
                 }
             }
             GhostButton(MealText.cancel) { dismiss() }
-            if meal != nil {
-                GhostButton(MealText.remove, danger: true) {
-                    Task {
-                        error = await model.remove(date)
-                        if error == nil { dismiss() }
-                    }
-                }
-            }
         }
         .task(id: q) {
             try? await Task.sleep(for: .milliseconds(200))
@@ -207,11 +214,12 @@ struct RecipeImage: View {
     @Environment(\.palette) private var p
 
     var body: some View {
-        ZStack {
-            p.field.color
-            if let image { Image(uiImage: image).resizable().scaledToFill() } else { Icons.meals.image.resizable().frame(width: 24, height: 24).foregroundStyle(p.inkSoft.color) }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        // The colour gives the size; the picture is laid over it and cut to it, so it never sets the row's size.
+        p.field.color
+            .overlay {
+                if let image { Image(uiImage: image).resizable().scaledToFill() } else { Icons.meals.image.resizable().frame(width: 24, height: 24).foregroundStyle(p.inkSoft.color) }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         .task(id: id) {
             guard let id, let data = try? await api.recipeImage(id) else { return }
             image = UIImage(data: data)

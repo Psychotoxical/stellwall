@@ -126,6 +126,8 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
   return (
     <Dialog open title={de.meals.plan(dayName(date))} onClose={onClose}>
       <div className="form todoform">
+        {/* At the top: the recipe list below can be long, and this is what people come to change. */}
+        {meal && <Button type="button" variant="danger" onClick={async () => { await api(`/api/meals/${date}`, { method: "DELETE" }); await onDone(); }}>{de.meals.remove}</Button>}
         <nav className="seg" aria-label={de.meals.lunch}>
           {(["recipe", "text"] as const).map((m) => (
             <button key={m} type="button" aria-pressed={(m === "text") === showText} onClick={() => setMode(m)}>{de.meals.modes[m]}</button>
@@ -179,7 +181,6 @@ function MealSheet({ date, meal, members, onClose, onDone }: { date: string; mea
         )}
         {error && <Notice>{error}</Notice>}
         <div className="actions">
-          {meal && <Button type="button" variant="danger" onClick={async () => { await api(`/api/meals/${date}`, { method: "DELETE" }); await onDone(); }}>{de.meals.remove}</Button>}
           <Button type="button" variant="ghost" onClick={onClose}>{de.members.cancel}</Button>
           <Button type="button" onClick={() => void save()}>{de.members.save}</Button>
         </div>
