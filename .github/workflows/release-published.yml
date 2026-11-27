@@ -83,6 +83,60 @@ jobs:
             ${{ steps.img.outputs.name }}:${{ env.TAG }}
             ${{ steps.img.outputs.name }}:stable
 
+  iphone:
+    name: iPhone app to TestFlight
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      # Signed through the App Store Connect key (Xcode makes certificate and profile itself),
+      # then uploaded to TestFlight. Without the secrets this job only warns.
+      - name: Build and upload
+        env:
+          API_KEY_B64: ${{ secrets.APPLE_API_KEY_B64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GOOGLE_SERVICE_INFO_B64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_B64 }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          if [ -z "$API_KEY_B64" ] || [ -z "$API_KEY_ID" ] || [ -z "$API_ISSUER" ] || [ -z "$TEAM_ID" ]; then
+            echo "::warning::Apple secrets are missing; no iPhone build this time"
+            exit 0
+          fi
+          # The key files go away however the step ends.
+          trap 'rm -f "$RUNNER_TEMP/AuthKey.p8" ios/Stellwall/GoogleService-Info.plist' EXIT
+          printf '%s' "$API_KEY_B64" | base64 -d > "$RUNNER_TEMP/AuthKey.p8"
+          if [ -n "$GOOGLE_SERVICE_INFO_B64" ]; then
+            printf '%s' "$GOOGLE_SERVICE_INFO_B64" | base64 -d > ios/Stellwall/GoogleService-Info.plist
+          else
+            echo "::warning::GoogleService-Info.plist is missing; this build has no notifications"
+          fi
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          brew install xcodegen
+          cd ios
+          xcodegen generate
+          VERSION="${TAG#v}"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" -authenticationKeyID "$API_KEY_ID" -authenticationKeyIssuerID "$API_ISSUER")
+          xcodebuild archive -project Stellwall.xcodeproj -scheme Stellwall -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath build/Stellwall.xcarchive DEVELOPMENT_TEAM="$TEAM_ID" MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" "${AUTH[@]}" | tail -40
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/Stellwall.xcarchive -exportPath build/export -exportOptionsPlist build/ExportOptions.plist "${AUTH[@]}" | tail -40
+
   sync:
     name: Bring main up to date
     needs: image

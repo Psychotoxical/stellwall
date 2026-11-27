@@ -20,6 +20,7 @@ struct AppShell: View {
     @State private var meals: MealsModel
     @State private var todos: TodosModel
     @State private var docs: DocumentsModel
+    @State private var mine: TodayModel
     @Environment(\.scenePhase) private var phase
     @Environment(\.palette) private var p
 
@@ -37,6 +38,7 @@ struct AppShell: View {
         _meals = State(initialValue: MealsModel(api: api))
         _todos = State(initialValue: TodosModel(api: api, me: me))
         _docs = State(initialValue: DocumentsModel(api: api, me: me))
+        _mine = State(initialValue: TodayModel(todos: api, calendar: api, meals: api))
     }
 
     func go(_ t: Target) {
@@ -66,6 +68,7 @@ struct AppShell: View {
                 await meals.onLive(e)
                 await todos.onLive(e)
                 await docs.onLive(e)
+                await mine.onLive(e)
             }
         }
         .onChange(of: tab) { old, _ in if old == .einkauf { Task { await shopping.leave() } } }
@@ -91,7 +94,7 @@ struct AppShell: View {
         } else {
             switch t {
             case .start:
-                StartView(member: me, model: start, onMore: { more = true }, banner: { EmptyView() }, mine: { EmptyView() }) { go($0) }
+                StartView(member: me, model: start, onMore: { more = true }, banner: { EmptyView() }, mine: { TodayView(model: mine) { go($0) } }) { go($0) }
             case .einkauf:
                 ShoppingView(model: shopping, listId: listId)
             case .kalender:
