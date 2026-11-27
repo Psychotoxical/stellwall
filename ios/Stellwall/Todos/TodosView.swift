@@ -56,7 +56,7 @@ struct TodoList: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(o.title).font(.swLabel).strikethrough(o.done != nil).foregroundStyle((o.done != nil ? p.inkSoft : p.ink).color)
                             let when = TodoText.whenText(o)
-                            if o.overdue && o.done == nil { Text("\(TodoText.overdue) · \(when)").font(.swSmall).foregroundStyle(p.changeInk.color) }
+                            if o.overdue && o.done == nil { Text("\(TodoText.overdue) · \(when)").font(.swSmall).foregroundStyle(p.warn.color) }
                             else if !when.isEmpty { Text(when).font(.swSmall).foregroundStyle(p.inkSoft.color) }
                             if let d = o.done, o.needsConfirm { Text(TodoText.doneBy(members.first { $0.id == d.by }?.displayName ?? "?")).font(.swSmall).foregroundStyle(p.inkSoft.color) }
                         }

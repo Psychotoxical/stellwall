@@ -133,7 +133,7 @@ private struct DocumentRow: View {
                 Text(doc.name).font(.swLabel).foregroundStyle(p.ink.color)
                 let meta = [doc.category, doc.pages.map(DocText.pages)].compactMap { $0 }.joined(separator: " · ")
                 if !meta.isEmpty { Text(meta).font(.swSmall).foregroundStyle(p.inkSoft.color) }
-                if let v = doc.validUntil { Text(DocText.until(v, today: today)).font(.swSmall).foregroundStyle((DocText.soon(v, today: today) ? p.changeInk : p.inkSoft).color) }
+                if let v = doc.validUntil { Text(DocText.until(v, today: today)).font(.swSmall).foregroundStyle((DocText.soon(v, today: today) ? p.warn : p.inkSoft).color) }
                 if let s = doc.snippet { Text(s).font(.swSmall).foregroundStyle(p.inkSoft.color) }
             }
             Spacer()
@@ -162,7 +162,7 @@ struct DocumentView: View {
                 BackLink(parent: DocText.page, action: onBack)
                 PageHead(title: doc.name, sub: doc.category)
                 let meta = [doc.pages.map(DocText.pages), doc.validUntil.map { DocText.until($0, today: today) }].compactMap { $0 }.joined(separator: " · ")
-                if !meta.isEmpty { Text(meta).font(.swBody).foregroundStyle((doc.validUntil.map { DocText.soon($0, today: today) } ?? false ? p.changeInk : p.inkSoft).color) }
+                if !meta.isEmpty { Text(meta).font(.swBody).foregroundStyle((doc.validUntil.map { DocText.soon($0, today: today) } ?? false ? p.warn : p.inkSoft).color) }
                 if doc.ocr == "pending" { Text(DocText.ocrPending).font(.swBody).foregroundStyle(p.inkSoft.color) }
                 if doc.ocr == "failed" { Text(DocText.ocrFailed).font(.swBody).foregroundStyle(p.inkSoft.color) }
                 if let error { Notice(error) }

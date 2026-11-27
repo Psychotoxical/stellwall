@@ -47,6 +47,9 @@ struct Palette: Equatable {
     let change, changeSoft, changeInk: RGB
     let primary, primaryInk, accent: RGB
 
+    /** A date running out: the change tone, dark on light grounds and light on dark ones, so it stays readable. */
+    var warn: RGB { ground.luminance < 0.18 ? change : changeInk }
+
     static func of(world: String, dark: Bool) -> Palette {
         let w = WORLDS[world] ?? WORLDS["flieder"]!
         return dark ? w.dark : w.light
