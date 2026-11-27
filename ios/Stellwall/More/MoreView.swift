@@ -183,8 +183,8 @@ struct FlowChips: View {
                         Text(label(k)).font(.swLabel).foregroundStyle(p.ink.color)
                     }
                     .padding(.horizontal, 12).frame(minHeight: 44)
-                    .background((k == selected ? p.surface : p.field).color, in: Capsule())
-                    .overlay(Capsule().stroke((k == selected ? p.primary : p.rule).color, lineWidth: k == selected ? 2 : 1))
+                    .background((k == selected ? p.surface : p.field).color, in: RoundedRectangle(cornerRadius: 22))
+                    .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder((k == selected ? p.primary : p.rule).color, lineWidth: k == selected ? 2 : 1))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(k == selected ? .isSelected : [])

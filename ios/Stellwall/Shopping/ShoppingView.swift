@@ -171,8 +171,8 @@ struct Chip: View {
         Button(action: action) {
             Text(text).font(.swLabel).foregroundStyle(p.ink.color)
                 .padding(.horizontal, 14).frame(minHeight: 40)
-                .background((on ? p.surface : p.field).color, in: Capsule())
-                .overlay(Capsule().stroke((on ? p.primary : p.rule).color, lineWidth: on ? 2 : 1))
+                .background((on ? p.surface : p.field).color, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder((on ? p.primary : p.rule).color, lineWidth: on ? 2 : 1))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? .isSelected : [])
