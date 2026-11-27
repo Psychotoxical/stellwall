@@ -33,10 +33,11 @@ class FirstPasswordTest {
             }
         }
         compose.onNodeWithText(FirstPasswordText.CURRENT).assertDoesNotExist()
+        // Pictured before typing: a focused field's blinking cursor makes every picture differ.
+        compose.onRoot().captureRoboImage("src/test/screenshots/first-password.png")
         compose.onNodeWithText("Neues Passwort").performTextInput("my-own-secret-9")
         compose.waitForIdle()
         compose.onNode(hasText(FirstPasswordText.SUBMIT) and hasClickAction()).assertIsEnabled()
-        compose.onRoot().captureRoboImage("src/test/screenshots/first-password.png")
         compose.onNodeWithText("Neues Passwort").performImeAction()
         compose.waitForIdle()
         assertEquals("member-pass-1" to "my-own-secret-9", sent)
