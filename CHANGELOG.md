@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-27
+
 ### Added
 
 - Documents: upload PDF, JPG or PNG (up to 30 MB) on the web, scan with the phone's document scanner or pick a file in the Android app. Each document has a name, a category, an optional "gültig bis" with a reminder 1 week, 1 month or 3 months before, and who may see it.
