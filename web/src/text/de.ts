@@ -65,9 +65,9 @@ export const de = {
   firstPassword: {
     title: (name: string) => `Hallo ${name}, bitte ein eigenes Passwort`,
     lead: "Dein Passwort hat die Verwaltung vergeben. Wähle jetzt eins, das nur du kennst.",
-    current: "Passwort von der Verwaltung",
+    current: "Altes Passwort",
     submit: "Passwort speichern",
-    wrong: "Das Passwort von der Verwaltung stimmt nicht.",
+    wrong: "Das alte Passwort stimmt nicht.",
   },
   fields: {
     username: "Benutzername",

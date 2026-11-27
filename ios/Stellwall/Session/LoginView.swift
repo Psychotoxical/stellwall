@@ -52,11 +52,11 @@ struct LoginView: View {
 enum FirstPasswordText {
     static func title(_ name: String) -> String { "Hallo \(name), bitte ein eigenes Passwort" }
     static let lead = "Dein Passwort hat die Verwaltung vergeben. Wähle jetzt eins, das nur du kennst."
-    static let current = "Passwort von der Verwaltung"
+    static let current = "Altes Passwort"
     static let submit = "Passwort speichern"
     static let newPassword = "Neues Passwort"
     static let hint = "Mindestens 10 Zeichen."
-    static let wrong = "Das aktuelle Passwort stimmt nicht."
+    static let wrong = "Das alte Passwort stimmt nicht."
     static let logout = "Auf diesem Gerät abmelden"
 }
 

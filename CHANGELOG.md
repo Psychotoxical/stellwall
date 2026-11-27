@@ -8,6 +8,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Changed
 
+- First own password: the field is called "Altes Passwort"; right after signing in the web app no longer asks for it again, like the Android and iPhone app.
+
+### Changed
+
 - Server: when Firebase refuses a message to a phone, the log says why (status and error code, never the phone's token).
 
 ## [0.1.12] - 2026-11-27
