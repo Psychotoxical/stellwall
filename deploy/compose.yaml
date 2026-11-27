@@ -17,8 +17,9 @@ services:
       DOCS_KEY_FILE: ${DOCS_KEY_FILE:-/run/stellwall/documents.key}
     volumes:
       - ./secrets:/run/stellwall:ro
-      # The documents, each file encrypted with the key above.
-      - documents:/data/documents
+      # The documents, each file encrypted with the key above. A folder next to this file (owned by uid 1000), so the
+      # server's file backup can take it; the key in ./secrets stays out of that backup.
+      - ./documents:/data/documents
     ports:
       - "127.0.0.1:8470:8080"
 
@@ -40,4 +41,3 @@ services:
 
 volumes:
   db-data:
-  documents:
