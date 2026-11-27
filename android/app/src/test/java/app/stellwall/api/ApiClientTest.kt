@@ -42,6 +42,7 @@ class ApiClientTest {
         server.enqueue(Contract.response("me"))
         val me = client().me()
         assertEquals("alex", me?.username)
+        assertEquals(false, me?.mustChangePassword)
         assertEquals("sw_session=token-1", server.takeRequest().headers["Cookie"])
     }
 

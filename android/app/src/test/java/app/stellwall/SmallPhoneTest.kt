@@ -52,7 +52,7 @@ class SmallPhoneTest {
     @Test fun login() = shot("login", "Anmelden") { LoginScreen(server = "https://wall.example.org/", onSubmit = { _, _, _ -> null }) }
 
     @Test fun start() = shot("start", "Heute Mittag") {
-        StartScreen(me, StartModel(board = { SampleShopping().board() }), today = day, mine = TodayModel(FakeTodos(), FakeCalendar(), FakeMeals(), zone) { day }, onMore = {}) {}
+        StartScreen(me, StartModel(board = { SampleShopping().board() }), today = day, hour = 9, mine = TodayModel(FakeTodos(), FakeCalendar(), FakeMeals(), zone) { day }, onMore = {}) {}
     }
 
     @Test fun shopping() = shot("shopping", "Obst") { SampleShopping().let { ShoppingScreen(ShoppingModel(it, it.me)) } }

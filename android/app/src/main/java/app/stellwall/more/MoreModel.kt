@@ -23,6 +23,8 @@ object MoreText {
     const val WORLD_HINT = "Die App nimmt deine Farbe an, auf allen deinen Geräten."
     val WORLDS = listOf("salbei" to "Salbei", "flieder" to "Flieder", "pfirsich" to "Pfirsich", "himmel" to "Himmel", "rose" to "Rosé", "sonne" to "Sonne")
     val COLORS = listOf("person-mint", "person-lilac", "person-peach", "person-sky")
+    const val THEME = "Darstellung"
+    const val THEME_HINT = "Gilt für dieses Gerät."
     const val PASSWORD = "Passwort ändern"
     const val CURRENT = "Aktuelles Passwort"
     const val NEW = "Neues Passwort"

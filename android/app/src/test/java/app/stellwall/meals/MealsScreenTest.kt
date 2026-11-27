@@ -62,7 +62,7 @@ class MealsScreenTest {
         val mine = TodayModel(FakeTodos(), FakeCalendar(), FakeMeals(), ZoneId.of("Europe/Berlin"), today = { day })
         compose.setContent {
             StellwallTheme(world = "salbei", dark = false) {
-                StartScreen(me, StartModel(board = { emptyList() }), today = day, mine = mine) {}
+                StartScreen(me, StartModel(board = { emptyList() }), today = day, hour = 9, mine = mine) {}
             }
         }
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("Heute Mittag: Reste")).fetchSemanticsNodes().isNotEmpty() }

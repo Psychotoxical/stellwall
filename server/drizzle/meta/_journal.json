@@ -50,6 +50,13 @@
       "when": 1795728940486,
       "tag": "0006_world",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795769326415,
+      "tag": "0007_first_password",
+      "breakpoints": true
     }
   ]
 }

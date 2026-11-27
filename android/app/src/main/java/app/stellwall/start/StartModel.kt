@@ -38,7 +38,14 @@ object StartText {
     const val SOON = "kommt bald"
     const val NEW = "NEU"
 
-    fun hello(name: String) = "Hallo $name"
+    /** A greeting for the time of day, as in the web app. */
+    fun hello(name: String, hour: Int) = when (hour) {
+        in 5..10 -> "Guten Morgen, $name"
+        in 11..13 -> "Guten Mittag, $name"
+        in 14..17 -> "Guten Tag, $name"
+        in 18..21 -> "Guten Abend, $name"
+        else -> "Gute Nacht, $name"
+    }
     fun count(n: Int) = if (n == 0) "alles gesehen" else "$n neu"
     fun today(d: LocalDate): String = DateTimeFormatter.ofPattern("EEEE, d. MMMM", de).format(d)
     fun time(iso: String, zone: ZoneId = ZoneId.systemDefault()): String = DateTimeFormatter.ofPattern("HH:mm").withZone(zone).format(Instant.parse(iso))

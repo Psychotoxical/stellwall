@@ -16,6 +16,9 @@ class StellwallApp : Application() {
         app.stellwall.push.Push.init(this)
     }
 
+    /** Light, dark or as the system has it, for this device. */
+    val theme by lazy { app.stellwall.theme.ThemeStore(this) }
+
     val model by lazy {
         val cookies = KeystoreCookieStore(this)
         AppModel(DevicePrefs(this), backendFor = { url -> ApiClient(url, cookies) })

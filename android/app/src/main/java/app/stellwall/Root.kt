@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.stellwall.api.ApiClient
 import app.stellwall.session.AppModel
 import app.stellwall.session.AppState
+import app.stellwall.session.FirstPasswordScreen
 import app.stellwall.session.LoginScreen
 import app.stellwall.session.LoginText
 import app.stellwall.theme.LocalPalette
@@ -44,6 +45,15 @@ fun Root(model: AppModel<ApiClient>, dark: Boolean) {
             AppState.Loading -> Splash()
             AppState.Unreachable -> Unreachable(onRetry = { scope.launch { model.start() } })
             is AppState.SignedOut -> LoginScreen(server = s.server, onSubmit = model::signIn)
+            is AppState.SignedIn if s.member.mustChangePassword && model.backend != null -> {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val account = remember(s.member.id) { app.stellwall.more.AccountModel(model.backend!!, s.member, model::memberChanged) }
+                FirstPasswordScreen(
+                    name = s.member.displayName, known = model.signInPassword,
+                    onSubmit = { current, next -> account.changePassword(current, next).also { if (it == null) model.memberChanged(s.member.copy(mustChangePassword = false)) } },
+                    onSignOut = { scope.launch { model.signOut(app.stellwall.push.Push.endpoint(context)) } },
+                )
+            }
             is AppState.SignedIn -> {
                 val api = model.backend
                 val live = remember(api) { api?.live() ?: emptyFlow() }

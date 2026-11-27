@@ -10,6 +10,8 @@ export type MemberDto = {
   color: string;
   /** The colour world the app takes on for this person. */
   world: World;
+  /** The administration chose the password; the member is asked for an own one first. */
+  mustChangePassword: boolean;
 };
 
 export function normalizeUsername(raw: string): string {

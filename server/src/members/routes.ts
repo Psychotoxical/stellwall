@@ -59,6 +59,7 @@ export async function memberRoutes(app: FastifyInstance, opts: { db: Db; now: ()
         role: body.data.role,
         color: body.data.color,
         passwordHash: await hashPassword(body.data.password),
+        mustChangePassword: true,
       })
       .returning();
     return toDto(m!);
@@ -90,7 +91,7 @@ export async function memberRoutes(app: FastifyInstance, opts: { db: Db; now: ()
     if (!body.success) return reply.code(400).send({ error: "invalid_input" });
     const target = await find(p.data.id);
     if (!target) return reply.code(404).send({ error: "not_found" });
-    await db.update(members).set({ passwordHash: await hashPassword(body.data.password) }).where(eq(members.id, target.id));
+    await db.update(members).set({ passwordHash: await hashPassword(body.data.password), mustChangePassword: true }).where(eq(members.id, target.id));
     await deleteAllSessions(db, target.id);
     return { ok: true };
   });

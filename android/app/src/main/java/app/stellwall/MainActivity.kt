@@ -5,13 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.stellwall.theme.ThemeChoice
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val app = application as StellwallApp
         setContent {
-            Root((application as StellwallApp).model, dark = isSystemInDarkTheme())
+            val choice by app.theme.choice.collectAsStateWithLifecycle()
+            Root(app.model, dark = ThemeChoice.dark(choice, isSystemInDarkTheme()))
         }
         link(intent)
     }

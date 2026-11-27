@@ -1,12 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signInAlex } from "./helpers.ts";
+import { signInAlex, signInMember } from "./helpers.ts";
 
 async function login(page: Page, user: string, password: string) {
-  await page.goto("/anmelden");
-  await page.getByLabel("Benutzername").fill(user);
-  await page.getByLabel("Passwort").fill(password);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page.getByRole("heading", { name: /^Hallo/ })).toBeVisible();
+  await signInMember(page, user, password);
 }
 
 test("live shopping between two people", async ({ browser }) => {

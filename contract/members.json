@@ -7,7 +7,8 @@
       "displayName": "Alex",
       "role": "admin",
       "color": "person-mint",
-      "world": "salbei"
+      "world": "salbei",
+      "mustChangePassword": false
     },
     {
       "id": "00000000-0000-4000-8000-000000000002",
@@ -15,7 +16,8 @@
       "displayName": "Sam",
       "role": "member",
       "color": "person-lilac",
-      "world": "flieder"
+      "world": "flieder",
+      "mustChangePassword": true
     },
     {
       "id": "00000000-0000-4000-8000-000000000003",
@@ -23,7 +25,8 @@
       "displayName": "Kim",
       "role": "member",
       "color": "person-lilac",
-      "world": "flieder"
+      "world": "flieder",
+      "mustChangePassword": true
     }
   ]
 }

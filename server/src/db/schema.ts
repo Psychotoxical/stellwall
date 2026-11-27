@@ -8,6 +8,8 @@ export const members = pgTable("members", {
   color: text("color").notNull(),
   world: text("world"),
   passwordHash: text("password_hash").notNull(),
+  /** Set when the administration chose the password; the member picks an own one after signing in. */
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   removedAt: timestamp("removed_at", { withTimezone: true }),
 });

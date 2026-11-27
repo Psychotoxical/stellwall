@@ -11,6 +11,8 @@ data class Member(
     val role: String,
     val color: String,
     val world: String,
+    /** The administration chose the password; the member is asked for an own one first. */
+    val mustChangePassword: Boolean = false,
 )
 
 @Serializable

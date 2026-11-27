@@ -4,6 +4,12 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Members whose password the administration chose pick an own one right after signing in (web and Android); this also applies to accounts that exist already.
+- Android app: light, dark or as the system has it, under Mehr → Darstellung.
+- Start greets by the time of day: "Guten Morgen", "Guten Mittag", "Guten Tag", "Guten Abend", "Gute Nacht".
+
 ## [0.1.9] - 2026-11-27
 
 ### Added

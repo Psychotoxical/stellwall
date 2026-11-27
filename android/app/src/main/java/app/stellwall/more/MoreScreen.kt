@@ -184,6 +184,27 @@ fun MoreScreen(
             }
         }
 
+        (context.applicationContext as? app.stellwall.StellwallApp)?.theme?.let { store ->
+            val choice by store.choice.collectAsStateWithLifecycle()
+            SectionHead(MoreText.THEME)
+            BoxCard {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((key, label) in app.stellwall.theme.ThemeChoice.ALL) {
+                            val on = key == choice
+                            Box(
+                                Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(50)).background(if (on) p.surface else p.field)
+                                    .border(if (on) 2.dp else 1.dp, if (on) p.primary else p.rule, RoundedCornerShape(50))
+                                    .selectable(selected = on, role = Role.RadioButton) { store.set(key) }.padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(label, style = MaterialTheme.typography.labelLarge, color = p.ink) }
+                        }
+                    }
+                    Text(MoreText.THEME_HINT, style = MaterialTheme.typography.bodySmall, color = p.inkSoft)
+                }
+            }
+        }
+
         SectionHead(MoreText.PASSWORD)
         BoxCard {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
