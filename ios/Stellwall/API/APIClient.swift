@@ -110,6 +110,7 @@ final class APIClient: @unchecked Sendable {
     }
 
     func forgetSession() { store.cookie = nil }
+    var sessionCookie: String? { store.cookie }
 }
 
 private struct ErrorBody: Decodable {

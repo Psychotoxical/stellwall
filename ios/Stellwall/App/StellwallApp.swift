@@ -51,8 +51,9 @@ struct RootView: View {
                         return passwordChangeError(error)
                     }
                 }, onSignOut: { Task { await model.signOut() } })
-            } else {
-                SignedInPlaceholder(me: me)
+            } else if let api = model.api {
+                AppShell(me: me, api: api, webUrl: model.server, onMemberChanged: model.memberChanged, onSignOut: { Task { await model.signOut() } })
+                    .id(me.id)
             }
         }
     }
@@ -81,23 +82,6 @@ struct UnreachableView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(p.ground.color.ignoresSafeArea())
-    }
-}
-
-/** Replaced by the tabbed shell in the next step. */
-struct SignedInPlaceholder: View {
-    let me: Member
-    @Environment(\.palette) private var p
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Wordmark()
-            PageHead(title: "Hallo \(me.displayName)")
-            Spacer()
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(p.ground.color.ignoresSafeArea())
     }
 }

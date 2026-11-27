@@ -33,8 +33,8 @@ struct LoginView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Wordmark(size: 40)
                 Text(LoginText.title).font(.swTitle).accessibilityAddTraits(.isHeader).padding(.bottom, 6)
-                Field(label: LoginText.server, text: $address, keyboard: .URL, capitalization: .never, submit: .next)
-                Field(label: LoginText.username, text: $username, capitalization: .never, submit: .next)
+                Field(label: LoginText.server, text: $address, keyboard: .URL, capitalization: .never, autocorrect: false, submit: .next)
+                Field(label: LoginText.username, text: $username, capitalization: .never, autocorrect: false, submit: .next)
                 Field(label: LoginText.password, text: $password, secure: true, onSubmit: submit)
                 if let error { Notice(error) }
                 PrimaryButton(LoginText.submit, enabled: ready, action: submit)

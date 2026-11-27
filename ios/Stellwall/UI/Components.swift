@@ -133,6 +133,8 @@ struct Field: View {
     var secure = false
     var keyboard: UIKeyboardType = .default
     var capitalization: TextInputAutocapitalization = .sentences
+    /** Off for names, addresses and passwords. */
+    var autocorrect = true
     var hint: String? = nil
     var submit: SubmitLabel = .done
     var onSubmit: () -> Void = {}
@@ -149,7 +151,7 @@ struct Field: View {
             .foregroundStyle(p.ink.color)
             .keyboardType(keyboard)
             .textInputAutocapitalization(capitalization)
-            .autocorrectionDisabled(secure || keyboard == .URL || capitalization == .never)
+            .autocorrectionDisabled(secure || keyboard == .URL || !autocorrect)
             .submitLabel(submit)
             .onSubmit(onSubmit)
             .focused($focused)
