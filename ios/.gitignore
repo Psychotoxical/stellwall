@@ -1,0 +1,6 @@
+# Made from project.yml by XcodeGen
+/Stellwall.xcodeproj/
+/build/
+/*.xcresult
+# Comes from a GitHub secret in the release build; never committed.
+/Stellwall/GoogleService-Info.plist

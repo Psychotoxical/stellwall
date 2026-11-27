@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 108 108">
+  <!-- The Android launcher icon for the iPhone: the four l of the wordmark on the dark board. -->
+  <rect width="108" height="108" fill="#1A1F29"/>
+  <rect x="30.5" y="32" width="8" height="44" rx="4" fill="#A8D8C8"/>
+  <rect x="43.5" y="32" width="8" height="44" rx="4" fill="#C7C0F0"/>
+  <rect x="56.5" y="32" width="8" height="44" rx="4" fill="#FFC9A8"/>
+  <rect x="69.5" y="32" width="8" height="44" rx="4" fill="#A9D3F0"/>
+</svg>

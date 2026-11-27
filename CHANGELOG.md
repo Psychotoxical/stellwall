@@ -4,6 +4,11 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- iPhone app: Start with today for you, shopping lists, the calendar with series and birthdays, the meal plan with cooking mode and shopping, to-dos, documents with Apple's document scanner, Mehr with profile, colour world, light or dark, password and notifications. Every release uploads it to TestFlight.
+- Notifications to iPhones: the server adds an alert for Apple to every message to a phone.
+
 ## [0.1.11] - 2026-11-27
 
 ### Added
