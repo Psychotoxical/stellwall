@@ -16,7 +16,10 @@ const ITEMS: Item[] = [
   { to: "/essen", label: de.nav.essen, icon: Icon.Essensplan, ready: true },
   { to: "/todos", label: de.nav.todos, icon: Icon.Todos, ready: true },
 ];
-const RAIL_EXTRA: Item[] = [{ to: "/mehr", label: de.nav.mehr, icon: Icon.Mehr, ready: true }];
+const RAIL_EXTRA: Item[] = [
+  { to: "/dokumente", label: de.areas.dokumente, icon: Icon.Dokumente, ready: true },
+  { to: "/mehr", label: de.nav.mehr, icon: Icon.Mehr, ready: true },
+];
 
 function NavItems({ rail }: { rail: boolean }) {
   return (

@@ -56,6 +56,7 @@ object MoreText {
         "shopping" to "Einkaufslisten",
         "birthday" to "Geburtstage",
         "meal" to "Essensplan: als Koch eingetragen",
+        "document_expiry" to "Ablaufende Dokumente",
     )
     const val QUIET = "Nachts von 22 bis 7 Uhr bleibt es still. Erinnerungen an Termine kommen trotzdem pünktlich."
     const val TEST = "Probe-Nachricht schicken"

@@ -9,7 +9,7 @@ import { canPush, currentSubscription, isAppleMobile } from "../push-device.ts";
 
 type Prefs = Record<string, boolean>;
 type Device = { id: string; label: string; createdAt: string };
-const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal"] as const;
+const KINDS = ["event", "event_reminder", "todo", "todo_reminder", "shopping", "birthday", "meal", "document_expiry"] as const;
 const PUSH_ID = "sw-push-id";
 
 const isStandalone = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.("(display-mode: standalone)").matches === true;

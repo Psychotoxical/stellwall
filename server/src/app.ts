@@ -8,6 +8,8 @@ import { authRoutes } from "./auth/routes.ts";
 import { SESSION_COOKIE, findSession } from "./auth/sessions.ts";
 import { memberRoutes } from "./members/routes.ts";
 import { listRoutes } from "./shopping/lists.ts";
+import { documentRoutes, readKey } from "./documents/routes.ts";
+import { createOcr, ocrmypdf, type OcrRunner } from "./documents/ocr.ts";
 import { createHub, liveRoutes } from "./live/hub.ts";
 import { itemRoutes } from "./shopping/items.ts";
 import { boardRoutes } from "./board/routes.ts";
@@ -36,6 +38,8 @@ export type AppDeps = {
   pushSender?: PushSender | undefined;
   /** Runs the outbox and reminder clocks; off in tests, which drive them by hand. */
   timers?: boolean | undefined;
+  /** Reads the text of documents; tests pass their own, without one and without timers there is none. */
+  ocrRunner?: OcrRunner | undefined;
 };
 
 declare module "fastify" {
@@ -117,6 +121,18 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const mealie = createMealie(deps.db, deps.mealieTimeoutMs ?? 10_000);
   await mealieRoutes(app, { db: deps.db, mealie });
   await mealRoutes(app, { db: deps.db, now, mealie, notify });
+  const docsKey = await readKey(deps.config.docsKeyFile);
+  const docsDir = deps.config.docsDir;
+  const ocrRun = deps.ocrRunner ?? (deps.timers === false ? null : ocrmypdf);
+  const ocr = docsDir && docsKey && ocrRun ? createOcr({ db: deps.db, dir: docsDir, key: docsKey, run: ocrRun, notify }) : null;
+  await documentRoutes(app, { db: deps.db, now, notify, dir: docsDir, key: docsKey, onStored: () => ocr?.wake() });
+  if (ocr && deps.timers !== false) {
+    // Waiting documents from before a restart, and those to try again, every minute.
+    ocr.wake();
+    const t = setInterval(() => ocr.wake(), 60_000);
+    t.unref();
+    app.addHook("onClose", async () => clearInterval(t));
+  }
 
   const webDir = deps.config.webDir;
   if (webDir) {

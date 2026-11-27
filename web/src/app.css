@@ -405,3 +405,14 @@ body:has(:is(input:not([type="checkbox"], [type="radio"], [type="file"]), textar
 @media (prefers-reduced-motion: no-preference) {
   .navdot { transition: background-color 0.3s var(--ease-settle); }
 }
+
+/* Documents */
+.docsearch { margin-bottom: 10px; }
+.docchips { justify-content: flex-start; margin-bottom: 14px; }
+.docvalid.is-soon { color: var(--danger); font-weight: 600; }
+.snippet { display: block; color: var(--ink-soft); font-style: italic; }
+.docmeta { color: var(--ink-soft); margin: 0 0 10px; }
+.btnlink { display: inline-flex; align-items: center; text-decoration: none; }
+.docpreview { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-sm); overflow: hidden; }
+.docpreview iframe { display: block; width: 100%; height: min(78vh, 1100px); border: 0; }
+.docpreview img { display: block; max-width: 100%; height: auto; margin: 0 auto; }

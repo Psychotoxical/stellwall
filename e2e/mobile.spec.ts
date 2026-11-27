@@ -27,7 +27,7 @@ test("phone: nothing scrolls sideways and every dialog can be saved without hunt
     await page.request.post("/api/members", { headers: H, data: { username, displayName, password: "member-pass-1", role: "member", color: "person-sky" } });
   }
 
-  for (const path of ["/", "/einkauf", "/todos", "/kalender", "/kalender/geburtstage", "/kalender/import", "/mehr", "/konto", "/mitglieder", "/essen", "/essen/grundvorrat", "/mealie", "/benachrichtigungen"]) {
+  for (const path of ["/", "/einkauf", "/todos", "/kalender", "/kalender/geburtstage", "/kalender/import", "/mehr", "/konto", "/mitglieder", "/essen", "/essen/grundvorrat", "/dokumente", "/mealie", "/benachrichtigungen"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     expect(await sideways(page), path).toBe(0);

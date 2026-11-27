@@ -145,6 +145,18 @@ jobs:
           done
           docker logs app
           exit 1
+      - name: Text recognition works in the image
+        run: |
+          mkdir -p ocr-check
+          convert -size 1400x300 xc:white -fill black -pointsize 64 -annotate +40+170 'Stadtwerke Fernwärme Abschlag' ocr-check/scan.png
+          docker run --rm -v "$PWD/ocr-check:/t" --entrypoint node stellwall:ci --input-type=module -e "
+            import { ocrmypdf } from '/app/server/src/documents/ocr.ts';
+            import { copyFileSync } from 'node:fs';
+            copyFileSync('/t/scan.png', '/tmp/scan.png');
+            const r = await ocrmypdf('/tmp/scan.png', 'image/png', AbortSignal.timeout(120000));
+            console.log(JSON.stringify(r));
+            if (!/Fernw.rme/.test(r.text) || r.pages !== 1) process.exit(1);
+          "
 
   android:
     name: Android app

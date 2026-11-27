@@ -50,7 +50,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 /** Where a tap on Start leads. */
-data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null, val more: Boolean = false)
+data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null, val more: Boolean = false, val documents: Boolean = false, val documentId: String? = null)
 
 private data class Area(val label: String, val icon: Int, val target: Target?)
 
@@ -59,7 +59,7 @@ private val AREAS = listOf(
     Area("To-dos", Icons.TODOS, Target(Tab.Todos)),
     Area("Kalender", Icons.CALENDAR, Target(Tab.Kalender)),
     Area("Geburtstage", Icons.CAKE, Target(Tab.Kalender, birthdays = true)),
-    Area("Dokumente", Icons.DOCUMENTS, null),
+    Area("Dokumente", Icons.DOCUMENTS, Target(Tab.Start, documents = true)),
     Area("Essensplan", Icons.MEALS, Target(Tab.Essen)),
 )
 

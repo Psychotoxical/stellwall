@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": [
+    "Versicherung",
+    "Auto",
+    "Gesundheit",
+    "Verträge",
+    "Ausweise",
+    "Haus",
+    "Schule/Arbeit",
+    "Finanzen"
+  ]
+}

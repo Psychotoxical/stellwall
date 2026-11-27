@@ -16,6 +16,7 @@ object Links {
             path.startsWith("/todos") -> Target(Tab.Todos)
             path.startsWith("/essen") -> Target(Tab.Essen)
             path.startsWith("/mehr") -> Target(Tab.Start, more = true)
+            path.startsWith("/dokumente") -> Target(Tab.Start, documents = true, documentId = path.removePrefix("/dokumente").trim('/').ifEmpty { null })
             else -> Target(Tab.Start)
         }
     }

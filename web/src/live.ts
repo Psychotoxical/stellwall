@@ -31,6 +31,7 @@ export function useLive(enabled: boolean) {
           void qc.invalidateQueries({ queryKey: ["birthdays"] });
           void qc.invalidateQueries({ queryKey: ["board"] });
         } else if (msg.type === "meals") void qc.invalidateQueries({ queryKey: ["meals"] });
+        else if (msg.type === "documents") void qc.invalidateQueries({ queryKey: ["documents"] });
         else if (msg.type === "todos") {
           void qc.invalidateQueries({ queryKey: ["todos"] });
           void qc.invalidateQueries({ queryKey: ["board"] });

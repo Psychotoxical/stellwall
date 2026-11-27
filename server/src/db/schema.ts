@@ -1,4 +1,5 @@
-import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigint, boolean, customType, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const members = pgTable("members", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -303,4 +304,49 @@ export const notifications = pgTable(
     dedupe: text("dedupe"),
   },
   (t) => [uniqueIndex("notifications_dedupe").on(t.memberId, t.dedupe), index("notifications_due").on(t.sentAt, t.dueAt)],
+);
+
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
+
+/** A document; its file lies encrypted in DOCS_DIR under its id. */
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category"),
+    validUntil: date("valid_until"),
+    remindDays: integer("remind_days").notNull().default(30),
+    everyone: boolean("everyone").notNull().default(true),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => members.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+    mime: text("mime").notNull(),
+    size: bigint("size", { mode: "number" }).notNull(),
+    pages: integer("pages"),
+    ocrState: text("ocr_state", { enum: ["pending", "done", "failed"] }).notNull().default("pending"),
+    ocrTries: integer("ocr_tries").notNull().default(0),
+    text: text("text"),
+    search: tsvector("search").generatedAlwaysAs(
+      sql`setweight(to_tsvector('german', coalesce(name, '')), 'A') || setweight(to_tsvector('german', coalesce(category, '')), 'B') || setweight(to_tsvector('german', coalesce(text, '')), 'C')`,
+    ),
+    /** The words as written, for prefixes while typing ("Versicheru" is past the German stem "versicher"). */
+    searchPlain: tsvector("search_plain").generatedAlwaysAs(sql`to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(category, '') || ' ' || coalesce(text, ''))`),
+  },
+  (t) => [index("documents_search_idx").using("gin", t.search), index("documents_search_plain_idx").using("gin", t.searchPlain)],
+);
+
+export const documentMembers = pgTable(
+  "document_members",
+  {
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.documentId, t.memberId] })],
 );

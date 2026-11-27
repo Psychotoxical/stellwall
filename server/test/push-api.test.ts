@@ -46,7 +46,7 @@ describe("push API", () => {
   it("switches are stored per person, everything on until switched off", async () => {
     const { app, f, put } = await start();
     const s = as(app, f.sam.cookie);
-    expect((await s.get("/api/notification-prefs")).json()).toEqual({ event: true, event_reminder: true, todo: true, todo_reminder: true, shopping: true, birthday: true, meal: true });
+    expect((await s.get("/api/notification-prefs")).json()).toEqual({ event: true, event_reminder: true, todo: true, todo_reminder: true, shopping: true, birthday: true, meal: true, document_expiry: true });
     expect((await put(f.sam.cookie, "/api/notification-prefs", { shopping: false })).statusCode).toBe(200);
     expect((await s.get("/api/notification-prefs")).json()).toMatchObject({ shopping: false, meal: true });
     expect((await as(app, f.kim.cookie).get("/api/notification-prefs")).json()).toMatchObject({ shopping: true });

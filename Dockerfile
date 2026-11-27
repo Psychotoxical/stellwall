@@ -11,7 +11,9 @@ COPY web web
 RUN npm run build -w web
 
 FROM node:24-slim
-ENV NODE_ENV=production PORT=8080 WEB_DIR=/app/web/dist APP_DIR=/app/android
+ENV NODE_ENV=production PORT=8080 WEB_DIR=/app/web/dist APP_DIR=/app/android DOCS_DIR=/data/documents
+# Text recognition for documents: OCRmyPDF with German and English, pdftotext/pdfinfo to read the result.
+RUN apt-get update   && apt-get install -y --no-install-recommends ocrmypdf tesseract-ocr-deu tesseract-ocr-eng poppler-utils   && rm -rf /var/lib/apt/lists/*   && mkdir -p /data/documents && chown node:node /data/documents
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/

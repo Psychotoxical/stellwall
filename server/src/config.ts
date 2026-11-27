@@ -9,6 +9,10 @@ export type Config = {
   appDir: string | null;
   /** Firebase service account JSON for sending to Android phones; without it they get nothing. */
   firebaseAccountFile: string | null;
+  /** Folder for the encrypted documents. */
+  docsDir: string | null;
+  /** The 32-byte document key; without it documents are off. */
+  docsKeyFile: string | null;
 };
 
 function required(env: Record<string, string | undefined>, name: string): string {
@@ -27,5 +31,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     timeZone: env.TZ || "Europe/Berlin",
     appDir: env.APP_DIR ?? null,
     firebaseAccountFile: env.FIREBASE_ACCOUNT_FILE ?? null,
+    docsDir: env.DOCS_DIR || "/data/documents",
+    docsKeyFile: env.DOCS_KEY_FILE || null,
   };
 }

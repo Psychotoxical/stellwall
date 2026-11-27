@@ -13,8 +13,12 @@ services:
       TZ: ${TZ:-Europe/Berlin}
       # Notifications to Android phones: the Firebase service account file in ./secrets.
       FIREBASE_ACCOUNT_FILE: ${FIREBASE_ACCOUNT_FILE:-}
+      # Documents: the 32-byte key in ./secrets; without it the area stays off.
+      DOCS_KEY_FILE: ${DOCS_KEY_FILE:-/run/stellwall/documents.key}
     volumes:
       - ./secrets:/run/stellwall:ro
+      # The documents, each file encrypted with the key above.
+      - documents:/data/documents
     ports:
       - "127.0.0.1:8470:8080"
 
@@ -36,3 +40,4 @@ services:
 
 volumes:
   db-data:
+  documents:

@@ -88,7 +88,7 @@ class ShoppingScreenTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Sam hat dir „Müll rausbringen“ gegeben")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("2 neu").assertExists()
-        compose.onNodeWithText("kommt bald").assertExists()
+        compose.onNodeWithText("Dokumente").assertExists()
         compose.onRoot().captureRoboImage("src/test/screenshots/start-dark.png")
     }
 }

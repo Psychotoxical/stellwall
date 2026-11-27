@@ -13,6 +13,8 @@ export const testConfig: Config = {
   timeZone: "Europe/Berlin",
   appDir: null,
   firebaseAccountFile: null,
+  docsDir: null,
+  docsKeyFile: null,
 };
 
 export async function createTestApp(opts: { client?: PGlite; now?: () => Date; mealieTimeoutMs?: number | undefined; pushSender?: PushSender; config?: Config } = {}) {

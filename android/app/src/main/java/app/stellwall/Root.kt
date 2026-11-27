@@ -61,7 +61,7 @@ fun Root(model: AppModel<ApiClient>, dark: Boolean) {
                 val links = (context.applicationContext as StellwallApp).links
                 val link by links.collectAsStateWithLifecycle()
                 AppShell(
-                    member = s.member, api = api, calendarApi = api, mealsApi = api, todosApi = api, accountApi = api, live = live, webUrl = model.server,
+                    member = s.member, api = api, calendarApi = api, mealsApi = api, todosApi = api, accountApi = api, documentsApi = api, live = live, webUrl = model.server,
                     link = link, onLinkHandled = { links.value = null },
                     onMemberChanged = model::memberChanged,
                     onSignOut = { scope.launch { model.signOut(app.stellwall.push.Push.endpoint(context)) } },
