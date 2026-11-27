@@ -23,6 +23,20 @@ struct Item: Codable, Equatable, Identifiable {
 struct Suggestion: Codable, Equatable, Hashable {
     let name: String
     let category: String
+    /** Typed in by the family, so it can be forgotten again. */
+    var learned: Bool? = nil
+}
+
+/** The section a name would get; known: the catalog or the family has it, so nobody has to choose. */
+struct CatalogGuess: Codable, Equatable {
+    let name: String
+    let category: String
+    let known: Bool
+}
+
+struct LearnedEntry: Codable, Equatable, Hashable {
+    let name: String
+    var category: String
 }
 
 /** Store sections in shop order, as the server's shared code has them. */
@@ -77,6 +91,18 @@ protocol ShoppingAPI {
     func updateItem(id: String, checked: Bool?, name: String?, quantity: String?, category: String?) async throws
     func deleteItem(id: String) async throws
     func suggestions(_ q: String) async throws -> [Suggestion]
+    func guess(_ name: String) async throws -> CatalogGuess
+    func learned() async throws -> [LearnedEntry]
+    func moveLearned(_ name: String, category: String) async throws
+    func forgetLearned(_ name: String) async throws
+}
+
+/** Stand-ins for test doubles that do not need them; the server client has its own. */
+extension ShoppingAPI {
+    func guess(_ name: String) async throws -> CatalogGuess { CatalogGuess(name: name, category: CATEGORIES.last!, known: false) }
+    func learned() async throws -> [LearnedEntry] { [] }
+    func moveLearned(_ name: String, category: String) async throws {}
+    func forgetLearned(_ name: String) async throws {}
 }
 
 extension APIClient: ShoppingAPI {
@@ -110,4 +136,11 @@ extension APIClient: ShoppingAPI {
 
     func deleteItem(id: String) async throws { try await send("DELETE", "api/items/\(id)") }
     func suggestions(_ q: String) async throws -> [Suggestion] { try await json([Suggestion].self, "GET", "api/suggestions", query: [("q", q)]) }
+    func guess(_ name: String) async throws -> CatalogGuess { try await json(CatalogGuess.self, "GET", "api/catalog/guess", query: [("name", name)]) }
+    func learned() async throws -> [LearnedEntry] { try await json([LearnedEntry].self, "GET", "api/catalog/learned") }
+    func moveLearned(_ name: String, category: String) async throws {
+        struct Body: Encodable { let name: String; let category: String }
+        try await send("PATCH", "api/catalog/learned", body: try APIClient.encoder.encode(Body(name: name, category: category)))
+    }
+    func forgetLearned(_ name: String) async throws { try await send("DELETE", "api/catalog/learned", query: [("name", name)]) }
 }

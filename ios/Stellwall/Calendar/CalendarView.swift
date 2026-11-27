@@ -31,9 +31,8 @@ struct CalendarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 PageHead(title: model.title, sub: CalText.page)
-                HStack(spacing: 8) {
+                WrapLayout(spacing: 8) {
                     ForEach(CalView.allCases, id: \.self) { v in Chip(text: v.rawValue, on: model.view == v) { Task { await model.setView(v) } } }
-                    Spacer()
                     Chip(text: model.mine ? CalText.mine : CalText.all, on: model.mine) { Task { await model.setMine(!model.mine) } }
                 }
                 if model.view != .upcoming {
@@ -129,6 +128,8 @@ private struct MonthGrid: View {
 
 /** The entries of one day: time, title, place and the people it is for. */
 struct DayList: View {
+    /** Wide enough for "ganztägig" at any text size. */
+    @ScaledMetric(relativeTo: .headline) private var timeWidth: CGFloat = 84
     let entries: [CalendarInstance]
     let empty: String
     let members: [Member]
@@ -150,7 +151,8 @@ struct DayList: View {
                                 Text(e.allDay ? CalText.allDayShort : Days.hhmm(e.start, zone: zone)).font(.swLabel)
                             }
                         }
-                        .frame(width: 70, alignment: .leading)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .frame(width: timeWidth, alignment: .leading)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(e.title).font(.swLabel)
                             if case let .birthday(b) = e, let age = b.age { Text(CalText.turns(age)).font(.swSmall).foregroundStyle(p.inkSoft.color) }
@@ -224,7 +226,7 @@ struct EventSheet: View {
             }
             .pickerStyle(.menu).tint(p.ink.color)
             Text(CalText.reminders).font(.swSmall).foregroundStyle(p.inkSoft.color)
-            HStack(spacing: 8) {
+            WrapLayout(spacing: 8) {
                 ForEach(CalText.reminderChips, id: \.0) { m, label in
                     Chip(text: label, on: d.reminders.contains(m)) { d.reminders = d.reminders.contains(m) ? d.reminders.filter { $0 != m } : (d.reminders + [m]).sorted(by: >) }
                 }

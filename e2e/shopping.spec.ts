@@ -31,9 +31,12 @@ test("live shopping between two people", async ({ browser }) => {
   await expect(sam.getByRole("option", { name: /^Zwiebeln/ })).toBeVisible();
   await input.press("ArrowDown");
   await input.press("Enter");
+  // A pick asks how many; one tap on a number puts it on the list.
+  await sam.getByRole("dialog", { name: "Zwiebeln" }).getByRole("button", { name: "2", exact: true }).click();
   await expect(sam.getByRole("region", { name: "Obst & Gemüse" }).getByText("Zwiebeln")).toBeVisible();
   await input.fill("Milch");
   await input.press("Enter");
+  await sam.getByRole("dialog", { name: "Milch" }).getByRole("button", { name: "1", exact: true }).click();
   await expect(sam.getByText("Milch", { exact: true })).toBeVisible();
 
   // Without reloading, Alex sees it on the board and opens the list.
@@ -58,6 +61,9 @@ test("a list can be emptied and deleted from the list tools", async ({ page }) =
   const input = page.getByLabel("Was fehlt?");
   await input.fill("Kaffee");
   await input.press("Enter");
+  // Enter again takes the first number, the one that has the focus.
+  await expect(page.getByRole("dialog", { name: "Kaffee" }).getByRole("button", { name: "1", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(page.getByText("Kaffee", { exact: true })).toBeVisible();
 
   // Closing the tools must not take the question that opens from them along.

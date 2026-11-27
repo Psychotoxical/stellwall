@@ -140,7 +140,7 @@ struct MealSheet: View {
                     }
                 }
             }
-            HStack(spacing: 8) {
+            WrapLayout(spacing: 8) {
                 Chip(text: MealText.recipe, on: !showText) { d.useText = false }
                 Chip(text: MealText.freeText, on: showText) { d.useText = true }
             }

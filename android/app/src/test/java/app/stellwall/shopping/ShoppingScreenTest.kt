@@ -18,6 +18,8 @@ import app.stellwall.api.Visibility
 import app.stellwall.start.StartModel
 import app.stellwall.start.StartScreen
 import app.stellwall.theme.StellwallTheme
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performImeAction
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.time.LocalDate
 import org.junit.Rule
@@ -77,6 +79,18 @@ class ShoppingScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("Milch wieder offen")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Milch wieder offen").assertIsOn()
         compose.onNodeWithText("Heute abgehakt").assertExists()
+    }
+
+    @Test fun `a new name asks how many and where it belongs, no amount field beside the search`() {
+        val api = SampleShopping()
+        compose.setContent { StellwallTheme(world = "salbei", dark = false) { ShoppingScreen(ShoppingModel(api, api.me)) } }
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Obst & Gemüse")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(ShopText.QUANTITY).assertDoesNotExist()
+        compose.onNode(androidx.compose.ui.test.hasContentDescription(ShopText.ADD)).performTextInput("Schinkenwurst")
+        compose.onNode(androidx.compose.ui.test.hasContentDescription(ShopText.ADD)).performImeAction()
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText(ShopText.HOW_MANY)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(ShopText.SECTION_FOR).assertExists()
+        compose.onRoot().captureRoboImage("src/test/screenshots/shopping-amount.png")
     }
 
     @Test fun `start shows the board and the areas`() {

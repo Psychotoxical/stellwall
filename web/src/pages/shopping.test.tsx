@@ -41,7 +41,92 @@ describe("shopping", () => {
     expect(await screen.findByRole("option", { name: /Zwiebeln/ })).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(calls.some((c) => c.key === "POST /api/lists/l1/items" && (c.body as { name: string }).name === "Zwiebeln")).toBe(true));
+    const amount = await screen.findByRole("dialog", { name: "Zwiebeln" });
+    expect(calls.some((c) => c.key === "POST /api/lists/l1/items")).toBe(false);
+    fireEvent.click(within(amount).getByRole("button", { name: "1" }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/lists/l1/items")?.body).toEqual({ name: "Zwiebeln", quantity: "1", category: "Obst & Gemüse" }));
+  });
+
+  it("a picked suggestion asks how many with one tap, no amount field beside the search", async () => {
+    const calls = fakeApi({
+      ...base([]),
+      "GET /api/suggestions?q=milch": () => ({ status: 200, body: [{ name: "Milch", category: "Kühlregal" }] }),
+      "POST /api/lists/l1/items": () => ({ status: 200, body: milk }),
+    });
+    renderAt("/einkauf");
+    const input = await screen.findByLabelText(de.shopping.add);
+    expect(screen.queryByLabelText(de.shopping.quantity)).toBeNull();
+    fireEvent.change(input, { target: { value: "milch" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Milch/ }));
+    const amount = await screen.findByRole("dialog", { name: "Milch" });
+    expect(within(amount).queryByRole("radio")).toBeNull();
+    fireEvent.click(within(amount).getByRole("button", { name: "3" }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/lists/l1/items")?.body).toEqual({ name: "Milch", quantity: "3", category: "Kühlregal" }));
+  });
+
+  it("another amount can be typed in", async () => {
+    const calls = fakeApi({
+      ...base([]),
+      "GET /api/suggestions?q=mehl": () => ({ status: 200, body: [{ name: "Mehl", category: "Vorrat" }] }),
+      "POST /api/lists/l1/items": () => ({ status: 200, body: milk }),
+    });
+    renderAt("/einkauf");
+    fireEvent.change(await screen.findByLabelText(de.shopping.add), { target: { value: "mehl" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Mehl/ }));
+    const amount = await screen.findByRole("dialog", { name: "Mehl" });
+    fireEvent.change(within(amount).getByLabelText(de.shopping.otherAmount), { target: { value: "500 g" } });
+    fireEvent.click(within(amount).getByRole("button", { name: de.shopping.addButton }));
+    await waitFor(() => expect((calls.find((c) => c.key === "POST /api/lists/l1/items")?.body as { quantity: string }).quantity).toBe("500 g"));
+  });
+
+  it("a new name asks for its section too, the guessed one picked", async () => {
+    const calls = fakeApi({
+      ...base([]),
+      "GET /api/suggestions?q=Schinkenwurst": () => ({ status: 200, body: [] }),
+      "GET /api/catalog/guess?name=Schinkenwurst": () => ({ status: 200, body: { name: "Schinkenwurst", category: "Sonstiges", known: false } }),
+      "POST /api/lists/l1/items": () => ({ status: 200, body: milk }),
+    });
+    renderAt("/einkauf");
+    const input = await screen.findByLabelText(de.shopping.add);
+    fireEvent.change(input, { target: { value: "Schinkenwurst" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    const amount = await screen.findByRole("dialog", { name: "Schinkenwurst" });
+    expect(within(amount).getByRole("radio", { name: "Sonstiges" })).toBeChecked();
+    fireEvent.click(within(amount).getByRole("radio", { name: "Fleisch & Fisch" }));
+    fireEvent.click(within(amount).getByRole("button", { name: "2" }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/lists/l1/items")?.body).toEqual({ name: "Schinkenwurst", quantity: "2", category: "Fleisch & Fisch" }));
+  });
+
+  it("a learned suggestion can be forgotten from the list of suggestions", async () => {
+    const calls = fakeApi({
+      ...base([]),
+      "GET /api/suggestions?q=schink": () => ({ status: 200, body: [{ name: "Schinkenwrust", category: "Sonstiges", learned: true }, { name: "Schinken roh", category: "Kühlregal" }] }),
+      "DELETE /api/catalog/learned?name=Schinkenwrust": () => ({ status: 200, body: { ok: true } }),
+    });
+    renderAt("/einkauf");
+    fireEvent.change(await screen.findByLabelText(de.shopping.add), { target: { value: "schink" } });
+    await screen.findByRole("option", { name: /Schinkenwrust/ });
+    expect(screen.queryByRole("button", { name: de.shopping.forget("Schinken roh") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: de.shopping.forget("Schinkenwrust") }));
+    await waitFor(() => expect(calls.some((c) => c.key === "DELETE /api/catalog/learned?name=Schinkenwrust")).toBe(true));
+    await waitFor(() => expect(screen.queryByRole("option", { name: /Schinkenwrust/ })).toBeNull());
+  });
+
+  it("learned suggestions are tidied up under the list tools", async () => {
+    const calls = fakeApi({
+      ...base(),
+      "GET /api/catalog/learned": () => ({ status: 200, body: [{ name: "Schinkenwurst", category: "Sonstiges" }] }),
+      "PATCH /api/catalog/learned": () => ({ status: 200, body: { ok: true } }),
+      "DELETE /api/catalog/learned?name=Schinkenwurst": () => ({ status: 200, body: { ok: true } }),
+    });
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.manage }));
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.learned }));
+    const box = await screen.findByRole("dialog", { name: de.shopping.learned });
+    fireEvent.change(await within(box).findByLabelText(de.shopping.sectionOf("Schinkenwurst")), { target: { value: "Fleisch & Fisch" } });
+    await waitFor(() => expect(calls.find((c) => c.key === "PATCH /api/catalog/learned")?.body).toEqual({ name: "Schinkenwurst", category: "Fleisch & Fisch" }));
+    fireEvent.click(within(box).getByRole("button", { name: de.shopping.forget("Schinkenwurst") }));
+    await waitFor(() => expect(calls.some((c) => c.key === "DELETE /api/catalog/learned?name=Schinkenwurst")).toBe(true));
   });
 
   it("checked item moves to checked section", async () => {

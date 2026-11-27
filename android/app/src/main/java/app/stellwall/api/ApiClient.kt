@@ -52,6 +52,11 @@ interface ShoppingApi {
     suspend fun updateItem(id: String, change: ItemChange): Item
     suspend fun deleteItem(id: String)
     suspend fun suggestions(q: String): List<Suggestion>
+    /** The defaults stand in for test doubles that do not need them. */
+    suspend fun guess(name: String): CatalogGuess = CatalogGuess(name.trim(), CATEGORIES.last(), false)
+    suspend fun learned(): List<LearnedEntry> = emptyList()
+    suspend fun moveLearned(name: String, category: String) {}
+    suspend fun forgetLearned(name: String) {}
 }
 
 /** Documents: list and search, upload, the file itself. */
@@ -194,6 +199,21 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
     override suspend fun suggestions(q: String): List<Suggestion> {
         val url = base.newBuilder().addPathSegments("api/suggestions").addQueryParameter("q", q).build()
         return send("GET", url, null).decode(ListSerializer(Suggestion.serializer()))
+    }
+
+    override suspend fun guess(name: String): CatalogGuess {
+        val url = base.newBuilder().addPathSegments("api/catalog/guess").addQueryParameter("name", name).build()
+        return send("GET", url, null).decode(CatalogGuess.serializer())
+    }
+
+    override suspend fun learned() = call("GET", "api/catalog/learned").decode(ListSerializer(LearnedEntry.serializer()))
+
+    override suspend fun moveLearned(name: String, category: String) {
+        call("PATCH", "api/catalog/learned", encode(LearnedChange.serializer(), LearnedChange(name, category)))
+    }
+
+    override suspend fun forgetLearned(name: String) {
+        send("DELETE", base.newBuilder().addPathSegments("api/catalog/learned").addQueryParameter("name", name).build(), null)
     }
 
     /** Rows of a kind this app version does not know yet are left out. */

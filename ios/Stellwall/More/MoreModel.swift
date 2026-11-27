@@ -12,7 +12,7 @@ enum MoreText {
     static let colorHint = "Deine Kennfarbe: daran erkennen dich die anderen, zum Beispiel im Kalender."
     static let world = "Deine Farbwelt"
     static let worldHint = "Die App nimmt deine Farbe an, auf allen deinen Geräten."
-    static let worlds = [("salbei", "Salbei"), ("flieder", "Flieder"), ("pfirsich", "Pfirsich"), ("himmel", "Himmel"), ("rose", "Rosé"), ("sonne", "Sonne"), ("pink", "Pink")]
+    static let worlds = [("salbei", "Salbei"), ("flieder", "Flieder"), ("pfirsich", "Pfirsich"), ("himmel", "Himmel"), ("rose", "Rosé"), ("sonne", "Sonne"), ("pink", "Pink"), ("psysonic", "Psysonic")]
     static let colors = ["person-mint", "person-lilac", "person-peach", "person-sky"]
     static let theme = "Darstellung"
     static let themeHint = "Gilt für dieses Gerät."

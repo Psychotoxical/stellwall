@@ -2,12 +2,30 @@ import Foundation
 import Observation
 
 /** The web app's wording, so both read the same. */
+/** What the amount sheet is about; known false: the section still has to be chosen. */
+struct Pick: Equatable, Identifiable {
+    let name: String
+    let category: String
+    let known: Bool
+    var id: String { name }
+}
+
 enum ShopText {
     static let title = "Einkauf"
     static let add = "Was fehlt?"
     static let addPlaceholder = "z. B. Milch, Brot, Katzenfutter"
     static let addButton = "Hinzufügen"
     static let quantity = "Menge"
+    static let howMany = "Wie viele?"
+    static let otherAmount = "Andere Menge"
+    static let otherAmountHint = "z. B. 500 g oder 2 Pack"
+    static let sectionFor = "Wo gibt es das im Laden?"
+    static let learned = "Gelernte Vorschläge"
+    static let learnedLead = "Was ihr selbst eingetragen habt. Ein falscher Bereich wird hier für immer korrigiert, Tippfehler verschwinden mit ×."
+    static let learnedEmpty = "Noch nichts gelernt: Stellwall merkt sich, was ihr selbst eintragt."
+    static let learnedDone = "Fertig"
+    static func forget(_ name: String) -> String { "„\(name)“ vergessen" }
+    static func sectionOf(_ name: String) -> String { "Bereich für \(name)" }
     static let manage = "Listen verwalten"
     static let empty = "Alles eingekauft. Neue Sachen oben eintragen."
     static let checked = "Heute abgehakt"
@@ -123,16 +141,36 @@ final class ShoppingModel {
         try? await api.boardSeen()
     }
 
-    /** False when there was nothing to add or it failed. */
+    /** A suggestion knows its section; a typed name asks the server what it would get. Nil: nothing to add. */
+    func pick(_ name: String, picked: Suggestion?, shown: [Suggestion]) async -> Pick? {
+        if let picked { return Pick(name: picked.name, category: picked.category, known: true) }
+        let n = name.trimmingCharacters(in: .whitespaces)
+        if n.isEmpty { return nil }
+        if let s = shown.first(where: { $0.name.lowercased() == n.lowercased() }) { return Pick(name: s.name, category: s.category, known: true) }
+        guard let g = try? await api.guess(n) else { return Pick(name: n, category: CATEGORIES.last!, known: false) }
+        return Pick(name: g.name, category: g.category, known: g.known)
+    }
+
+    /** False when it failed. */
     @discardableResult
-    func add(_ name: String, quantity: String, picked: Suggestion? = nil) async -> Bool {
-        let n = (picked?.name ?? name).trimmingCharacters(in: .whitespaces)
-        guard let list, !n.isEmpty else { return false }
+    func add(_ pick: Pick, quantity: String, category: String) async -> Bool {
+        guard let list else { return false }
         return await guarded {
-            try await api.addItem(listId: list.id, name: n, quantity: quantity.trimmingCharacters(in: .whitespaces), category: picked?.category)
+            try await api.addItem(listId: list.id, name: pick.name, quantity: quantity.trimmingCharacters(in: .whitespaces), category: category)
             try await refresh()
         }
     }
+
+    @discardableResult
+    func forget(_ s: Suggestion) async -> Bool { await guarded { try await api.forgetLearned(s.name) } }
+
+    func learned() async -> [LearnedEntry] { (try? await api.learned()) ?? [] }
+
+    @discardableResult
+    func moveLearned(_ name: String, category: String) async -> Bool { await guarded { try await api.moveLearned(name, category: category) } }
+
+    @discardableResult
+    func forgetLearned(_ name: String) async -> Bool { await guarded { try await api.forgetLearned(name) } }
 
     /** Shown at once; goes back if the server says no. */
     func toggle(_ item: Item) async {

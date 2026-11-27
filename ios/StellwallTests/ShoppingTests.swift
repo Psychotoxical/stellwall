@@ -67,14 +67,19 @@ final class ShoppingTests: XCTestCase {
         XCTAssertEqual(m.error, ShopText.generic)
     }
 
-    func testAddTrimsAndCarriesThePickedCategoryAndAListIsEmptied() async {
+    func testAPickNeedsANameASuggestionBringsItsSectionTheAmountComesFromTheSheet() async {
         let f = sample()
         let m = ShoppingModel(api: f, me: alexMember)
         await m.load()
-        let empty = await m.add("  ", quantity: "")
-        XCTAssertFalse(empty)
-        await m.add(" Milch ", quantity: " 2 l ", picked: Suggestion(name: "Milch", category: "Kühlregal"))
-        XCTAssertTrue(f.calls.contains("add:Milch:2 l:Kühlregal"))
+        let none = await m.pick("  ", picked: nil, shown: [])
+        XCTAssertNil(none)
+        let shown = await m.pick("milch", picked: nil, shown: [Suggestion(name: "Milch", category: "Kühlregal")])
+        XCTAssertEqual(shown, Pick(name: "Milch", category: "Kühlregal", known: true))
+        let unknown = await m.pick("Schinkenwurst", picked: nil, shown: [])
+        XCTAssertEqual(unknown, Pick(name: "Schinkenwurst", category: "Sonstiges", known: false))
+        let pick = await m.pick("mil", picked: Suggestion(name: "Milch", category: "Kühlregal"), shown: [])
+        await m.add(pick!, quantity: " 2 ", category: "Kühlregal")
+        XCTAssertTrue(f.calls.contains("add:Milch:2:Kühlregal"))
         await m.clearList()
         XCTAssertTrue(f.calls.contains("clearList:l1"))
         XCTAssertTrue(m.items.isEmpty)
@@ -95,6 +100,33 @@ final class ShoppingTests: XCTestCase {
         XCTAssertEqual(LiveEvent.parse("{\"type\":\"list\",\"id\":\"l1\"}"), .list("l1"))
         XCTAssertEqual(LiveEvent.parse("{\"type\":\"documents\"}"), .documents)
         XCTAssertNil(LiveEvent.parse("{\"type\":\"nope\"}"))
+    }
+
+    func testLearnedSuggestionsAndGuessesParseAsTheServerSendsThem() async throws {
+        StubProtocol.reset()
+        StubProtocol.enqueue("suggestions-learned")
+        let s = try await StubProtocol.client().suggestions("schinken")
+        XCTAssertEqual(s[0], Suggestion(name: "Schinkenwurst", category: "Sonstiges", learned: true))
+        XCTAssertNil(s[1].learned)
+        StubProtocol.enqueue("catalog-guess")
+        let g = try await StubProtocol.client().guess("Zwiebel(n)")
+        XCTAssertEqual(g, CatalogGuess(name: "Zwiebeln", category: "Obst & Gemüse", known: true))
+        XCTAssertTrue(StubProtocol.requests[1].url!.query!.contains("name=Zwiebel(n)"))
+        StubProtocol.enqueue("catalog-learned")
+        let learned = try await StubProtocol.client().learned()
+        XCTAssertEqual(learned, [LearnedEntry(name: "Schinkenwurst", category: "Sonstiges")])
+        StubProtocol.enqueue("catalog-learned-moved")
+        try await StubProtocol.client().moveLearned("Schinkenwurst", category: "Fleisch & Fisch")
+        XCTAssertEqual(StubProtocol.requests[3].httpMethod, "PATCH")
+        StubProtocol.enqueue("catalog-learned-forgotten")
+        try await StubProtocol.client().forgetLearned("Schinkenwurst")
+        XCTAssertEqual(StubProtocol.requests[4].httpMethod, "DELETE")
+        XCTAssertTrue(StubProtocol.requests[4].url!.query!.contains("name=Schinkenwurst"))
+    }
+
+    func testTheAmountSheetPictures() {
+        snap(AmountSheet(pick: Pick(name: "Schinkenwurst", category: "Sonstiges", known: false)) { _, _ in }, world: "salbei", named: "amount-new-name")
+        snap(AmountSheet(pick: Pick(name: "Milch", category: "Kühlregal", known: true)) { _, _ in }, world: "psysonic", dark: true, named: "amount-psysonic-dark")
     }
 
     func testStartAndShoppingPictures() async {

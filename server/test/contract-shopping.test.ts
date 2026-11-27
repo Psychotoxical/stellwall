@@ -44,5 +44,12 @@ describe("contract: start and shopping", () => {
     // Store sections in shop order: the apps sort and offer them in this order.
     contract("categories", { statusCode: 200, json: () => CATEGORIES });
     contract("item-deleted", await alex.del(`/api/items/${bread.json().id}`));
+    await alex.post(`/api/lists/${family}/items`, { name: "Schinkenwurst" });
+    contract("suggestions-learned", await alex.get(`/api/suggestions?q=${encodeURIComponent("schinken")}`));
+    contract("catalog-guess", await alex.get(`/api/catalog/guess?name=${encodeURIComponent("Zwiebel(n)")}`));
+    contract("catalog-guess-unknown", await alex.get(`/api/catalog/guess?name=${encodeURIComponent("Kaffeefilter Größe 4")}`));
+    contract("catalog-learned", await alex.get("/api/catalog/learned"));
+    contract("catalog-learned-moved", await alex.patch("/api/catalog/learned", { name: "Schinkenwurst", category: "Fleisch & Fisch" }));
+    contract("catalog-learned-forgotten", await alex.del(`/api/catalog/learned?name=${encodeURIComponent("Schinkenwurst")}`));
   });
 });

@@ -3,7 +3,7 @@ import XCTest
 
 final class WorldsTests: XCTestCase {
     func testTheSevenWorldsOfTheWebAppExist() {
-        XCTAssertEqual(WORLD_KEYS, ["salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink"])
+        XCTAssertEqual(WORLD_KEYS, ["salbei", "flieder", "pfirsich", "himmel", "rose", "sonne", "pink", "psysonic"])
         XCTAssertEqual(Set(WORLDS.keys), Set(WORLD_KEYS))
     }
 

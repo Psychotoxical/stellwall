@@ -7,12 +7,16 @@ import UIKit
  */
 enum Fonts {
     private static let wght = 0x7767_6874 // 'wght'
+    /** A text size other than the phone's, for pictures of screens at large text; nil follows the phone. */
+    nonisolated(unsafe) static var textSize: UIContentSizeCategory?
 
     static func ui(_ name: String, size: CGFloat, weight: CGFloat, style: UIFont.TextStyle) -> UIFont {
         let base = UIFontDescriptor(fontAttributes: [.name: name])
         let desc = base.addingAttributes([UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [wght: weight]])
         let font = UIFont(descriptor: desc, size: size)
-        return UIFontMetrics(forTextStyle: style).scaledFont(for: font)
+        let metrics = UIFontMetrics(forTextStyle: style)
+        if let textSize { return metrics.scaledFont(for: font, compatibleWith: UITraitCollection(preferredContentSizeCategory: textSize)) }
+        return metrics.scaledFont(for: font)
     }
 
     private static func font(_ name: String, _ size: CGFloat, _ weight: CGFloat, _ style: UIFont.TextStyle) -> Font {

@@ -4,13 +4,12 @@ struct ShoppingView: View {
     @Bindable var model: ShoppingModel
     var listId: String? = nil
     @State private var name = ""
-    @State private var quantity = ""
     @State private var hints: [Suggestion] = []
     @State private var sheet: SheetKind?
     @Environment(\.palette) private var p
 
     enum SheetKind: Identifiable {
-        case manage, newList, rename, clear, delete, visibility, edit(Item)
+        case manage, newList, rename, clear, delete, visibility, learned, edit(Item), amount(Pick)
         var id: String {
             switch self {
             case .manage: "manage"
@@ -19,21 +18,22 @@ struct ShoppingView: View {
             case .clear: "clear"
             case .delete: "delete"
             case .visibility: "vis"
+            case .learned: "learned"
             case let .edit(i): "edit\(i.id)"
+            case let .amount(p): "amount\(p.name)"
             }
         }
     }
 
-    private func submit() {
-        let n = name, q = quantity
+    /** No amount field beside the search: a pick asks how many, with one tap. */
+    private func choose(_ picked: Suggestion? = nil) {
+        let n = name, shown = hints
         Task {
-            if await model.add(n, quantity: q) {
-                name = ""
-                quantity = ""
-                hints = []
-            }
+            if let pk = await model.pick(n, picked: picked, shown: shown) { sheet = .amount(pk) }
         }
     }
+
+    private func submit() { choose() }
 
     var body: some View {
         ScrollView {
@@ -67,26 +67,23 @@ struct ShoppingView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.rule.color))
                         .submitLabel(.done).onSubmit(submit)
                         .accessibilityLabel(ShopText.add)
-                    TextField(ShopText.quantity, text: $quantity)
-                        .font(.swBody).padding(.horizontal, 10).frame(width: 96).frame(minHeight: 52)
-                        .background(p.surface.color, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.rule.color))
-                        .submitLabel(.done).onSubmit(submit)
-                        .accessibilityLabel(ShopText.quantity)
                 }
                 if !hints.isEmpty {
                     BoxCard {
                         ForEach(Array(hints.prefix(5).enumerated()), id: \.offset) { i, s in
                             if i > 0 { RowDivider() }
-                            Button {
-                                let q = quantity
-                                Task {
-                                    if await model.add(s.name, quantity: q, picked: s) { name = ""; quantity = ""; hints = [] }
+                            HStack(spacing: 0) {
+                                Button { choose(s) } label: {
+                                    HStack { Text(s.name).font(.swBody); Spacer(); Text(s.category).font(.swSmall).foregroundStyle(p.inkSoft.color) }
+                                        .padding(.horizontal, 14).frame(minHeight: 48).contentShape(Rectangle())
+                                }.buttonStyle(.plain)
+                                if s.learned == true {
+                                    Button { Task { if await model.forget(s) { hints.removeAll { $0 == s } } } } label: {
+                                        Text("×").font(.system(size: 24)).foregroundStyle(p.inkSoft.color).frame(width: 48, height: 48)
+                                    }
+                                    .buttonStyle(.plain).accessibilityLabel(ShopText.forget(s.name))
                                 }
-                            } label: {
-                                HStack { Text(s.name).font(.swBody); Spacer(); Text(s.category).font(.swSmall).foregroundStyle(p.inkSoft.color) }
-                                    .padding(.horizontal, 14).frame(minHeight: 48).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
+                            }
                         }
                     }
                 }
@@ -134,6 +131,7 @@ struct ShoppingView: View {
                 GhostButton(ShopText.newList) { sheet = .newList }
                 GhostButton(ShopText.renameList) { sheet = .rename }
                 GhostButton(ShopText.clearList) { sheet = .clear }
+                GhostButton(ShopText.learned) { sheet = .learned }
                 if model.list?.createdBy == model.me.id { GhostButton(ShopText.deleteList, danger: true) { sheet = .delete } }
                 GhostButton(ShopText.cancel) { sheet = nil }
             }
@@ -155,6 +153,18 @@ struct ShoppingView: View {
             if let l = model.list {
                 VisibilitySheet(lead: l.name, value: l.visibility, members: model.members, meId: model.me.id, readOnly: l.createdBy != model.me.id) { v in Task { await model.setVisibility(v) } }
             }
+        case .learned:
+            LearnedSheet(model: model)
+        case let .amount(pk):
+            AmountSheet(pick: pk) { q, c in
+                Task {
+                    if await model.add(pk, quantity: q, category: c) {
+                        name = ""
+                        hints = []
+                        sheet = nil
+                    }
+                }
+            }
         case let .edit(item):
             EditItemSheet(item: item) { n, q, c in Task { _ = await model.edit(item, name: n, quantity: q, category: c) } } onDelete: { Task { await model.delete(item) } }
         }
@@ -170,6 +180,7 @@ struct Chip: View {
     var body: some View {
         Button(action: action) {
             Text(text).font(.swLabel).foregroundStyle(p.ink.color)
+                .lineLimit(1).fixedSize()
                 .padding(.horizontal, 14).frame(minHeight: 40)
                 .background((on ? p.surface : p.field).color, in: RoundedRectangle(cornerRadius: 20))
                 .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder((on ? p.primary : p.rule).color, lineWidth: on ? 2 : 1))
@@ -215,6 +226,86 @@ private struct ItemRow: View {
             .accessibilityLabel(item.checkedAt != nil ? ShopText.uncheck(item.name) : ShopText.check(item.name))
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
+    }
+}
+
+/** One tap on a number puts the item on the list; a new name also gets its section here. */
+struct AmountSheet: View {
+    let pick: Pick
+    let onAdd: (String, String) -> Void
+    @State private var category: String
+    @State private var other = ""
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.palette) private var p
+
+    init(pick: Pick, onAdd: @escaping (String, String) -> Void) {
+        self.pick = pick
+        self.onAdd = onAdd
+        _category = State(initialValue: pick.category)
+    }
+
+    var body: some View {
+        SheetBody(title: pick.name) {
+            if !pick.known {
+                Text(ShopText.sectionFor).font(.swSmall).foregroundStyle(p.inkSoft.color)
+                WrapLayout(spacing: 8) {
+                    ForEach(CATEGORIES, id: \.self) { c in Chip(text: c, on: c == category) { category = c } }
+                }
+            }
+            Text(ShopText.howMany).font(.swSmall).foregroundStyle(p.inkSoft.color)
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { n in
+                    Button { onAdd(String(n), category) } label: {
+                        Text(String(n)).font(Fonts.body(24, weight: 700, style: .title2)).foregroundStyle(p.ink.color)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .background(p.surface.color, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.rule.color, lineWidth: 1.5))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Field(label: ShopText.otherAmount, text: $other, hint: ShopText.otherAmountHint)
+            PrimaryButton(ShopText.addButton, enabled: !other.trimmingCharacters(in: .whitespaces).isEmpty) { onAdd(other.trimmingCharacters(in: .whitespaces), category) }
+            GhostButton(ShopText.cancel) { dismiss() }
+        }
+    }
+}
+
+/** What the family typed in themselves: move it to its section for good, or forget a misspelling. */
+struct LearnedSheet: View {
+    let model: ShoppingModel
+    @State private var rows: [LearnedEntry]?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.palette) private var p
+
+    var body: some View {
+        SheetBody(title: ShopText.learned) {
+            Text(ShopText.learnedLead).font(.swSmall).foregroundStyle(p.inkSoft.color)
+            if let rows, rows.isEmpty { Text(ShopText.learnedEmpty).font(.swBody).foregroundStyle(p.inkSoft.color) }
+            ForEach(rows ?? [], id: \.name) { r in
+                HStack(spacing: 8) {
+                    Text(r.name).font(.swBody).frame(maxWidth: .infinity, alignment: .leading)
+                    Menu {
+                        ForEach(CATEGORIES, id: \.self) { c in
+                            Button(c) {
+                                rows = rows?.map { $0.name == r.name ? LearnedEntry(name: $0.name, category: c) : $0 }
+                                Task { await model.moveLearned(r.name, category: c) }
+                            }
+                        }
+                    } label: {
+                        Text(r.category + " ▾").font(.swSmall).foregroundStyle(p.ink.color).padding(.horizontal, 10).frame(minHeight: 44)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(p.rule.color))
+                    }
+                    .accessibilityLabel(ShopText.sectionOf(r.name))
+                    Button { Task { if await model.forgetLearned(r.name) { rows?.removeAll { $0.name == r.name } } } } label: {
+                        Text("×").font(.system(size: 24)).foregroundStyle(p.inkSoft.color).frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain).accessibilityLabel(ShopText.forget(r.name))
+                }
+            }
+            GhostButton(ShopText.learnedDone) { dismiss() }
+        }
+        .task { rows = await model.learned() }
     }
 }
 

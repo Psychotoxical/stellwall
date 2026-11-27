@@ -8,14 +8,17 @@ import XCTest
  * and the test fails once; CI uploads the new pictures, which are then committed.
  */
 @MainActor
-func snap<V: View>(_ view: V, world: String = "flieder", dark: Bool = false, named name: String, file: StaticString = #filePath, testName: String = #function, line: UInt = #line) {
+func snap<V: View>(_ view: V, world: String = "flieder", dark: Bool = false, text: UIContentSizeCategory = .large, named name: String, file: StaticString = #filePath, testName: String = #function, line: UInt = #line) {
+    // The fonts size themselves from the phone's text size; the picture's size is handed to them directly.
+    Fonts.textSize = text == .large ? nil : text
+    defer { Fonts.textSize = nil }
     let host = UIHostingController(rootView: view.themed(world: world, dark: dark))
     host.overrideUserInterfaceStyle = dark ? .dark : .light
     assertSnapshot(
         of: host,
         // Drawn from the window, as on screen: layer rendering draws stray marks at the ends of round chips.
         // The window capture shifts colours slightly (sRGB 0,101,51 comes out as 42,99,56); WorldsTests checks the exact values.
-        as: .image(drawHierarchyInKeyWindow: true, precision: 0.99, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 844), traits: UITraitCollection(preferredContentSizeCategory: .large)),
+        as: .image(drawHierarchyInKeyWindow: true, precision: 0.99, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 844), traits: UITraitCollection(preferredContentSizeCategory: text)),
         named: name, file: file, testName: testName, line: line
     )
 }

@@ -1,6 +1,7 @@
 import { itemKey, searchKey } from "./categories.ts";
 
-export type Suggestion = { name: string; category: string };
+/** learned: typed in by the family, so it can be forgotten again (the server marks it). */
+export type Suggestion = { name: string; category: string; learned?: boolean };
 type Own = Suggestion & { uses: number };
 
 function rank(name: string, q: string): number {

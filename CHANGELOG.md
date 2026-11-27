@@ -4,11 +4,23 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
-## [0.1.13] - 2026-11-27
+### Added
+
+- Shopping: picking something asks how many with one tap (1 to 5, or another amount); the amount field beside the search is gone. A name Stellwall does not know asks for its store section right there.
+- Shopping: "Gelernte Vorschläge" under the list tools: what the family typed in can be moved to another section for good or forgotten; a learned suggestion also has an × while typing.
+- Colour world "Psysonic": Catppuccin Latte and Mocha with Mauve.
 
 ### Changed
 
+- Shopping: a section changed on an item is remembered for that name. Recipe names like "Zwiebel(n)" join the Zwiebeln, and names like "Knoblauchzehen" find their section through the catalog word in them.
 - First own password: the field is called "Altes Passwort"; right after signing in the web app no longer asks for it again, like the Android and iPhone app.
+- iPhone app: chips never break inside and full rows move on to the next line; "ganztägig" stays whole at large text sizes.
+
+### Fixed
+
+- Web: the colour world picker shows Pink's colours.
+
+## [0.1.13] - 2026-11-27
 
 ### Changed
 

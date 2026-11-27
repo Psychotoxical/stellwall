@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "name": "Schinkenwurst",
+      "category": "Sonstiges",
+      "learned": true
+    },
+    {
+      "name": "Schinken gekocht",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Schinken roh",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Schinkenwürfel",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Bierschinken",
+      "category": "Kühlregal"
+    },
+    {
+      "name": "Kochschinken Würfel",
+      "category": "Kühlregal"
+    }
+  ]
+}

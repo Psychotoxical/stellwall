@@ -155,3 +155,61 @@ describe("suggestions", () => {
     expect((await as(app, f.sam.cookie).del(`/api/lists/${secret}/items`)).statusCode).toBe(404);
   });
 });
+
+describe("second test round", () => {
+  it("names from recipes like \"Zwiebel(n)\" join the Zwiebeln and their section", async () => {
+    const { app, f, listId } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    await a.post(`/api/lists/${listId}/items`, { name: "Zwiebeln", quantity: "2" });
+    const r = (await a.post(`/api/lists/${listId}/items`, { name: "Zwiebel(n)", quantity: "1" })).json() as Item;
+    expect(r).toMatchObject({ name: "Zwiebeln", category: "Obst & Gemüse" });
+    expect((await a.get(`/api/lists/${listId}/items`)).json()).toHaveLength(1);
+    expect(((await a.post(`/api/lists/${listId}/items`, { name: "Knoblauchzehen" })).json() as Item).category).toBe("Obst & Gemüse");
+  });
+
+  it("a section changed on an item is learned for the next time", async () => {
+    const { app, f, listId } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    const id = ((await a.post(`/api/lists/${listId}/items`, { name: "Schinkenwurst" })).json() as Item).id;
+    await a.patch(`/api/items/${id}`, { category: "Fleisch & Fisch" });
+    await a.del(`/api/items/${id}`);
+    const again = (await as(app, f.sam.cookie).post(`/api/lists/${listId}/items`, { name: "Schinkenwurst" })).json() as Item;
+    expect(again.category).toBe("Fleisch & Fisch");
+  });
+
+  it("tells the section a name would get, and whether it is known", async () => {
+    const { app, f } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    expect((await a.get("/api/catalog/guess?name=Zwiebel(n)")).json()).toEqual({ name: "Zwiebeln", category: "Obst & Gemüse", known: true });
+    expect((await a.get("/api/catalog/guess?name=Schinkenwurst")).json()).toEqual({ name: "Schinkenwurst", category: "Sonstiges", known: false });
+    expect((await a.get("/api/catalog/guess?name=")).statusCode).toBe(400);
+  });
+
+  it("learned suggestions are marked, listed, moved to another section and forgotten", async () => {
+    const { app, f, listId } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    await a.post(`/api/lists/${listId}/items`, { name: "Schinkenwrust" });
+    await a.post(`/api/lists/${listId}/items`, { name: "Milch" });
+    const s = (await a.get("/api/suggestions?q=schinken")).json() as { name: string; learned?: boolean }[];
+    expect(s.find((x) => x.name === "Schinkenwrust")?.learned).toBe(true);
+    expect(((await a.get("/api/suggestions?q=milch")).json() as { name: string; learned?: boolean }[]).find((x) => x.name === "Milch")?.learned).toBeUndefined();
+    const learned = (await a.get("/api/catalog/learned")).json() as { name: string; category: string }[];
+    expect(learned.map((l) => l.name)).toEqual(["Schinkenwrust"]);
+    expect((await a.patch("/api/catalog/learned", { name: "Schinkenwrust", category: "Fleisch & Fisch" })).statusCode).toBe(200);
+    expect(((await a.get("/api/catalog/learned")).json() as { category: string }[])[0]!.category).toBe("Fleisch & Fisch");
+    expect((await as(app, f.sam.cookie).del("/api/catalog/learned?name=Schinkenwrust")).statusCode).toBe(200);
+    expect((await a.get("/api/catalog/learned")).json()).toEqual([]);
+    expect(((await a.get("/api/suggestions?q=schinkenwr")).json() as unknown[])).toEqual([]);
+  });
+
+  it("someone else's private suggestions stay out of reach", async () => {
+    const { app, f } = await familyWithList();
+    const a = as(app, f.alex.cookie);
+    const priv = (await a.post("/api/lists", { name: "Privat", visibility: { everyone: false, memberIds: [] } })).json().id as string;
+    await a.post(`/api/lists/${priv}/items`, { name: "Geheimrezept-Zutat" });
+    const sam = as(app, f.sam.cookie);
+    expect((await sam.get("/api/catalog/learned")).json()).toEqual([]);
+    await sam.del("/api/catalog/learned?name=Geheimrezept-Zutat");
+    expect(((await a.get("/api/catalog/learned")).json() as { name: string }[]).map((l) => l.name)).toEqual(["Geheimrezept-Zutat"]);
+  });
+});

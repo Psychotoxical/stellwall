@@ -8,6 +8,8 @@ import app.stellwall.api.Member
 import app.stellwall.api.ShoppingApi
 import app.stellwall.api.ShoppingList
 import app.stellwall.api.Suggestion
+import app.stellwall.api.CatalogGuess
+import app.stellwall.api.LearnedEntry
 import app.stellwall.api.Visibility
 import java.io.IOException
 import kotlinx.coroutines.test.runTest
@@ -135,13 +137,48 @@ class ShoppingModelTest {
         assertEquals(listOf("lists", "items:l1"), f.calls)
     }
 
-    @Test fun `adding needs a name, a picked suggestion brings its section`() = runTest {
+    @Test fun `a pick needs a name, a suggestion brings its section, the amount comes from the sheet`() = runTest {
         val f = fake()
         val m = ShoppingModel(f, me)
         m.load()
-        assertEquals(false, m.add("  ", ""))
-        assertEquals(true, m.add(" Milch ", " 2 l ", Suggestion("Milch", "Kühlregal")))
-        assertTrue("add:Milch:2 l:Kühlregal" in f.calls)
+        assertEquals(null, m.pick("  ", null, emptyList()))
+        val pick = m.pick("mil", Suggestion("Milch", "Kühlregal"), emptyList())
+        assertEquals(Pick("Milch", "Kühlregal", true), pick)
+        assertEquals(true, m.add(pick!!, " 2 ", "Kühlregal"))
+        assertTrue("add:Milch:2:Kühlregal" in f.calls)
+    }
+
+    @Test fun `a typed name that is shown as a suggestion is known, any other is asked about`() = runTest {
+        val asked = mutableListOf<String>()
+        val f = object : ShoppingApi by fake() {
+            override suspend fun guess(name: String): CatalogGuess { asked += name; return CatalogGuess("Zwiebeln", "Obst & Gemüse", true) }
+        }
+        val m = ShoppingModel(f, me)
+        assertEquals(Pick("Milch", "Kühlregal", true), m.pick("milch", null, listOf(Suggestion("Milch", "Kühlregal"))))
+        assertEquals(emptyList<String>(), asked)
+        assertEquals(Pick("Zwiebeln", "Obst & Gemüse", true), m.pick(" Zwiebel(n) ", null, emptyList()))
+        assertEquals(listOf("Zwiebel(n)"), asked)
+    }
+
+    @Test fun `without the server a new name still gets the sheet, in Sonstiges`() = runTest {
+        val f = object : ShoppingApi by fake() {
+            override suspend fun guess(name: String): CatalogGuess = throw IOException("down")
+        }
+        assertEquals(Pick("Schinkenwurst", "Sonstiges", false), ShoppingModel(f, me).pick("Schinkenwurst", null, emptyList()))
+    }
+
+    @Test fun `learned suggestions are forgotten and moved through the server`() = runTest {
+        val done = mutableListOf<String>()
+        val f = object : ShoppingApi by fake() {
+            override suspend fun forgetLearned(name: String) { done += "forget:$name" }
+            override suspend fun moveLearned(name: String, category: String) { done += "move:$name:$category" }
+            override suspend fun learned() = listOf(LearnedEntry("Schinkenwurst", "Sonstiges"))
+        }
+        val m = ShoppingModel(f, me)
+        assertEquals(listOf(LearnedEntry("Schinkenwurst", "Sonstiges")), m.learned())
+        assertTrue(m.forget(Suggestion("Schinkenwrust", "Sonstiges", learned = true)))
+        assertTrue(m.moveLearned("Schinkenwurst", "Fleisch & Fisch"))
+        assertEquals(listOf("forget:Schinkenwrust", "move:Schinkenwurst:Fleisch & Fisch"), done)
     }
 
     @Test fun `who sees a list, in words`() {

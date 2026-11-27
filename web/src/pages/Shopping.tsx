@@ -20,7 +20,7 @@ export function Shopping() {
   const board = useBoard();
   const list = lists.data?.find((l) => l.id === params.get("liste")) ?? lists.data?.[0];
   const items = useItems(list?.id);
-  const [sheet, setSheet] = useState<null | "tools" | "visibility" | "new" | "rename" | "delete" | "clear" | { item: ItemDto }>(null);
+  const [sheet, setSheet] = useState<null | "tools" | "visibility" | "new" | "rename" | "delete" | "clear" | "learned" | { item: ItemDto }>(null);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
 
@@ -134,6 +134,7 @@ export function Shopping() {
           <Button variant="ghost" onClick={() => setSheet("new")}>{de.shopping.newList}</Button>
           <Button variant="ghost" onClick={() => setSheet("rename")}>{de.shopping.renameList}</Button>
           <Button variant="ghost" onClick={() => setSheet("clear")}>{de.shopping.clearList}</Button>
+          <Button variant="ghost" onClick={() => setSheet("learned")}>{de.shopping.learned}</Button>
           {isCreator && <Button variant="danger" onClick={() => setSheet("delete")}>{de.shopping.deleteList}</Button>}
           <Button variant="ghost" onClick={() => setSheet(null)}>{de.members.cancel}</Button>
         </div>
@@ -184,6 +185,7 @@ export function Shopping() {
           </Button>
         </div>
       </Dialog>
+      <LearnedDialog open={sheet === "learned"} onClose={() => setSheet(null)} />
       {typeof sheet === "object" && sheet && (
         <EditItem item={sheet.item} onClose={() => setSheet(null)} onDone={async () => { await refresh(); setSheet(null); }} />
       )}
@@ -208,9 +210,12 @@ function ItemRow({ item, isNew, meta, onToggle, onEdit }: { item: ItemDto; isNew
   );
 }
 
+/** What the amount window is about: the name, its section, and whether the section still has to be chosen. */
+type Pick = { name: string; category: string; known: boolean };
+
 function AddItem({ listId, onAdded }: { listId: string; onAdded: () => Promise<void> }) {
   const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [pick, setPick] = useState<Pick | null>(null);
   const [sugg, setSugg] = useState<Suggestion[]>([]);
   const [active, setActive] = useState(-1);
   const [busy, setBusy] = useState(false);
@@ -226,24 +231,38 @@ function AddItem({ listId, onAdded }: { listId: string; onAdded: () => Promise<v
     return () => clearTimeout(t);
   }, [name]);
 
-  const add = async (picked?: Suggestion) => {
+  // A suggestion knows its section; a typed name asks the server what it would get.
+  const choose = async (picked?: Suggestion) => {
     const n = (picked?.name ?? name).trim();
     if (!n || busy) return;
+    if (picked) return setPick({ name: picked.name, category: picked.category, known: true });
+    const exact = sugg.find((s) => s.name.toLowerCase() === n.toLowerCase());
+    if (exact) return setPick({ name: exact.name, category: exact.category, known: true });
     setBusy(true);
     try {
-      await api(`/api/lists/${listId}/items`, {
-        method: "POST",
-        body: { name: n, ...(quantity.trim() ? { quantity: quantity.trim() } : {}), ...(picked ? { category: picked.category } : {}) },
-      });
-      setName("");
-      setQuantity("");
-      setSugg([]);
-      setActive(-1);
-      await onAdded();
-      inputRef.current?.focus();
+      setPick(await api<Pick>(`/api/catalog/guess?name=${encodeURIComponent(n)}`));
+    } catch {
+      setPick({ name: n, category: "Sonstiges", known: false });
     } finally {
       setBusy(false);
     }
+  };
+
+  const add = async (quantity: string, category: string) => {
+    if (!pick) return;
+    await api(`/api/lists/${listId}/items`, { method: "POST", body: { name: pick.name, quantity, category } });
+    setPick(null);
+    setName("");
+    setSugg([]);
+    setActive(-1);
+    await onAdded();
+    inputRef.current?.focus();
+  };
+
+  const forget = async (s: Suggestion) => {
+    await api(`/api/catalog/learned?name=${encodeURIComponent(s.name)}`, { method: "DELETE" });
+    setSugg((all) => all.filter((x) => x.name !== s.name));
+    inputRef.current?.focus();
   };
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -256,12 +275,12 @@ function AddItem({ listId, onAdded }: { listId: string; onAdded: () => Promise<v
     } else if (e.key === "Escape") setSugg([]);
     else if (e.key === "Enter") {
       e.preventDefault();
-      void add(active >= 0 ? sugg[active] : undefined);
+      void choose(active >= 0 ? sugg[active] : undefined);
     }
   };
 
   return (
-    <form className="addbox" onSubmit={(e: FormEvent) => { e.preventDefault(); void add(); }}>
+    <form className="addbox" onSubmit={(e: FormEvent) => { e.preventDefault(); void choose(); }}>
       <label htmlFor={listboxId + "-in"}>{de.shopping.add}</label>
       <div className="addrow">
         <input
@@ -278,20 +297,113 @@ function AddItem({ listId, onAdded }: { listId: string; onAdded: () => Promise<v
           onChange={(e) => { setName(e.target.value); setActive(-1); }}
           onKeyDown={onKey}
         />
-        <input className="qty" aria-label={de.shopping.quantity} placeholder={de.shopping.quantityPlaceholder} value={quantity} maxLength={30} onChange={(e) => setQuantity(e.target.value)} />
         <Button type="submit" disabled={busy || !name.trim()}>{de.shopping.addButton}</Button>
       </div>
       {sugg.length > 0 && (
         <div className="sugg" id={listboxId} role="listbox">
           {sugg.map((s, k) => (
-            <button key={s.name} id={`${listboxId}-${k}`} type="button" role="option" aria-selected={k === active} className={k === active ? "active" : ""} onMouseDown={(e) => e.preventDefault()} onClick={() => void add(s)}>
-              <span>{s.name}</span>
-              <small>{s.category}</small>
-            </button>
+            <div key={s.name} className={"srow" + (k === active ? " active" : "")}>
+              <button id={`${listboxId}-${k}`} type="button" role="option" aria-selected={k === active} onMouseDown={(e) => e.preventDefault()} onClick={() => void choose(s)}>
+                <span>{s.name}</span>
+                <small>{s.category}</small>
+              </button>
+              {s.learned && (
+                <button type="button" className="forget" aria-label={de.shopping.forget(s.name)} onMouseDown={(e) => e.preventDefault()} onClick={() => void forget(s)}>×</button>
+              )}
+            </div>
           ))}
         </div>
       )}
+      {pick && <AmountDialog pick={pick} onClose={() => { setPick(null); inputRef.current?.focus(); }} onAdd={add} />}
     </form>
+  );
+}
+
+/** One tap on a number puts the item on the list; a new name also gets its section here. */
+function AmountDialog({ pick, onClose, onAdd }: { pick: Pick; onClose: () => void; onAdd: (quantity: string, category: string) => Promise<void> }) {
+  const [category, setCategory] = useState(pick.category);
+  const [other, setOther] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ids = useId();
+  const go = async (quantity: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onAdd(quantity, category);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open title={pick.name} onClose={onClose}>
+      <div className="form">
+        {!pick.known && (
+          <fieldset className="sections">
+            <legend>{de.shopping.sectionFor}</legend>
+            {CATEGORIES.map((c) => (
+              <label key={c} className="section">
+                <input type="radio" name={ids + "c"} value={c} checked={category === c} onChange={() => setCategory(c)} />
+                <span>{c}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <p className="howmany">{de.shopping.howMany}</p>
+        <div className="amounts">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" className="amount" autoFocus={n === 1} disabled={busy} onClick={() => void go(String(n))}>{n}</button>
+          ))}
+        </div>
+        <div className="field">
+          <label htmlFor={ids + "o"}>{de.shopping.otherAmount}</label>
+          <input id={ids + "o"} value={other} maxLength={30} autoComplete="off" placeholder={de.shopping.otherAmountHint} onChange={(e) => setOther(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && other.trim()) { e.preventDefault(); void go(other.trim()); } }} />
+        </div>
+        <div className="actions">
+          <Button type="button" variant="ghost" onClick={onClose}>{de.members.cancel}</Button>
+          <Button type="button" disabled={busy || !other.trim()} onClick={() => void go(other.trim())}>{de.shopping.addButton}</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/** What the family typed in themselves: move it to its section for good, or forget a misspelling. */
+function LearnedDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [rows, setRows] = useState<{ name: string; category: string }[] | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    setRows(null);
+    api<{ name: string; category: string }[]>("/api/catalog/learned").then(setRows).catch(() => setRows([]));
+  }, [open]);
+  const move = async (name: string, category: string) => {
+    setRows((all) => all?.map((r) => (r.name === name ? { ...r, category } : r)) ?? null);
+    await api("/api/catalog/learned", { method: "PATCH", body: { name, category } });
+  };
+  const forget = async (name: string) => {
+    await api(`/api/catalog/learned?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    setRows((all) => all?.filter((r) => r.name !== name) ?? null);
+  };
+  return (
+    <Dialog open={open} title={de.shopping.learned} onClose={onClose}>
+      <p>{de.shopping.learnedLead}</p>
+      {rows && rows.length === 0 && <p className="muted">{de.shopping.learnedEmpty}</p>}
+      {rows && rows.length > 0 && (
+        <ul className="learned">
+          {rows.map((r) => (
+            <li key={r.name}>
+              <span className="n">{r.name}</span>
+              <select aria-label={de.shopping.sectionOf(r.name)} value={r.category} onChange={(e) => void move(r.name, e.target.value)}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button type="button" className="forget" aria-label={de.shopping.forget(r.name)} onClick={() => void forget(r.name)}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="actions">
+        <Button type="button" variant="ghost" onClick={onClose}>{de.shopping.learnedDone}</Button>
+      </div>
+    </Dialog>
   );
 }
 
