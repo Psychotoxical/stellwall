@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-11-27
+
 ### Added
 
 - Shopping: picking something asks how many with one tap (1 to 5, or another amount); the amount field beside the search is gone. A name Stellwall does not know asks for its store section right there.
