@@ -5,6 +5,8 @@ name: After the release
 on:
   release:
     types: [published]
+  # Only the iPhone upload, from any branch: for a retry without a new release.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,6 +14,7 @@ permissions:
 jobs:
   image:
     name: Container image
+    if: github.event_name == 'release'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -92,7 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.ref }}
       # Signed through the App Store Connect key (Xcode makes certificate and profile itself),
       # then uploaded to TestFlight. Without the secrets this job only warns.
       - name: Build and upload
@@ -122,7 +125,8 @@ jobs:
           brew install xcodegen
           cd ios
           xcodegen generate
-          VERSION="${TAG#v}"
+          # A release names its version; a run by hand takes the one in package.json.
+          if [ -n "$TAG" ]; then VERSION="${TAG#v}"; else VERSION=$(node -p "require('../package.json').version"); fi
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" -authenticationKeyID "$API_KEY_ID" -authenticationKeyIssuerID "$API_ISSUER")
           xcodebuild archive -project Stellwall.xcodeproj -scheme Stellwall -configuration Release -destination 'generic/platform=iOS' \
             -archivePath build/Stellwall.xcarchive DEVELOPMENT_TEAM="$TEAM_ID" MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" "${AUTH[@]}" | tail -40
