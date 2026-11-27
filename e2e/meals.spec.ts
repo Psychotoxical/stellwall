@@ -22,8 +22,8 @@ test("a recipe goes into the week and its ingredients onto the shopping list", a
   await page.locator(".mealday.is-today .mealday-main").click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Rezept suchen").fill("pfanne");
+  // A tap on the recipe plans it and closes the sheet.
   await dialog.getByRole("button", { name: /Gemüsepfanne/ }).click();
-  await dialog.getByRole("button", { name: "Speichern" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.locator(".mealday.is-today")).toContainText("Gemüsepfanne");
 

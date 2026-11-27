@@ -204,6 +204,7 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
     var q by remember { mutableStateOf("") }
     var search by remember { mutableStateOf<Search?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var servingsTouched by remember { mutableStateOf(false) }
     LaunchedEffect(q) {
         delay(200)
         search = model.search(q)
@@ -230,7 +231,7 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
             Dropdown(MealText.COOK, members.firstOrNull { it.id == d.cookId }?.displayName ?: MealText.NOBODY, names, Modifier.weight(1f)) { i ->
                 d = d.copy(cookId = if (i == 0) null else members[i - 1].id)
             }
-            Stepper(MealText.SERVINGS, d.servings, 1, 50, MealText.FEWER, MealText.MORE) { d = d.copy(servings = it) }
+            Stepper(MealText.SERVINGS, d.servings, 1, 50, MealText.FEWER, MealText.MORE) { d = d.copy(servings = it); servingsTouched = true }
         }
         mealieDown?.let { Notice(it) }
         if (keepRecipe) Text(d.recipe!!.name, style = MaterialTheme.typography.titleMedium, color = p.ink)
@@ -241,8 +242,10 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
             )
             val list = search?.recipes.orEmpty()
             if (search != null && list.isEmpty() && mealieDown == null) Text(MealText.SEARCH_EMPTY, color = p.inkSoft, style = MaterialTheme.typography.bodyLarge)
+            // A tap plans the recipe at once: the list can be long and Save sits below it.
             for (r in list) RecipeRow(api, r, on = d.recipe?.id == r.id) {
-                d = d.copy(recipe = RecipeRef(r.id, r.slug, r.name), servings = if (meal?.recipe?.id == r.id) d.servings else r.servings)
+                d = d.copy(recipe = RecipeRef(r.id, r.slug, r.name))
+                scope.launch { error = model.pick(date, d, r, meal, servingsTouched); if (error == null) onClose() }
             }
         }
         if (showText) {

@@ -20,7 +20,7 @@ export function Shopping() {
   const board = useBoard();
   const list = lists.data?.find((l) => l.id === params.get("liste")) ?? lists.data?.[0];
   const items = useItems(list?.id);
-  const [sheet, setSheet] = useState<null | "tools" | "visibility" | "new" | "rename" | "delete" | { item: ItemDto }>(null);
+  const [sheet, setSheet] = useState<null | "tools" | "visibility" | "new" | "rename" | "delete" | "clear" | { item: ItemDto }>(null);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
 
@@ -133,6 +133,7 @@ export function Shopping() {
         <div className="toolist">
           <Button variant="ghost" onClick={() => setSheet("new")}>{de.shopping.newList}</Button>
           <Button variant="ghost" onClick={() => setSheet("rename")}>{de.shopping.renameList}</Button>
+          <Button variant="ghost" onClick={() => setSheet("clear")}>{de.shopping.clearList}</Button>
           {isCreator && <Button variant="danger" onClick={() => setSheet("delete")}>{de.shopping.deleteList}</Button>}
           <Button variant="ghost" onClick={() => setSheet(null)}>{de.members.cancel}</Button>
         </div>
@@ -167,6 +168,14 @@ export function Shopping() {
           setParams({ liste: l.id });
         }}
       />
+      <Dialog open={sheet === "clear"} title={de.shopping.clearListConfirm(list.name)} onClose={() => setSheet(null)}>
+        <div className="actions">
+          <Button variant="ghost" onClick={() => setSheet(null)}>{de.members.cancel}</Button>
+          <Button variant="danger" onClick={async () => { await run(() => api(`/api/lists/${list.id}/items`, { method: "DELETE" })); setSheet(null); }}>
+            {de.shopping.clearList}
+          </Button>
+        </div>
+      </Dialog>
       <Dialog open={sheet === "delete"} title={de.shopping.deleteListConfirm(list.name)} onClose={() => setSheet(null)}>
         <div className="actions">
           <Button variant="ghost" onClick={() => setSheet(null)}>{de.members.cancel}</Button>

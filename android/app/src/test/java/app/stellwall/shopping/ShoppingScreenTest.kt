@@ -49,6 +49,7 @@ class SampleShopping : ShoppingApi {
     override suspend fun createList(name: String, visibility: Visibility) = lists()[0]
     override suspend fun updateList(id: String, name: String?, visibility: Visibility?) = lists()[0]
     override suspend fun deleteList(id: String) {}
+    override suspend fun clearList(id: String) {}
     override suspend fun items(listId: String) = if (listId == "l1") items else emptyList()
     override suspend fun addItem(listId: String, name: String, quantity: String, category: String?) = items[0]
     override suspend fun updateItem(id: String, change: ItemChange): Item {

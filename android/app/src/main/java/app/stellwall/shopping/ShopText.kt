@@ -19,6 +19,7 @@ object ShopText {
     const val DELETE_ITEM = "Eintrag löschen"
     const val RENAME_LIST = "Liste umbenennen"
     const val DELETE_LIST = "Liste löschen"
+    const val CLEAR_LIST = "Liste leeren"
     const val SAVE = "Speichern"
     const val CANCEL = "Abbrechen"
     const val GENERIC = "Das hat nicht geklappt. Bitte noch einmal versuchen."
@@ -42,4 +43,5 @@ object ShopText {
     fun check(name: String) = "$name abhaken"
     fun uncheck(name: String) = "$name wieder offen"
     fun deleteListConfirm(name: String) = "„$name“ mit allen Einträgen löschen?"
+    fun clearListConfirm(name: String) = "Alle Einträge aus „$name“ entfernen? Die Liste selbst bleibt."
 }

@@ -86,6 +86,17 @@ class MealsModelTest {
         assertEquals("save:2026-12-04:pfannkuchen:null:2", f.calls.last { it.startsWith("save") })
     }
 
+    @Test fun `a tap on a recipe plans it at once, with the servings set before`() = runTest {
+        val f = FakeMeals()
+        val m = MealsModel(f, today = { today })
+        val veg = RecipeSummary("r1", "gemuese-pfanne", "Gemüsepfanne", servings = 2, hasImage = false)
+        val fresh = m.draft(null)
+        assertNull(m.pick(LocalDate.of(2026, 12, 3), fresh, veg, planned = null, servingsTouched = false))
+        assertEquals("save:2026-12-03:gemuese-pfanne:null:2", f.calls.last { it.startsWith("save") })
+        assertNull(m.pick(LocalDate.of(2026, 12, 4), fresh.copy(servings = 5), veg, planned = null, servingsTouched = true))
+        assertEquals("save:2026-12-04:gemuese-pfanne:null:5", f.calls.last { it.startsWith("save") })
+    }
+
     @Test fun `Mealie errors read like the web app`() = runTest {
         val f = FakeMeals().apply { searchFails = ApiException(409, "mealie_not_configured") }
         val m = MealsModel(f, today = { today })

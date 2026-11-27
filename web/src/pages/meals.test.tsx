@@ -52,8 +52,18 @@ describe("meal plan page", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: new RegExp(de.meals.nothing) }))[0]!);
     fireEvent.change(await screen.findByLabelText(de.meals.search), { target: { value: "pfanne" } });
     fireEvent.click(await screen.findByRole("button", { name: /Gemüsepfanne/ }));
-    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
     await waitFor(() => expect(calls.find((c) => c.key === `PUT /api/meals/${monday}`)?.body).toEqual({ recipe: veg, text: null, cookId: null, servings: 4 }));
+    await waitFor(() => expect(screen.queryByLabelText(de.meals.search)).toBeNull());
+  });
+
+  it("a tap on a recipe keeps the servings set before", async () => {
+    const calls = fakeApi(base([], { [`PUT /api/meals/${monday}`]: (b) => ({ status: 200, body: b }) }));
+    renderAt("/essen");
+    fireEvent.click((await screen.findAllByRole("button", { name: new RegExp(de.meals.nothing) }))[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.fewer }));
+    fireEvent.change(await screen.findByLabelText(de.meals.search), { target: { value: "pfanne" } });
+    fireEvent.click(await screen.findByRole("button", { name: /Gemüsepfanne/ }));
+    await waitFor(() => expect(calls.find((c) => c.key === `PUT /api/meals/${monday}`)?.body).toEqual({ recipe: veg, text: null, cookId: null, servings: 3 }));
   });
 
   it("without Mealie the page says so and free text still works", async () => {

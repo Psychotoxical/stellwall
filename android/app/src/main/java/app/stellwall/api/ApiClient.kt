@@ -44,6 +44,7 @@ interface ShoppingApi {
     suspend fun createList(name: String, visibility: Visibility): ShoppingList
     suspend fun updateList(id: String, name: String? = null, visibility: Visibility? = null): ShoppingList
     suspend fun deleteList(id: String)
+    suspend fun clearList(id: String)
     suspend fun items(listId: String): List<Item>
     suspend fun addItem(listId: String, name: String, quantity: String, category: String?): Item
     suspend fun updateItem(id: String, change: ItemChange): Item
@@ -157,6 +158,10 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun deleteList(id: String) {
         call("DELETE", "api/lists/${seg(id)}")
+    }
+
+    override suspend fun clearList(id: String) {
+        call("DELETE", "api/lists/${seg(id)}/items")
     }
 
     override suspend fun items(listId: String) = call("GET", "api/lists/${seg(listId)}/items").decode(ListSerializer(Item.serializer()))

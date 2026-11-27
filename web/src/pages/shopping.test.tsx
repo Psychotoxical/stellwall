@@ -107,6 +107,16 @@ describe("shopping review fixes", () => {
     });
   });
 
+  it("a list can be emptied after asking", async () => {
+    const calls = fakeApi({ ...base(), "DELETE /api/lists/l1/items": () => ({ status: 200, body: { removed: 1 } }) });
+    renderAt("/einkauf");
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.manage }));
+    fireEvent.click(await screen.findByRole("button", { name: de.shopping.clearList }));
+    expect(calls.some((c) => c.key === "DELETE /api/lists/l1/items")).toBe(false);
+    fireEvent.click(within(await screen.findByRole("dialog", { name: de.shopping.clearListConfirm("Einkauf") })).getByRole("button", { name: de.shopping.clearList }));
+    await waitFor(() => expect(calls.some((c) => c.key === "DELETE /api/lists/l1/items")).toBe(true));
+  });
+
   it("editing sends only the changed fields", async () => {
     const long = { ...milk, quantity: "1 l + 2 Pck + 500 g + 1 Dose + 3 Fl" };
     const calls = fakeApi({ ...base([long]), "PATCH /api/items/i1": () => ({ status: 200, body: long }) });

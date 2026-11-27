@@ -52,6 +52,7 @@ class ShoppingModelTest {
         override suspend fun createList(name: String, visibility: Visibility) = ShoppingList("l3", name, visibility, "me", 0).also { lists = lists + it }
         override suspend fun updateList(id: String, name: String?, visibility: Visibility?) = lists.first { it.id == id }
         override suspend fun deleteList(id: String) { calls += "deleteList:$id" }
+        override suspend fun clearList(id: String) { calls += "clearList:$id"; items[id] = emptyList() }
         override suspend fun suggestions(q: String) = listOf(Suggestion("Milch", "Kühlregal"))
     }
 
@@ -62,6 +63,17 @@ class ShoppingModelTest {
             item("c", "Brot", "Backwaren", checked = true),
             item("d", "Bananen", "Obst & Gemüse"),
         )
+    }
+
+    @Test fun `a list is emptied at once and stays`() = runTest {
+        val f = fake()
+        val m = ShoppingModel(f, me)
+        m.load()
+        assertEquals(true, m.clearList())
+        assertTrue("clearList:l1" in f.calls)
+        assertEquals("l1", m.state.value.list?.id)
+        assertEquals(emptyList<Any>(), m.state.value.groups)
+        assertEquals(emptyList<Any>(), m.state.value.checked)
     }
 
     @Test fun `open items are grouped in shop order, checked ones apart`() = runTest {
