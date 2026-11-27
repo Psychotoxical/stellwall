@@ -109,7 +109,7 @@ export const de = {
     colorHint: "Deine Kennfarbe: daran erkennen dich die anderen, zum Beispiel im Kalender.",
     world: "Deine Farbwelt",
     worldHint: "Die App nimmt deine Farbe an, auf allen deinen Geräten.",
-    worlds: { salbei: "Salbei", flieder: "Flieder", pfirsich: "Pfirsich", himmel: "Himmel", rose: "Rosé", sonne: "Sonne" } as Record<string, string>,
+    worlds: { salbei: "Salbei", flieder: "Flieder", pfirsich: "Pfirsich", himmel: "Himmel", rose: "Rosé", sonne: "Sonne", pink: "Pink" } as Record<string, string>,
     profile: "Name und Farbe",
     password: "Passwort ändern",
     passwordChanged: "Passwort geändert.",

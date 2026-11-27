@@ -91,4 +91,19 @@ class ShoppingScreenTest {
         compose.onNodeWithText("Dokumente").assertExists()
         compose.onRoot().captureRoboImage("src/test/screenshots/start-dark.png")
     }
+
+    private fun pink(dark: Boolean, file: String) {
+        val api = SampleShopping()
+        compose.setContent {
+            StellwallTheme(world = "pink", dark = dark) {
+                StartScreen(api.me, StartModel(board = { api.board() }), today = LocalDate.of(2026, 11, 27), hour = 9) {}
+            }
+        }
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("2 neu")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().captureRoboImage(file)
+    }
+
+    @Test fun `the pink world, light`() = pink(false, "src/test/screenshots/start-pink.png")
+
+    @Test fun `the pink world, dark`() = pink(true, "src/test/screenshots/start-pink-dark.png")
 }
