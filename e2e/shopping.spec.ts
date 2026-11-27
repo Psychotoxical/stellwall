@@ -51,3 +51,27 @@ test("live shopping between two people", async ({ browser }) => {
   await alexCtx.close();
   await samCtx.close();
 });
+
+test("a list can be emptied and deleted from the list tools", async ({ page }) => {
+  await signInAlex(page);
+  await page.goto("/einkauf");
+  const input = page.getByLabel("Was fehlt?");
+  await input.fill("Kaffee");
+  await input.press("Enter");
+  await expect(page.getByText("Kaffee", { exact: true })).toBeVisible();
+
+  // Closing the tools must not take the question that opens from them along.
+  await page.getByRole("button", { name: "Listen verwalten" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Liste leeren" }).click();
+  const ask = page.getByRole("dialog", { name: /Alle Einträge aus/ });
+  await expect(ask).toBeVisible();
+  await ask.getByRole("button", { name: "Liste leeren" }).click();
+  await expect(page.getByText("Kaffee", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Listen verwalten" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Liste löschen" }).click();
+  const del = page.getByRole("dialog", { name: /löschen/ });
+  await expect(del).toBeVisible();
+  await del.getByRole("button", { name: "Liste löschen" }).click();
+  await expect(del).toBeHidden();
+});

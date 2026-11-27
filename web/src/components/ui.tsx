@@ -59,8 +59,10 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
       aria-labelledby={tid}
       // React passes these events up to every dialog around this one; only our own counts,
       // or closing "Wer darf das sehen?" would close the form it sits in.
+      // Closing it from here (open became false) fires "close" a moment later too; by then the next
+      // dialog may be open, and passing that on would shut it at once ("Liste leeren" from the tools).
       onClose={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && open) onClose();
       }}
       onCancel={(e) => {
         if (e.target !== e.currentTarget) return;

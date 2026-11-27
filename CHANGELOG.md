@@ -12,6 +12,7 @@ Every version has its own section. The section of a version becomes the text of 
 ### Changed
 
 - Meal plan: "Aus dem Plan nehmen" sits at the top of a day, above the recipe list, in the web, Android and iPhone app. On the iPhone a long press on a day takes its meal out too.
+- Web: "Liste leeren" and "Liste löschen" from the list tools ask again and work; the question used to close the moment it opened.
 - iPhone app: recipe pictures stay inside their frame; the phone is listed as "iPhone-App" under notifications.
 
 ## [0.1.11] - 2026-11-27
