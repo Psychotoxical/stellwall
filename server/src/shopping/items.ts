@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { CATALOG, CATEGORIES, OTHER, itemKey, mergeQuantity, startOfLocalDay, suggest } from "@stellwall/shared";
+import { CATALOG, CATEGORIES, cleanName, guessCategory, inCatalog, itemKey, mergeQuantity, startOfLocalDay, suggest } from "@stellwall/shared";
 import type { Db } from "../db/client.ts";
 import { catalogEntries, items, lists } from "../db/schema.ts";
 import { requireMember } from "../auth/guard.ts";
@@ -20,8 +20,8 @@ const patchBody = z.object({
 });
 const idParam = z.object({ id: z.uuid() });
 const suggestQuery = z.object({ q: z.string().max(80).default("") });
-
-const CATALOG_BY_KEY = new Map(CATALOG.map((c) => [itemKey(c.name), c]));
+const nameQuery = z.object({ name: nameSchema });
+const learnedBody = z.object({ name: nameSchema, category: categorySchema });
 const ORDER = new Map<string, number>(CATEGORIES.map((c, i) => [c, i]));
 
 export type ItemDto = {
@@ -57,12 +57,14 @@ export async function knownCategory(exec: Pick<Db, "select">, key: string, membe
     .from(catalogEntries)
     .where(and(eq(catalogEntries.kind, "shopping"), eq(catalogEntries.key, key), inArray(catalogEntries.scope, [memberId, "family"])));
   const mine = own.find((o) => o.scope === memberId) ?? own[0];
-  return mine?.category ?? CATALOG_BY_KEY.get(key)?.category ?? OTHER;
+  return mine?.category ?? guessCategory(key);
 }
 
 /** Puts an item on a list inside a transaction; an open item of the same name gets the amount added. */
 export async function addToList(tx: Tx, a: { listId: string; name: string; quantity: string; category?: string | undefined; me: string; at: Date }) {
-  const key = itemKey(a.name);
+  // Recipes write "Zwiebel(n)": that is the Zwiebeln, with their section and on the same line.
+  const name = cleanName(a.name);
+  const key = itemKey(name);
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${a.listId + "|" + key}))`);
   const open = await tx
     .select()
@@ -78,7 +80,7 @@ export async function addToList(tx: Tx, a: { listId: string; name: string; quant
     return u!;
   }
   const category = a.category ?? (await knownCategory(tx, key, a.me));
-  const [n] = await tx.insert(items).values({ listId: a.listId, name: a.name, key, quantity: a.quantity, category, addedBy: a.me, addedAt: a.at }).returning();
+  const [n] = await tx.insert(items).values({ listId: a.listId, name, key, quantity: a.quantity, category, addedBy: a.me, addedAt: a.at }).returning();
   return n!;
 }
 
@@ -111,6 +113,17 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       });
   }
 
+  /** A section chosen by hand counts for the next time too; it is not one more use. */
+  async function learnSection(scope: string, key: string, name: string, category: string) {
+    await db
+      .insert(catalogEntries)
+      .values({ scope, key, name, category, uses: 1, lastUsed: now() })
+      .onConflictDoUpdate({ target: [catalogEntries.kind, catalogEntries.scope, catalogEntries.key], set: { category } });
+  }
+
+  /** What this member may see and change of what was learned: the family's and their own. */
+  const ownScope = (me: string) => and(eq(catalogEntries.kind, "shopping"), or(eq(catalogEntries.scope, "family"), eq(catalogEntries.scope, me)));
+
   app.get("/api/lists/:id/items", { preHandler: requireMember }, async (req, reply) => {
     const p = idParam.safeParse(req.params);
     if (!p.success) return reply.code(404).send({ error: "not_found" });
@@ -133,9 +146,8 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     if (!l) return reply.code(404).send({ error: "not_found" });
     const body = addBody.safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: "invalid_input" });
-    const key = itemKey(body.data.name);
     const result = await db.transaction((tx) => addToList(tx, { listId: l.id, name: body.data.name, quantity: body.data.quantity ?? "", category: body.data.category, me, at: now() }));
-    await learn(l.everyone ? "family" : me, key, result.name, result.category);
+    await learn(l.everyone ? "family" : me, result.key, result.name, result.category);
     notify.list(l.id);
     notify.itemsAdded(l.id, req.member!, 1);
     return toDto(result);
@@ -184,6 +196,10 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
       return cur;
     });
     if (!fresh) return reply.code(404).send({ error: "not_found" });
+    if (fields.category) {
+      const [l] = await db.select({ everyone: lists.everyone }).from(lists).where(eq(lists.id, fresh.listId));
+      await learnSection(l?.everyone ? "family" : me, fresh.key, fresh.name, fields.category);
+    }
     notify.list(item.listId);
     return toDto(fresh);
   });
@@ -205,7 +221,42 @@ export async function itemRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     const own = await db
       .select({ name: catalogEntries.name, category: catalogEntries.category, uses: catalogEntries.uses })
       .from(catalogEntries)
-      .where(and(eq(catalogEntries.kind, "shopping"), or(eq(catalogEntries.scope, "family"), eq(catalogEntries.scope, me))));
-    return suggest(q.data.q, CATALOG, own);
+      .where(ownScope(me));
+    // What the family typed in themselves can be forgotten again; the built-in names cannot.
+    const learned = new Set(own.filter((o) => !inCatalog(o.name)).map((o) => itemKey(o.name)));
+    return suggest(q.data.q, CATALOG, own).map((s) => (learned.has(itemKey(s.name)) ? { ...s, learned: true } : s));
+  });
+
+  app.get("/api/catalog/guess", { preHandler: requireMember }, async (req, reply) => {
+    const q = nameQuery.safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: "invalid_input" });
+    const name = cleanName(q.data.name);
+    const key = itemKey(name);
+    const mine = await db.select({ category: catalogEntries.category }).from(catalogEntries).where(and(ownScope(req.member!.id), eq(catalogEntries.key, key))).limit(1);
+    if (mine[0]) return { name, category: mine[0].category, known: true };
+    return { name, category: guessCategory(name), known: inCatalog(name) };
+  });
+
+  app.get("/api/catalog/learned", { preHandler: requireMember }, async (req) => {
+    const own = await db.select({ name: catalogEntries.name, category: catalogEntries.category }).from(catalogEntries).where(ownScope(req.member!.id));
+    const seen = new Set<string>();
+    return own
+      .filter((o) => !inCatalog(o.name) && !seen.has(itemKey(o.name)) && seen.add(itemKey(o.name)))
+      .sort((a, b) => a.name.localeCompare(b.name, "de"));
+  });
+
+  app.patch("/api/catalog/learned", { preHandler: requireMember }, async (req, reply) => {
+    const body = learnedBody.safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid_input" });
+    const done = await db.update(catalogEntries).set({ category: body.data.category }).where(and(ownScope(req.member!.id), eq(catalogEntries.key, itemKey(body.data.name)))).returning({ id: catalogEntries.id });
+    if (!done.length) return reply.code(404).send({ error: "not_found" });
+    return { ok: true };
+  });
+
+  app.delete("/api/catalog/learned", { preHandler: requireMember }, async (req, reply) => {
+    const q = nameQuery.safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: "invalid_input" });
+    await db.delete(catalogEntries).where(and(ownScope(req.member!.id), eq(catalogEntries.key, itemKey(q.data.name))));
+    return { ok: true };
   });
 }

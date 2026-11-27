@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "body": {
+    "name": "Zwiebeln",
+    "category": "Obst & Gemüse",
+    "known": true
+  }
+}
