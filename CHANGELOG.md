@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-11-28
+
 ### Added
 
 - Recipe book (web, Android, iPhone): every Mealie recipe under Essen → Rezepte, with search; a recipe page without a planned day shops its ingredients (with the pantry check) and can be planned for a day; recipes without servings keep their amounts as written.
