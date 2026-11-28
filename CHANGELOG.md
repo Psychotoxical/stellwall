@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Fixed
+
+- Android builds fetch libraries from Google's copy of Maven Central first, so a busy Maven Central no longer stops a release.
+
 ## [0.1.16] - 2026-11-28
 
 ### Added
