@@ -487,6 +487,14 @@ struct RecipesView: View {
     @State private var adding = false
     @Environment(\.palette) private var p
 
+    /** [list]: what to show before the first answer (pictures in tests). */
+    init(api: MealsAPI, list: [RecipeSummary]? = nil, onOpen: @escaping (String) -> Void, onBack: @escaping () -> Void) {
+        self.api = api
+        self.onOpen = onOpen
+        self.onBack = onBack
+        _list = State(initialValue: list)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {

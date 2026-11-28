@@ -120,7 +120,8 @@ final class MealsTodosTests: XCTestCase {
     }
 
     func testTheRecipeBookPictures() async {
-        snap(RecipesView(api: FakeMeals(), onOpen: { _ in }, onBack: {}), world: "salbei", named: "recipes")
+        let book = [RecipeSummary(id: "r1", slug: "gemuese-pfanne", name: "Gemüsepfanne", servings: 4, hasImage: false), RecipeSummary(id: "r2", slug: "zimtecken", name: "Zimtecken vom Blech", servings: 4, hasImage: false, servingsKnown: false)]
+        snap(RecipesView(api: FakeMeals(), list: book, onOpen: { _ in }, onBack: {}), world: "salbei", named: "recipes")
         snap(AddRecipeSheet(api: FakeMeals()) { _ in }, world: "psysonic", dark: true, named: "add-recipe-dark")
     }
 
