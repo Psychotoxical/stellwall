@@ -4,6 +4,8 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-11-28
+
 ### Added
 
 - Recipe book (web, Android, iPhone): Mealie's categories as chips over the list, fullest first; several narrow the list together, "Ohne Kategorie" finds recipes in none.
