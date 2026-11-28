@@ -14,7 +14,7 @@ import { Header } from "./Home.tsx";
 const errorText = (e: unknown, table: Record<string, string>) => (e instanceof ApiError ? (table[e.code] ?? de.errors.generic) : de.errors.generic);
 /** A picture that does not load leaves no broken-image sign behind. */
 const hideImage = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = "none"; };
-const dayName = (d: string) => parseYmd(d).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "numeric" });
+export const dayName = (d: string) => parseYmd(d).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "numeric" });
 
 export function Meals() {
   const qc = useQueryClient();
@@ -62,6 +62,7 @@ export function Meals() {
       </ul>
       <div className="caltools" style={{ marginTop: 14 }}>
         <Button onClick={() => setShop(days)}>{de.meals.shopWeek}</Button>
+        <Link to="/essen/rezepte" className="pill">{de.meals.recipes}</Link>
         <Link to="/essen/grundvorrat" className="pill">{de.meals.staples}</Link>
       </div>
       {edit && (
@@ -206,7 +207,7 @@ export function Servings({ value, onChange }: { value: number; onChange: (n: num
 const keyOf = (prefix: string, l: { food: string; quantity: string }) => `${prefix}${l.food}|${l.quantity}`;
 
 /** Ingredients for the chosen days: what is needed ticked, the pantry asked about. */
-export function ShopSheet({ dates, servings, onClose }: { dates: string[]; servings?: number; onClose: () => void }) {
+export function ShopSheet({ dates, servings, recipe, onClose }: { dates: string[]; servings?: number; recipe?: { slug: string; servings: number }; onClose: () => void }) {
   const [preview, setPreview] = useState<ShopPreview | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -214,13 +215,15 @@ export function ShopSheet({ dates, servings, onClose }: { dates: string[]; servi
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api<ShopPreview>("/api/meals/shopping/preview", { method: "POST", body: servings ? { dates, servings } : { dates } })
+    // A recipe from the recipe book shops on its own; planned days shop as planned.
+    const body = recipe ? { recipe } : servings ? { dates, servings } : { dates };
+    api<ShopPreview>("/api/meals/shopping/preview", { method: "POST", body })
       .then((p) => {
         setPreview(p);
         setPicked(new Set(p.special.map((l) => keyOf("s:", l))));
       })
       .catch((e) => setError(errorText(e, de.meals.errors)));
-  }, [dates, servings]);
+  }, [dates, servings, recipe?.slug, recipe?.servings]);
 
   const lines = preview ? [...preview.special.map((l) => [keyOf("s:", l), l] as const), ...preview.pantry.map((l) => [keyOf("p:", l), l] as const)].filter(([k]) => picked.has(k)).map(([, l]) => ({ food: l.food, quantity: l.quantity })) : [];
   const commit = async () => {

@@ -19,6 +19,7 @@ import { Meals } from "./pages/Meals.tsx";
 import { Documents } from "./pages/Documents.tsx";
 import { DocumentView } from "./pages/DocumentView.tsx";
 import { RecipeView } from "./pages/Recipe.tsx";
+import { Recipes } from "./pages/Recipes.tsx";
 import { Pantry } from "./pages/Pantry.tsx";
 import { MealieSettings } from "./pages/MealieSettings.tsx";
 import { Notifications } from "./pages/Notifications.tsx";
@@ -74,6 +75,7 @@ export const routes: RouteObject[] = [
       { path: "/essen", element: <Meals /> },
       { path: "/dokumente", element: <Documents /> },
       { path: "/dokumente/:id", element: <DocumentView /> },
+      { path: "/essen/rezepte", element: <Recipes /> },
       { path: "/essen/rezept/:slug", element: <RecipeView /> },
       { path: "/essen/grundvorrat", element: <Pantry /> },
       { path: "/benachrichtigungen", element: <Notifications /> },
