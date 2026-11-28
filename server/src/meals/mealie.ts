@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -15,7 +16,8 @@ const MAX_PAGES = 20;
 const IMPORT_TIMEOUT_MS = 180_000;
 
 /** servingsKnown false: Mealie has no servings ("für 1 Backblech"); 4 stands in, so amounts are as written. */
-export type RecipeSummary = { id: string; slug: string; name: string; servings: number; servingsKnown: boolean; hasImage: boolean };
+export type Category = { id: string; slug: string; name: string };
+export type RecipeSummary = { id: string; slug: string; name: string; servings: number; servingsKnown: boolean; hasImage: boolean; categories: Category[] };
 export type Recipe = RecipeSummary & { ingredients: Ingredient[]; steps: string[] };
 
 /** Why Mealie could not help; the code goes to the page, never the key or Mealie's own text. */
@@ -28,12 +30,18 @@ export class MealieError extends Error {
 }
 
 type MealieIngredient = { quantity?: number | null; unit?: { name?: string; abbreviation?: string } | null; food?: { name?: string } | null; note?: string | null; originalText?: string | null; display?: string | null };
-type MealieRecipe = { id?: string; slug?: string; name?: string; recipeServings?: number; image?: string | null; recipeIngredient?: MealieIngredient[]; recipeInstructions?: { text?: string }[] };
+type MealieCategory = { id?: string; slug?: string; name?: string };
+type MealieRecipe = { id?: string; slug?: string; name?: string; recipeServings?: number; image?: string | null; recipeCategory?: MealieCategory[] | null; recipeIngredient?: MealieIngredient[]; recipeInstructions?: { text?: string }[] };
 
 function summary(r: MealieRecipe): RecipeSummary {
   if (!r.id || !r.slug || !r.name) throw new MealieError("mealie_bad");
   const known = !!r.recipeServings && r.recipeServings > 0;
-  return { id: r.id, slug: r.slug, name: r.name, servings: known ? r.recipeServings! : 4, servingsKnown: known, hasImage: !!r.image };
+  return { id: r.id, slug: r.slug, name: r.name, servings: known ? r.recipeServings! : 4, servingsKnown: known, hasImage: !!r.image, categories: categoriesOf(r.recipeCategory) };
+}
+
+/** Mealie's categories in a fixed shape; an odd entry is left out, never the recipe. */
+function categoriesOf(list: MealieCategory[] | null | undefined): Category[] {
+  return (list ?? []).flatMap((c) => (c.id && c.slug && c.name ? [{ id: c.id, slug: c.slug, name: c.name }] : [])).sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
 
 /** Mealie's structured fields when it parsed the line, Stellwall's own reading when it did not. */
@@ -68,11 +76,17 @@ export function createMealie(db: Db, timeoutMs: number) {
     return { url: url.replace(/\/+$/, ""), token };
   }
 
-  async function call(path: string): Promise<Response> {
+  async function call(path: string, write?: { method: "PATCH"; body: unknown }): Promise<Response> {
     const { url, token } = await config();
     let res: Response;
     try {
-      res = await fetch(url + path, { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
+      res = await fetch(url + path, {
+        method: write?.method ?? "GET",
+        headers: { authorization: `Bearer ${token}`, accept: "application/json", ...(write ? { "content-type": "application/json" } : {}) },
+        body: write ? JSON.stringify(write.body) : undefined,
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "error",
+      });
     } catch {
       throw new MealieError("mealie_unreachable");
     }
@@ -114,6 +128,13 @@ export function createMealie(db: Db, timeoutMs: number) {
       throw new MealieError("mealie_bad");
     }
   };
+
+  async function allCategories(): Promise<Category[]> {
+    const body = await json<{ items?: MealieCategory[]; data?: MealieCategory[] }>("/api/organizers/categories?perPage=-1&orderBy=name&orderDirection=asc");
+    const items = body.items ?? body.data;
+    if (!Array.isArray(items)) throw new MealieError("mealie_bad");
+    return categoriesOf(items);
+  }
 
   return {
     clear: () => cache.clear(),
@@ -161,6 +182,16 @@ export function createMealie(db: Db, timeoutMs: number) {
           steps: (r.recipeInstructions ?? []).map((s) => (s.text ?? "").trim()).filter(Boolean),
         };
       }),
+    /** Every category in Mealie, also those without recipes, so a new recipe can get one. */
+    categories: () => cached("categories", LIST_TTL_MS, allCategories),
+    /** Puts a recipe in exactly these categories (ids from categories()). */
+    setCategories: async (slug: string, ids: string[]) => {
+      const all = new Map((await allCategories()).map((c) => [c.id, c]));
+      const chosen = ids.flatMap((id) => (all.has(id) ? [all.get(id)!] : []));
+      if (chosen.length !== ids.length) throw new MealieError("not_found");
+      await call(`/api/recipes/${encodeURIComponent(slug)}`, { method: "PATCH", body: { recipeCategory: chosen } });
+      cache.clear();
+    },
     image: async (id: string) => {
       const res = await call(`/api/media/recipes/${encodeURIComponent(id)}/images/min-original.webp`);
       return { type: res.headers.get("content-type") ?? "image/webp", body: Buffer.from(await res.arrayBuffer()) };
@@ -242,7 +273,28 @@ export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie:
         ? await mealie.importUrl(b.data.url)
         : await mealie.importAi({ text: b.data.text, images: (b.data.images ?? []).map((i) => ({ data: Buffer.from(i.data, "base64"), type: i.type })) });
       const r = await mealie.recipe(slug);
-      return reply.code(201).send({ id: r.id, slug: r.slug, name: r.name, servings: r.servings, servingsKnown: r.servingsKnown, hasImage: r.hasImage });
+      return reply.code(201).send({ id: r.id, slug: r.slug, name: r.name, servings: r.servings, servingsKnown: r.servingsKnown, hasImage: r.hasImage, categories: r.categories });
+    } catch (e) {
+      return fail(reply, e);
+    }
+  });
+
+  app.get("/api/recipe-categories", { preHandler: requireMember }, async (_req, reply) => {
+    try {
+      return await mealie.categories();
+    } catch (e) {
+      return fail(reply, e);
+    }
+  });
+
+  app.put("/api/recipes/:slug/categories", { preHandler: requireMember }, async (req, reply) => {
+    const p = z.object({ slug: z.string().regex(/^[a-z0-9-]{1,200}$/) }).safeParse(req.params);
+    const b = z.object({ ids: z.array(z.string().min(1).max(64)).max(50) }).strict().safeParse(req.body);
+    if (!p.success) return reply.code(404).send({ error: "not_found" });
+    if (!b.success || new Set(b.data.ids).size !== b.data.ids.length) return reply.code(400).send({ error: "invalid_input" });
+    try {
+      await mealie.setCategories(p.data.slug, b.data.ids);
+      return await mealie.recipe(p.data.slug);
     } catch (e) {
       return fail(reply, e);
     }
@@ -264,7 +316,11 @@ export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie:
     try {
       const img = await mealie.image(p.data.id);
       if (!img.type.startsWith("image/")) return reply.code(404).send({ error: "not_found" });
-      return reply.type(img.type).header("cache-control", "private, max-age=86400").send(img.body);
+      // Asked again each time: a picture changed in Mealie keeps its address, so a long cache would show the old one.
+      const tag = `"${createHash("sha1").update(img.body).digest("hex")}"`;
+      reply.header("cache-control", "private, no-cache").header("etag", tag);
+      if (req.headers["if-none-match"] === tag) return reply.code(304).send();
+      return reply.type(img.type).send(img.body);
     } catch (e) {
       return fail(reply, e);
     }

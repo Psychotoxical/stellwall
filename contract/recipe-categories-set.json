@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "body": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "slug": "testrezept-2",
+    "name": "Testrezept 2",
+    "servings": 4,
+    "servingsKnown": true,
+    "hasImage": false,
+    "categories": [
+      {
+        "id": "c-backen",
+        "slug": "backen",
+        "name": "Backen"
+      }
+    ],
+    "ingredients": [],
+    "steps": []
+  }
+}

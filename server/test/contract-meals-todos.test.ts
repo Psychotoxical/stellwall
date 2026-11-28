@@ -25,6 +25,8 @@ describe("contract: meals and to-dos", () => {
 
     contract("recipes", await alex.get("/api/recipes?q=pf"));
     contract("recipe", await alex.get("/api/recipes/gemuese-pfanne"));
+    contract("recipe-categories", await alex.get("/api/recipe-categories"));
+    contract("recipe-categories-set", await put("/api/recipes/testrezept-2/categories", { ids: ["c-backen"] }));
     const veg = { id: "11111111-1111-4111-8111-111111111111", slug: "gemuese-pfanne", name: "Gemüsepfanne" };
     contract("meal-saved", await put("/api/meals/2026-11-30", { recipe: veg, text: null, cookId: f.sam.id, servings: 2 }));
     await put("/api/meals/2026-12-02", { text: "Reste", recipe: null, cookId: null, servings: 4 });

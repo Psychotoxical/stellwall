@@ -42,7 +42,34 @@ object Amounts {
 }
 
 /** The web app's meal wording (web/src/text/de.ts: meals). */
+/** The recipe book's category chips: categories with recipes, fullest first; combined they narrow the list. */
+object CategoryFilter {
+    const val WITHOUT = "(ohne)"
+
+    fun chips(list: List<RecipeSummary>): List<app.stellwall.api.RecipeCategory> =
+        list.flatMap { it.categories }.groupBy { it.slug }.values
+            .sortedWith(compareByDescending<List<app.stellwall.api.RecipeCategory>> { it.size }.thenBy(java.text.Collator.getInstance(java.util.Locale.GERMAN)) { it.first().name })
+            .map { it.first() }
+
+    /** "Ohne Kategorie" stands alone; any other chip turns it off. */
+    fun flip(picked: List<String>, slug: String): List<String> = when {
+        slug == WITHOUT -> if (WITHOUT in picked) emptyList() else listOf(WITHOUT)
+        slug in picked -> picked - slug
+        else -> picked - WITHOUT + slug
+    }
+
+    fun shown(list: List<RecipeSummary>, picked: List<String>): List<RecipeSummary> =
+        if (WITHOUT in picked) list.filter { it.categories.isEmpty() }
+        else list.filter { r -> picked.all { s -> r.categories.any { it.slug == s } } }
+}
+
 object MealText {
+    const val CATEGORIES = "Kategorien"
+    const val CATEGORY_FILTER = "Nach Kategorie zeigen"
+    const val NO_CATEGORY = "Ohne Kategorie"
+    const val CATEGORIES_HINT = "Antippen, was passt. Ohne Kategorie steht das Rezept unter „Ohne Kategorie“."
+    const val CATEGORIES_NONE = "In Mealie gibt es noch keine Kategorien."
+    const val CATEGORY_EMPTY = "Keine Rezepte in dieser Auswahl."
     const val PAGE = "Essensplan"
     const val TITLE = "Was gibt es mittags?"
     const val LUNCH = "Mittag"

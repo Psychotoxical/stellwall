@@ -7,7 +7,11 @@ data class RecipeRef(val id: String, val slug: String, val name: String)
 
 @Serializable
 /** servingsKnown false: Mealie has no servings (a baking sheet); the amounts are as written. */
-data class RecipeSummary(val id: String, val slug: String, val name: String, val servings: Int, val hasImage: Boolean, val servingsKnown: Boolean = true)
+data class RecipeSummary(val id: String, val slug: String, val name: String, val servings: Int, val hasImage: Boolean, val servingsKnown: Boolean = true, val categories: List<RecipeCategory> = emptyList())
+
+/** A Mealie category ("Backen", "Indisch"). */
+@Serializable
+data class RecipeCategory(val id: String, val slug: String, val name: String)
 
 @Serializable
 data class Ingredient(val quantity: Double?, val unit: String?, val food: String, val note: String)
@@ -22,6 +26,7 @@ data class Recipe(
     val ingredients: List<Ingredient>,
     val steps: List<String>,
     val servingsKnown: Boolean = true,
+    val categories: List<RecipeCategory> = emptyList(),
 )
 
 /** Lunch on one day: a recipe from Mealie or a free text. */
@@ -126,3 +131,9 @@ internal data class DoneRequest(val date: String)
 
 @Serializable
 internal data class NameOnly(val name: String)
+
+@Serializable
+internal data class DismissRequest(val keys: List<String>)
+
+@Serializable
+internal data class CategoryRequest(val ids: List<String>)

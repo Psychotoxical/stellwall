@@ -2,7 +2,13 @@ import Fastify from "fastify";
 
 export const TOKEN = "test-token-not-real-0123456789";
 
-type FakeRecipe = { id: string; slug: string; name: string; recipeServings: number; image: string | null; recipeIngredient: { quantity: number; unit: { name: string; abbreviation: string } | null; food: { name: string } | null; note: string; originalText: string }[]; recipeInstructions: { text: string }[] };
+type FakeCategory = { id: string; slug: string; name: string };
+export const CATEGORIES: FakeCategory[] = [
+  { id: "c-haupt", slug: "hauptgericht", name: "Hauptgericht" },
+  { id: "c-backen", slug: "backen", name: "Backen" },
+  { id: "c-indisch", slug: "indisch", name: "Indisch" },
+];
+type FakeRecipe = { id: string; slug: string; name: string; recipeServings: number; image: string | null; recipeCategory?: FakeCategory[]; recipeIngredient: { quantity: number; unit: { name: string; abbreviation: string } | null; food: { name: string } | null; note: string; originalText: string }[]; recipeInstructions: { text: string }[] };
 
 const baseRecipes: FakeRecipe[] = [
   {
@@ -11,6 +17,7 @@ const baseRecipes: FakeRecipe[] = [
     name: "Gemüsepfanne",
     recipeServings: 4,
     image: "abc",
+    recipeCategory: [CATEGORIES[0]!],
     recipeIngredient: [
       { quantity: 200, unit: { name: "Gramm", abbreviation: "g" }, food: { name: "Reis" }, note: "", originalText: "200 g Reis" },
       { quantity: 1.5, unit: { name: "Esslöffel", abbreviation: "EL" }, food: { name: "Öl" }, note: "", originalText: "1 ½ EL Öl" },
@@ -26,6 +33,7 @@ const baseRecipes: FakeRecipe[] = [
     name: "Pfannkuchen",
     recipeServings: 2,
     image: null,
+    recipeCategory: [CATEGORIES[1]!, CATEGORIES[0]!],
     recipeIngredient: [
       { quantity: 250, unit: { name: "Gramm", abbreviation: "g" }, food: { name: "Mehl" }, note: "", originalText: "" },
       { quantity: 3, unit: null, food: { name: "Eier" }, note: "", originalText: "" },
@@ -41,14 +49,14 @@ for (let n = 1; n <= 30; n++) baseRecipes.push({ id: `33333333-3333-4333-8333-${
 export async function startFakeMealie(opts: { slow?: boolean; port?: number; failAi?: boolean; readOnly?: boolean } = {}) {
   const app = Fastify({ logger: false });
   // Each fake Mealie has its own collection, so recipes one test makes stay out of the next.
-  const recipes = [...baseRecipes];
+  const recipes = baseRecipes.map((r) => ({ ...r }));
   const calls: string[] = [];
   app.addHook("onRequest", async (req, reply) => {
     calls.push(req.url);
     if (opts.slow) await new Promise((r) => setTimeout(r, 1500));
     if (req.headers.authorization !== `Bearer ${TOKEN}`) return reply.code(401).send({ detail: "Unauthorized" });
     // A token of a Mealie user who may only read.
-    if (opts.readOnly && req.method === "POST") return reply.code(403).send({ detail: "Forbidden" });
+    if (opts.readOnly && req.method !== "GET") return reply.code(403).send({ detail: "Forbidden" });
   });
   app.get("/api/recipes", async (req) => {
     const query = req.query as { search?: string; perPage?: string };
@@ -60,6 +68,15 @@ export async function startFakeMealie(opts: { slow?: boolean; port?: number; fai
   app.get("/api/recipes/:slug", async (req, reply) => {
     const r = recipes.find((x) => x.slug === (req.params as { slug: string }).slug);
     return r ?? reply.code(404).send({ detail: "not found" });
+  });
+  app.get("/api/organizers/categories", async () => ({ page: 1, total: CATEGORIES.length, items: CATEGORIES }));
+  // Mealie takes the full category objects and keeps them as they are sent.
+  app.patch("/api/recipes/:slug", async (req, reply) => {
+    const r = recipes.find((x) => x.slug === (req.params as { slug: string }).slug);
+    if (!r) return reply.code(404).send({ detail: "not found" });
+    const body = req.body as { recipeCategory?: FakeCategory[] };
+    if (body.recipeCategory) r.recipeCategory = body.recipeCategory;
+    return r;
   });
   // Imports: a link, or any mix of text and images for its AI. Each makes a recipe and answers with its slug.
   const created: { kind: string; url?: string; content?: string; images: number }[] = [];

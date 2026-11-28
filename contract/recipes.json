@@ -7,7 +7,14 @@
       "name": "Gemüsepfanne",
       "servings": 4,
       "servingsKnown": true,
-      "hasImage": true
+      "hasImage": true,
+      "categories": [
+        {
+          "id": "c-haupt",
+          "slug": "hauptgericht",
+          "name": "Hauptgericht"
+        }
+      ]
     },
     {
       "id": "00000000-0000-4000-8000-000000000002",
@@ -15,7 +22,19 @@
       "name": "Pfannkuchen",
       "servings": 2,
       "servingsKnown": true,
-      "hasImage": false
+      "hasImage": false,
+      "categories": [
+        {
+          "id": "c-backen",
+          "slug": "backen",
+          "name": "Backen"
+        },
+        {
+          "id": "c-haupt",
+          "slug": "hauptgericht",
+          "name": "Hauptgericht"
+        }
+      ]
     }
   ]
 }

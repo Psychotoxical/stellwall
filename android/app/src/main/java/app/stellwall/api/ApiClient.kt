@@ -42,6 +42,7 @@ interface ShoppingApi {
     suspend fun members(): List<Member>
     suspend fun board(): List<BoardRow>
     suspend fun boardSeen()
+    suspend fun boardDismiss(keys: List<String>) {}
     suspend fun lists(): List<ShoppingList>
     suspend fun createList(name: String, visibility: Visibility): ShoppingList
     suspend fun updateList(id: String, name: String? = null, visibility: Visibility? = null): ShoppingList
@@ -99,6 +100,8 @@ interface MealsApi {
     /** The defaults stand in for test doubles that do not need the recipe book. */
     suspend fun shopRecipe(slug: String, servings: Int): ShopPreview = throw UnsupportedOperationException()
     suspend fun importRecipe(url: String? = null, text: String? = null, images: List<ImportImage>? = null): RecipeSummary = throw UnsupportedOperationException()
+    suspend fun categories(): List<RecipeCategory> = emptyList()
+    suspend fun setCategories(slug: String, ids: List<String>): Recipe = throw UnsupportedOperationException()
     suspend fun shopCommit(lines: List<ShopLine>): CommitResult
     suspend fun pantry(): List<Staple>
     suspend fun addStaple(name: String): Staple
@@ -169,6 +172,10 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun boardSeen() {
         call("POST", "api/board/seen", "{}")
+    }
+
+    override suspend fun boardDismiss(keys: List<String>) {
+        call("POST", "api/board/dismiss", encode(DismissRequest.serializer(), DismissRequest(keys)))
     }
 
     override suspend fun lists() = call("GET", "api/lists").decode(ListSerializer(ShoppingList.serializer()))
@@ -293,6 +300,11 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun importRecipe(url: String?, text: String?, images: List<ImportImage>?) =
         call("POST", "api/recipes/import", encode(ImportRequest.serializer(), ImportRequest(url, text, images))).decode(RecipeSummary.serializer())
+
+    override suspend fun categories() = call("GET", "api/recipe-categories").decode(ListSerializer(RecipeCategory.serializer()))
+
+    override suspend fun setCategories(slug: String, ids: List<String>) =
+        call("PUT", "api/recipes/${seg(slug)}/categories", encode(CategoryRequest.serializer(), CategoryRequest(ids))).decode(Recipe.serializer())
 
     override suspend fun shopCommit(lines: List<ShopLine>) =
         call("POST", "api/meals/shopping/commit", encode(CommitRequest.serializer(), CommitRequest(lines.map { CommitLine(it.food, it.quantity) }))).decode(CommitResult.serializer())

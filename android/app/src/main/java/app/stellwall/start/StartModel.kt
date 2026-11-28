@@ -12,13 +12,38 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /** The board on Start; it follows the live hints that can change it. */
-class StartModel(private val board: suspend () -> List<BoardRow>) {
+class StartModel(
+    private val board: suspend () -> List<BoardRow>,
+    private val dismiss: suspend (List<String>) -> Unit = {},
+    private val seenAll: suspend () -> Unit = {},
+) {
     private val _rows = MutableStateFlow<List<BoardRow>?>(null)
     val rows: StateFlow<List<BoardRow>?> = _rows
 
     suspend fun load() {
         try {
             _rows.value = board()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
+    }
+
+    /** A line stays until it is ticked off; it goes at once, the server catches up. */
+    suspend fun seen(row: BoardRow) {
+        _rows.value = _rows.value?.filter { it.keys != row.keys }
+        quietly { dismiss(row.keys) }
+        load()
+    }
+
+    suspend fun seenEverything() {
+        _rows.value = emptyList()
+        quietly { seenAll() }
+        load()
+    }
+
+    private suspend fun quietly(f: suspend () -> Unit) {
+        try {
+            f()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
         }
@@ -37,6 +62,9 @@ object StartText {
     const val AREAS = "Bereiche"
     const val SOON = "kommt bald"
     const val NEW = "NEU"
+    const val SEEN = "Gesehen"
+    const val SEEN_ALL = "Alle gesehen"
+    fun seenLabel(what: String) = "Gesehen: $what"
 
     /** A greeting for the time of day, as in the web app. */
     fun hello(name: String, hour: Int) = when (hour) {

@@ -115,7 +115,7 @@ class ShoppingScreenTest {
             }
         }
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Sam hat dir „Müll rausbringen“ gegeben")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("2 neu").assertExists()
+        compose.onNodeWithText("Alle gesehen").assertExists()
         compose.onNodeWithText("Dokumente").assertExists()
         compose.onRoot().captureRoboImage("src/test/screenshots/start-dark.png")
     }
@@ -127,7 +127,7 @@ class ShoppingScreenTest {
                 StartScreen(api.me, StartModel(board = { api.board() }), today = LocalDate.of(2026, 11, 27), hour = 9) {}
             }
         }
-        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("2 neu")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Alle gesehen")).fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage(file)
     }
 

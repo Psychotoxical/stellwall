@@ -137,10 +137,9 @@ final class ShoppingModel {
         }
     }
 
-    /** Leaving the page marks everything as seen. */
+    /** Leaving the page lets the highlights follow the start page again; seen is ticked off there. */
     func leave() async {
         unseenFrozen = nil
-        try? await api.boardSeen()
     }
 
     /** A suggestion knows its section; a typed name asks the server what it would get. Nil: nothing to add. */

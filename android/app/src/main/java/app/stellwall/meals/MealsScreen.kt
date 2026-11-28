@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package app.stellwall.meals
 
 import android.graphics.BitmapFactory
@@ -8,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -94,7 +97,8 @@ import androidx.compose.ui.text.input.KeyboardType
 sealed interface MealPage {
     data object Week : MealPage
     /** fromBook: opened from the recipe book, so going back returns there. */
-    data class Cook(val slug: String, val servings: Int?, val date: LocalDate?, val fromBook: Boolean = false) : MealPage
+    /** sortNow: a recipe just made, its categories are asked for at once. */
+    data class Cook(val slug: String, val servings: Int?, val date: LocalDate?, val fromBook: Boolean = false, val sortNow: Boolean = false) : MealPage
     data object Pantry : MealPage
     data object Recipes : MealPage
 }
@@ -107,7 +111,7 @@ fun MealsArea(model: MealsModel, api: MealsApi, live: Flow<LiveEvent> = emptyFlo
     when (val pg = page) {
         MealPage.Week -> MealsScreen(model, api, live, onCook = { page = it }, onPantry = { page = MealPage.Pantry }, onOpenList = onOpenList, onRecipes = { page = MealPage.Recipes })
         is MealPage.Cook -> RecipeScreen(api, pg, onBack = back, onOpenList = onOpenList)
-        MealPage.Recipes -> RecipesScreen(api, onOpen = { slug -> page = MealPage.Cook(slug, null, null, fromBook = true) }, onBack = { page = MealPage.Week })
+        MealPage.Recipes -> RecipesScreen(api, onOpen = { slug -> page = MealPage.Cook(slug, null, null, fromBook = true) }, onMade = { slug -> page = MealPage.Cook(slug, null, null, fromBook = true, sortNow = true) }, onBack = { page = MealPage.Week })
         MealPage.Pantry -> PantryScreen(remember(api) { PantryModel(api) }, onBack = { page = MealPage.Week })
     }
 }
@@ -225,7 +229,10 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
     val showText = d.useText || (mealieDown != null && d.recipe == null)
     val keepRecipe = mealieDown != null && d.recipe != null && !d.useText
 
-    Sheet(MealText.plan(MealText.dayName(date)), onClose) {
+    Sheet(MealText.plan(MealText.dayName(date)), onClose, footer = {
+        PrimaryButton(MealText.SAVE, { scope.launch { error = model.save(date, d.copy(useText = showText)); if (error == null) onClose() } }, Modifier.fillMaxWidth())
+        GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
+    }) {
         // At the top: the recipe list below can be long, and this is what people come to change.
         if (meal != null) GhostButton(MealText.REMOVE, { scope.launch { error = model.remove(date); if (error == null) onClose() } }, Modifier.fillMaxWidth(), danger = true)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -268,8 +275,6 @@ private fun MealSheet(model: MealsModel, date: LocalDate, meal: Meal?, members: 
             )
         }
         error?.let { Notice(it) }
-        PrimaryButton(MealText.SAVE, { scope.launch { error = model.save(date, d.copy(useText = showText)); if (error == null) onClose() } }, Modifier.fillMaxWidth())
-        GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
     }
 }
 
@@ -316,7 +321,9 @@ fun RecipeScreen(api: MealsApi, page: MealPage.Cook, onBack: () -> Unit, onOpenL
     var shop by remember { mutableStateOf(false) }
     var planning by remember { mutableStateOf(false) }
     var planned by remember { mutableStateOf<String?>(null) }
+    var sorting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(recipe != null) { if (recipe != null && page.sortNow) sorting = true }
 
     Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
         BackLink(MealText.PAGE, onBack)
@@ -335,6 +342,8 @@ fun RecipeScreen(api: MealsApi, page: MealPage.Cook, onBack: () -> Unit, onOpenL
             else Text(MealText.AS_WRITTEN, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
         }
         GhostButton(MealText.PLAN_RECIPE, { planning = true }, Modifier.fillMaxWidth().padding(top = 8.dp))
+        GhostButton(MealText.CATEGORIES, { sorting = true }, Modifier.fillMaxWidth().padding(top = 8.dp))
+        if (r.categories.isNotEmpty()) Text(r.categories.joinToString(", ") { it.name }, style = MaterialTheme.typography.bodySmall, color = p.inkSoft)
         planned?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.padding(top = 6.dp)) }
         SectionHead(MealText.INGREDIENTS)
         BoxCard {
@@ -358,7 +367,7 @@ fun RecipeScreen(api: MealsApi, page: MealPage.Cook, onBack: () -> Unit, onOpenL
                 BoxCard {
                     Tick(on, onClick = { marks.flip(Part.Step, k); ticks = marks.ingredients to marks.steps }) {
                         Text("${k + 1}", style = MaterialTheme.typography.titleLarge, color = if (on) p.inkSoft else p.primary, modifier = Modifier.width(28.dp))
-                        Text(step, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 25.sp, textDecoration = if (on) TextDecoration.LineThrough else null), color = if (on) p.inkSoft else p.ink, modifier = Modifier.weight(1f))
+                        Text(stepText(step), style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 25.sp, textDecoration = if (on) TextDecoration.LineThrough else null), color = if (on) p.inkSoft else p.ink, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -371,6 +380,7 @@ fun RecipeScreen(api: MealsApi, page: MealPage.Cook, onBack: () -> Unit, onOpenL
         if (page.date != null) ShopSheet(api, listOf(page.date), n, onClose = { shop = false }, onOpenList = { shop = false; onOpenList(it) })
         else ShopSheet(api, emptyList(), null, onClose = { shop = false }, onOpenList = { shop = false; onOpenList(it) }, recipe = r.slug to n)
     }
+    if (sorting && r != null) CategorySheet(api, r, onClose = { sorting = false }) { recipe = it; sorting = false }
     if (planning && r != null) {
         PlanSheet(onClose = { planning = false }) { day ->
             val n = if (r.servingsKnown) servings ?: r.servings else r.servings
@@ -400,7 +410,13 @@ fun ShopSheet(api: MealsApi, dates: List<LocalDate>, servings: Int?, onClose: ()
     val s by model.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     LaunchedEffect(model) { model.load(dates, servings, recipe) }
-    Sheet(MealText.SHOP_TITLE, onClose) {
+    val footer: (@Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit)? = s.preview?.takeIf { s.done == null }?.let { pv ->
+        {
+            PrimaryButton(MealText.putOn(s.lines.size, pv.listName), { scope.launch { model.commit() } }, Modifier.fillMaxWidth(), enabled = !s.busy && s.lines.isNotEmpty())
+            GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
+        }
+    }
+    Sheet(MealText.SHOP_TITLE, onClose, footer = footer) {
         s.error?.let { Notice(it) }
         val done = s.done
         val pv = s.preview
@@ -429,8 +445,6 @@ fun ShopSheet(api: MealsApi, dates: List<LocalDate>, servings: Int?, onClose: ()
                     }
                 }
             }
-            PrimaryButton(MealText.putOn(s.lines.size, pv.listName), { scope.launch { model.commit() } }, Modifier.fillMaxWidth(), enabled = !s.busy && s.lines.isNotEmpty())
-            GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
         }
     }
 }
@@ -490,9 +504,10 @@ private fun PlanSheet(onClose: () -> Unit, onPlan: (LocalDate) -> Unit) {
 
 /** Every recipe in Mealie, to look at, cook or shop for without planning it for a day. */
 @Composable
-fun RecipesScreen(api: MealsApi, onOpen: (String) -> Unit, onBack: () -> Unit) {
+fun RecipesScreen(api: MealsApi, onOpen: (String) -> Unit, onMade: ((String) -> Unit)? = null, onBack: () -> Unit) {
     val p = LocalPalette.current
     var q by rememberSaveable { mutableStateOf("") }
+    var picked by rememberSaveable { mutableStateOf(listOf<String>()) }
     var list by remember { mutableStateOf<List<RecipeSummary>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
@@ -511,9 +526,20 @@ fun RecipesScreen(api: MealsApi, onOpen: (String) -> Unit, onBack: () -> Unit) {
         PageHead(MealText.RECIPES, MealText.PAGE)
         PrimaryButton(MealText.ADD_RECIPE, { adding = true }, Modifier.fillMaxWidth())
         OutlinedTextField(q, { q = it.take(100) }, Modifier.fillMaxWidth(), label = { Text(MealText.SEARCH) }, singleLine = true, colors = fieldColors())
+        val all = list
+        if (all != null) {
+            val chips = CategoryFilter.chips(all)
+            if (chips.isNotEmpty() || picked.isNotEmpty()) {
+                FlowRow(Modifier.semantics { contentDescription = MealText.CATEGORY_FILTER }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (c in chips) CategoryChip(c.name, c.slug in picked) { picked = CategoryFilter.flip(picked, c.slug) }
+                    if (all.any { it.categories.isEmpty() }) CategoryChip(MealText.NO_CATEGORY, CategoryFilter.WITHOUT in picked) { picked = CategoryFilter.flip(picked, CategoryFilter.WITHOUT) }
+                }
+            }
+        }
         error?.let { Notice(it) }
-        val l = list
-        if (l != null && l.isEmpty()) Text(if (q.isBlank()) MealText.NO_RECIPES else MealText.SEARCH_EMPTY, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
+        val l = all?.let { CategoryFilter.shown(it, picked) }
+        if (all != null && all.isEmpty()) Text(if (q.isBlank()) MealText.NO_RECIPES else MealText.SEARCH_EMPTY, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
+        if (!all.isNullOrEmpty() && l.isNullOrEmpty()) Text(MealText.CATEGORY_EMPTY, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
         if (!l.isNullOrEmpty()) BoxCard {
             l.forEachIndexed { k, r ->
                 if (k > 0) RowDivider()
@@ -529,7 +555,63 @@ fun RecipesScreen(api: MealsApi, onOpen: (String) -> Unit, onBack: () -> Unit) {
             }
         }
     }
-    if (adding) AddRecipeSheet(api, onClose = { adding = false }) { made -> adding = false; onOpen(made.slug) }
+    if (adding) AddRecipeSheet(api, onClose = { adding = false }) { made -> adding = false; (onMade ?: onOpen)(made.slug) }
+}
+
+/** A chip to filter the book or to pick a recipe's category; on in the accent colour. */
+@Composable
+private fun CategoryChip(text: String, on: Boolean, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    Box(
+        Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(50)).background(if (on) p.primary else p.surface)
+            .border(1.dp, if (on) p.primary else p.rule, RoundedCornerShape(50))
+            .toggleable(value = on, role = Role.Checkbox, onValueChange = { onClick() }).padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = if (on) p.primaryInk else p.ink) }
+}
+
+/** The recipe's categories in Mealie: every category as a chip, the current ones on. */
+@Composable
+fun CategorySheet(api: MealsApi, recipe: Recipe, preset: List<app.stellwall.api.RecipeCategory>? = null, onClose: () -> Unit, onSaved: (Recipe) -> Unit) {
+    val p = LocalPalette.current
+    val scope = rememberCoroutineScope()
+    var all by remember { mutableStateOf(preset) }
+    var on by remember(recipe) { mutableStateOf(recipe.categories.map { it.id }.toSet()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (all != null) return@LaunchedEffect
+        try {
+            all = api.categories()
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            error = MealText.error(e)
+        }
+    }
+    Sheet(MealText.CATEGORIES, onClose, footer = {
+        PrimaryButton(MealText.SAVE, {
+            busy = true
+            scope.launch {
+                try {
+                    // In the order Mealie lists them, so the request is the same each time.
+                    onSaved(api.setCategories(recipe.slug, all.orEmpty().map { it.id }.filter { it in on }))
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    error = MealText.error(e)
+                }
+                busy = false
+            }
+        }, Modifier.fillMaxWidth(), enabled = all != null && !busy)
+        GhostButton(MealText.CANCEL, onClose, Modifier.fillMaxWidth())
+    }) {
+        Text(MealText.CATEGORIES_HINT, style = MaterialTheme.typography.bodySmall, color = p.inkSoft)
+        val a = all
+        if (a != null && a.isEmpty()) Text(MealText.CATEGORIES_NONE, style = MaterialTheme.typography.bodyLarge, color = p.inkSoft)
+        if (a != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (c in a) CategoryChip(c.name, c.id in on) { on = if (c.id in on) on - c.id else on + c.id }
+        }
+        error?.let { Notice(it) }
+    }
 }
 
 private enum class Way { Photo, Link, Text }

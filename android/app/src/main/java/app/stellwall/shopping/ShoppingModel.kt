@@ -75,10 +75,9 @@ class ShoppingModel(private val api: ShoppingApi, val me: Member) {
         }
     }
 
-    /** Leaving the page marks everything as seen. */
-    suspend fun leave() {
+    /** Leaving the page lets the highlights follow the start page again; seen is ticked off there. */
+    fun leave() {
         unseenFrozen = null
-        quietly { api.boardSeen() }
     }
 
     /** A suggestion knows its section; a typed name asks the server what it would get. Null: nothing to add. */

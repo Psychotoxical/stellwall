@@ -129,7 +129,7 @@ fun AppShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(live) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { live.collect { hints.emit(it) } } }
 
-    val start = remember(api) { api?.let { a -> StartModel(board = { a.board() }) } }
+    val start = remember(api) { api?.let { a -> StartModel(board = { a.board() }, dismiss = { a.boardDismiss(it) }, seenAll = { a.boardSeen() }) } }
     val shopping = remember(api, member) { if (api != null && member != null) ShoppingModel(api, member) else null }
     val calendar = remember(calendarApi, member) { if (calendarApi != null && member != null) CalendarModel(calendarApi, member) else null }
     val meals = remember(mealsApi) { mealsApi?.let { MealsModel(it) } }

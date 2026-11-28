@@ -4,6 +4,23 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Recipe book (web, Android, iPhone): Mealie's categories as chips over the list, fullest first; several narrow the list together, "Ohne Kategorie" finds recipes in none.
+- Recipe page: "Kategorien" sets a recipe's categories in Mealie; a newly added recipe asks for them right away.
+- Start page: each line of "Seit du zuletzt hier warst" stays until it is ticked off, one by one or with "Alle gesehen"; opening the shopping list no longer clears it.
+
+### Changed
+
+- Save and cancel stay at the bottom of long windows while the list scrolls (iPhone and Android: choosing a recipe for a day, shopping for recipes, categories).
+- iPhone: an ingredient note starting with "und" follows without a comma ("Mehl und Mehl zum Arbeiten").
+
+### Fixed
+
+- Recipe steps (web, Android, iPhone): bold and italic text from Mealie shows as such, without the stars.
+- Web: a recipe picture changed in Mealie shows up at once instead of a day later.
+- Web: on a recipe page the step numbers stand by the first line of each step again, not the last.
+
 ## [0.1.15] - 2026-11-28
 
 ### Added

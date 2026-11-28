@@ -19,6 +19,7 @@ final class FakeShopping: ShoppingAPI {
     func members() async throws -> [Member] { [alexMember, samMember] }
     func board() async throws -> [BoardRow] { board }
     func boardSeen() async throws { calls.append("seen") }
+    func boardDismiss(_ keys: [String]) async throws { calls.append("dismiss:\(keys.joined(separator: ","))") }
     func lists() async throws -> [ShoppingList] { lists }
     func createList(name: String, visibility: Stellwall.Visibility) async throws -> ShoppingList {
         let l = ShoppingList(id: "l3", name: name, visibility: visibility, createdBy: "me", openCount: 0)
@@ -122,6 +123,26 @@ final class ShoppingTests: XCTestCase {
         try await StubProtocol.client().forgetLearned("Schinkenwurst")
         XCTAssertEqual(StubProtocol.requests[4].httpMethod, "DELETE")
         XCTAssertTrue(StubProtocol.requests[4].url!.query!.contains("name=Schinkenwurst"))
+    }
+
+    func testBoardKeysAreTheOnesTheServerSends() throws {
+        let data = Contract.load("board").body
+        let sent = (try JSONSerialization.jsonObject(with: data) as! [[String: Any]]).map { $0["keys"] as! [String] }
+        XCTAssertEqual(BoardRow.parse(data).map(\.keys), sent)
+    }
+
+    func testABoardLineStaysUntilTickedOffAndLeavingShoppingKeepsIt() async {
+        let f = sample()
+        var dismissed: [[String]] = []
+        let start = StartModel(board: { f.board }, dismiss: { dismissed.append($0) })
+        await start.load()
+        let first = start.rows!.first!
+        await start.seen(first)
+        XCTAssertEqual(dismissed, [first.keys])
+        let m = ShoppingModel(api: f, me: alexMember)
+        await m.load()
+        await m.leave()
+        XCTAssertFalse(f.calls.contains("seen"))
     }
 
     func testTheAmountSheetPictures() {

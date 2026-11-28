@@ -3,9 +3,11 @@ import Observation
 
 struct RecipeRef: Codable, Equatable, Hashable { let id: String; let slug: String; let name: String }
 /** servingsKnown false: Mealie has no servings (a baking sheet); the amounts are as written. */
-struct RecipeSummary: Codable, Equatable, Identifiable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; var servingsKnown: Bool? = nil }
+struct RecipeSummary: Codable, Equatable, Identifiable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; var servingsKnown: Bool? = nil; var categories: [RecipeCategory]? = nil }
+/** A Mealie category ("Backen", "Indisch"). */
+struct RecipeCategory: Codable, Equatable, Hashable, Identifiable { let id: String; let slug: String; let name: String }
 struct Ingredient: Codable, Equatable, Hashable { let quantity: Double?; let unit: String?; let food: String; let note: String }
-struct Recipe: Codable, Equatable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; let ingredients: [Ingredient]; let steps: [String]; var servingsKnown: Bool? = nil }
+struct Recipe: Codable, Equatable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; let ingredients: [Ingredient]; let steps: [String]; var servingsKnown: Bool? = nil; var categories: [RecipeCategory]? = nil }
 
 /** Lunch on one day: a recipe from Mealie or a free text. */
 struct Meal: Codable, Equatable { let date: String; let recipe: RecipeRef?; let text: String?; let cookId: String?; let servings: Int; let updatedBy: String }
@@ -48,12 +50,16 @@ protocol MealsAPI {
     func deleteStaple(_ id: String) async throws
     func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview
     func importRecipe(url: String?, text: String?, images: [Data]) async throws -> RecipeSummary
+    func categories() async throws -> [RecipeCategory]
+    func setCategories(slug: String, ids: [String]) async throws -> Recipe
 }
 
 /** Stand-ins for test doubles that do not need the recipe book; the server client has its own. */
 extension MealsAPI {
     func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview { throw APIError(status: 500, code: "unsupported") }
     func importRecipe(url: String?, text: String?, images: [Data]) async throws -> RecipeSummary { throw APIError(status: 500, code: "unsupported") }
+    func categories() async throws -> [RecipeCategory] { [] }
+    func setCategories(slug: String, ids: [String]) async throws -> Recipe { throw APIError(status: 500, code: "unsupported") }
 }
 
 extension APIClient: MealsAPI {
@@ -91,6 +97,12 @@ extension APIClient: MealsAPI {
         return try APIClient.decoder.decode(RecipeSummary.self, from: try await send("POST", "api/recipes/import", body: try JSONSerialization.data(withJSONObject: b), timeout: 200))
     }
 
+    func categories() async throws -> [RecipeCategory] { try await json([RecipeCategory].self, "GET", "api/recipe-categories") }
+
+    func setCategories(slug: String, ids: [String]) async throws -> Recipe {
+        try APIClient.decoder.decode(Recipe.self, from: try await send("PUT", "api/recipes/\(slug)/categories", body: try APIClient.encoder.encode(["ids": ids])))
+    }
+
     func shopCommit(_ lines: [ShopLine]) async throws -> CommitResult {
         let b = ["lines": lines.map { ["food": $0.food, "quantity": $0.quantity] }]
         return try APIClient.decoder.decode(CommitResult.self, from: try await send("POST", "api/meals/shopping/commit", body: try JSONSerialization.data(withJSONObject: b)))
@@ -122,7 +134,45 @@ enum Amounts {
 }
 
 /** The web app's meal wording. */
+/** The recipe book's category chips: categories with recipes, fullest first; combined they narrow the list. */
+enum CategoryFilter {
+    static let without = "(ohne)"
+
+    static func chips(_ list: [RecipeSummary]) -> [RecipeCategory] {
+        var count: [String: (RecipeCategory, Int)] = [:]
+        for r in list { for c in r.categories ?? [] { count[c.slug] = (c, (count[c.slug]?.1 ?? 0) + 1) } }
+        return count.values.sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0.name.localizedCompare($1.0.name) == .orderedAscending }.map(\.0)
+    }
+
+    /** "Ohne Kategorie" stands alone; any other chip turns it off. */
+    static func flip(_ picked: [String], _ slug: String) -> [String] {
+        if slug == without { return picked.contains(without) ? [] : [without] }
+        return picked.contains(slug) ? picked.filter { $0 != slug } : picked.filter { $0 != without } + [slug]
+    }
+
+    static func shown(_ list: [RecipeSummary], _ picked: [String]) -> [RecipeSummary] {
+        if picked.contains(without) { return list.filter { $0.categories?.isEmpty ?? true } }
+        return list.filter { r in picked.allSatisfy { s in r.categories?.contains { $0.slug == s } ?? false } }
+    }
+}
+
 enum MealText {
+    /** Food and note in one line; "und Mehl zum Arbeiten" follows without a comma. */
+    static func foodLine(_ i: Ingredient) -> String {
+        if i.note.isEmpty { return i.food }
+        let joins = ["und ", "oder ", "plus "].contains { i.note.lowercased().hasPrefix($0) }
+        return i.food + (joins ? " " : ", ") + i.note
+    }
+    static let categories = "Kategorien"
+    static let categoryFilter = "Nach Kategorie zeigen"
+    static let noCategory = "Ohne Kategorie"
+    static let categoriesHint = "Antippen, was passt. Ohne Kategorie steht das Rezept unter „Ohne Kategorie“."
+    static let categoriesNone = "In Mealie gibt es noch keine Kategorien."
+    static let categoryEmpty = "Keine Rezepte in dieser Auswahl."
+    /** A step as Mealie writes it: **bold** and *italic* shown, the stars not; plain text where it is no Markdown. */
+    static func step(_ s: String) -> AttributedString {
+        (try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s)
+    }
     static let page = "Essensplan"
     static let title = "Was gibt es mittags?"
     static let lunch = "Mittag"

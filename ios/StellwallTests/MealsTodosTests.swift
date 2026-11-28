@@ -28,6 +28,14 @@ final class FakeMeals: MealsAPI {
 
 @MainActor
 final class MealsTodosTests: XCTestCase {
+    func testAStepShowsBoldWithoutTheStars() {
+        let s = MealText.step("Mit **250 g Butter** verrühren.")
+        XCTAssertEqual(String(s.characters), "Mit 250 g Butter verrühren.")
+        let bold = s.runs.filter { $0.inlinePresentationIntent?.contains(.stronglyEmphasized) == true }.map { String(s[$0.range].characters) }
+        XCTAssertEqual(bold, ["250 g Butter"])
+        XCTAssertEqual(String(MealText.step("2 * 3 Teile").characters), "2 * 3 Teile")
+    }
+
     func testAmountsReadLikeACookWritesThem() {
         XCTAssertEqual(Amounts.format(0.5), "½")
         XCTAssertEqual(Amounts.format(1.5), "1 ½")
@@ -119,10 +127,48 @@ final class MealsTodosTests: XCTestCase {
         XCTAssertEqual(StubProtocol.bodyJSON(2) as NSDictionary, ["recipe": ["slug": "pfannkuchen", "servings": 4]] as NSDictionary)
     }
 
+    func testCategoriesAsTheServerSendsThem() async throws {
+        let all = try APIClient.decoder.decode([RecipeCategory].self, from: Contract.load("recipe-categories").body)
+        XCTAssertEqual(all.map(\.name), ["Backen", "Hauptgericht", "Indisch"])
+        let book = try APIClient.decoder.decode([RecipeSummary].self, from: Contract.load("recipes").body)
+        XCTAssertFalse(book.allSatisfy { $0.categories?.isEmpty ?? true })
+        StubProtocol.reset()
+        StubProtocol.enqueue("recipe-categories-set")
+        let r = try await StubProtocol.client().setCategories(slug: "testrezept-2", ids: ["c-backen"])
+        XCTAssertEqual(r.categories?.map(\.name), ["Backen"])
+        XCTAssertEqual(StubProtocol.requests[0].httpMethod, "PUT")
+        XCTAssertEqual(StubProtocol.bodyJSON(0) as NSDictionary, ["ids": ["c-backen"]] as NSDictionary)
+    }
+
+    func testTheBookFiltersByCategoryFullestFirst() {
+        let haupt = RecipeCategory(id: "c1", slug: "hauptgericht", name: "Hauptgericht"), backen = RecipeCategory(id: "c2", slug: "backen", name: "Backen")
+        let book = [
+            RecipeSummary(id: "r1", slug: "pfanne", name: "Pfanne", servings: 4, hasImage: false, categories: [haupt]),
+            RecipeSummary(id: "r2", slug: "kuchen", name: "Kuchen", servings: 4, hasImage: false, categories: [backen, haupt]),
+            RecipeSummary(id: "r3", slug: "brot", name: "Brot", servings: 4, hasImage: false, categories: []),
+        ]
+        XCTAssertEqual(CategoryFilter.chips(book).map(\.name), ["Hauptgericht", "Backen"])
+        var picked = CategoryFilter.flip([], "backen")
+        picked = CategoryFilter.flip(picked, "hauptgericht")
+        XCTAssertEqual(CategoryFilter.shown(book, picked).map(\.slug), ["kuchen"])
+        picked = CategoryFilter.flip(picked, CategoryFilter.without)
+        XCTAssertEqual(picked, [CategoryFilter.without])
+        XCTAssertEqual(CategoryFilter.shown(book, picked).map(\.slug), ["brot"])
+        XCTAssertEqual(CategoryFilter.shown(book, []).count, 3)
+    }
+
+    func testAnIngredientNoteWithUndFollowsWithoutAComma() {
+        XCTAssertEqual(MealText.foodLine(Ingredient(quantity: 400, unit: "g", food: "Mehl", note: "und Mehl zum Arbeiten")), "Mehl und Mehl zum Arbeiten")
+        XCTAssertEqual(MealText.foodLine(Ingredient(quantity: 2, unit: nil, food: "Paprika", note: "in Streifen")), "Paprika, in Streifen")
+        XCTAssertEqual(MealText.foodLine(Ingredient(quantity: nil, unit: nil, food: "Salz", note: "")), "Salz")
+    }
+
     func testTheRecipeBookPictures() async {
-        let book = [RecipeSummary(id: "r1", slug: "gemuese-pfanne", name: "Gemüsepfanne", servings: 4, hasImage: false), RecipeSummary(id: "r2", slug: "zimtecken", name: "Zimtecken vom Blech", servings: 4, hasImage: false, servingsKnown: false)]
+        let book = [RecipeSummary(id: "r1", slug: "gemuese-pfanne", name: "Gemüsepfanne", servings: 4, hasImage: false, categories: [RecipeCategory(id: "c1", slug: "hauptgericht", name: "Hauptgericht")]), RecipeSummary(id: "r2", slug: "zimtecken", name: "Zimtecken vom Blech", servings: 4, hasImage: false, servingsKnown: false, categories: [RecipeCategory(id: "c2", slug: "backen", name: "Backen")])]
         snap(RecipesView(api: FakeMeals(), list: book, onOpen: { _ in }, onBack: {}), world: "salbei", named: "recipes")
         snap(AddRecipeSheet(api: FakeMeals()) { _ in }, world: "psysonic", dark: true, named: "add-recipe-dark")
+        let r = try! APIClient.decoder.decode(Recipe.self, from: Contract.load("recipe-categories-set").body)
+        snap(CategorySheet(api: FakeMeals(), recipe: r, preset: [RecipeCategory(id: "c-backen", slug: "backen", name: "Backen"), RecipeCategory(id: "c-indisch", slug: "indisch", name: "Indisch")]) { _ in }, world: "salbei", named: "recipe-categories")
     }
 
     func testMealsPicture() async {

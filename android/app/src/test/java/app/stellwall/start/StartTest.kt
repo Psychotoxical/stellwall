@@ -38,4 +38,14 @@ class StartTest {
         m.onLive(LiveEvent.Meals)
         assertEquals(2, calls)
     }
+
+    @Test fun `a line stays until it is ticked off, then goes at once`() = runTest {
+        val rows = mutableListOf<BoardRow>(BoardRow.Todo("s", "Sam", "t1", "Müll", "2026-11-27T10:03:00.000Z", keys = listOf("todo:t1:1")))
+        val sent = mutableListOf<List<String>>()
+        val m = StartModel(board = { rows.toList() }, dismiss = { sent += it; rows.clear() })
+        m.load()
+        m.seen(m.rows.value!!.single())
+        assertEquals(listOf(listOf("todo:t1:1")), sent)
+        assertEquals(emptyList<BoardRow>(), m.rows.value)
+    }
 }

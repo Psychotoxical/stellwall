@@ -33,7 +33,7 @@ struct AppShell: View {
         _theme = theme
         self.onMemberChanged = onMemberChanged
         self.onSignOut = onSignOut
-        _start = State(initialValue: StartModel(board: { try await api.board() }))
+        _start = State(initialValue: StartModel(board: { try await api.board() }, dismiss: { try await api.boardDismiss($0) }, seenAll: { try await api.boardSeen() }))
         _shopping = State(initialValue: ShoppingModel(api: api, me: me))
         _calendar = State(initialValue: CalendarModel(api: api, me: me))
         _birthdays = State(initialValue: BirthdaysModel(api: api, me: me))

@@ -56,6 +56,16 @@ enum BoardRow: Equatable, Identifiable {
         }
     }
 
+    /** What /api/board/dismiss takes to tick this line off; the same keys the server sends with each line. */
+    var keys: [String] {
+        let ms = { (at: String) in ISO8601.date(at).map { String(Int64(($0.timeIntervalSince1970 * 1000).rounded())) } ?? "0" }
+        switch self {
+        case let .shopping(_, _, _, _, _, _, ids): return ids.map { "item:\($0)" }
+        case let .todo(_, _, todoId, _, at): return ["todo:\(todoId):\(ms(at))"]
+        case let .event(_, _, eventId, _, _, _, at): return ["event:\(eventId):\(ms(at))"]
+        }
+    }
+
     var latestAt: String {
         switch self {
         case let .shopping(_, _, _, _, _, at, _), let .todo(_, _, _, _, at), let .event(_, _, _, _, _, _, at): at
@@ -81,6 +91,7 @@ protocol ShoppingAPI {
     func members() async throws -> [Member]
     func board() async throws -> [BoardRow]
     func boardSeen() async throws
+    func boardDismiss(_ keys: [String]) async throws
     func lists() async throws -> [ShoppingList]
     func createList(name: String, visibility: Visibility) async throws -> ShoppingList
     func updateList(id: String, name: String?, visibility: Visibility?) async throws
@@ -99,6 +110,7 @@ protocol ShoppingAPI {
 
 /** Stand-ins for test doubles that do not need them; the server client has its own. */
 extension ShoppingAPI {
+    func boardDismiss(_ keys: [String]) async throws {}
     func guess(_ name: String) async throws -> CatalogGuess { CatalogGuess(name: name, category: CATEGORIES.last!, known: false) }
     func learned() async throws -> [LearnedEntry] { [] }
     func moveLearned(_ name: String, category: String) async throws {}
@@ -108,6 +120,7 @@ extension ShoppingAPI {
 extension APIClient: ShoppingAPI {
     func board() async throws -> [BoardRow] { BoardRow.parse(try await send("GET", "api/board")) }
     func boardSeen() async throws { try await send("POST", "api/board/seen") }
+    func boardDismiss(_ keys: [String]) async throws { try await send("POST", "api/board/dismiss", body: try APIClient.encoder.encode(["keys": keys])) }
     func lists() async throws -> [ShoppingList] { try await json([ShoppingList].self, "GET", "api/lists") }
 
     func createList(name: String, visibility: Visibility) async throws -> ShoppingList {

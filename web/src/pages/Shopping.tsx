@@ -24,18 +24,10 @@ export function Shopping() {
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
 
-  // Highlight what others added since the last look; leaving the page marks it as seen.
+  // Highlight what others added and is still on the start page; it goes once it is ticked off there.
   const unseen = useMemo(() => new Set((board.data ?? []).flatMap((r) => (r.kind === "shopping" ? r.itemIds : []))), [board.data]);
   const frozenUnseen = useRef<Set<string> | null>(null);
   if (frozenUnseen.current === null && board.data) frozenUnseen.current = unseen;
-  useEffect(
-    () => () => {
-      void api("/api/board/seen", { method: "POST" })
-        .then(() => qc.invalidateQueries({ queryKey: ["board"] }))
-        .catch(() => {});
-    },
-    [qc],
-  );
 
   const nameOf = (id: string | null) => members.find((m) => m.id === id)?.displayName ?? "?";
   const refresh = async () => {

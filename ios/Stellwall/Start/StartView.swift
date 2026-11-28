@@ -19,6 +19,9 @@ enum StartText {
     }
 
     static func count(_ n: Int) -> String { n == 0 ? "alles gesehen" : "\(n) neu" }
+    static let seen = "Gesehen"
+    static let seenAll = "Alle gesehen"
+    static func seenLabel(_ what: String) -> String { "Gesehen: \(what)" }
 
     static func today(_ d: Date, zone: TimeZone = .current) -> String { fmt("EEEE, d. MMMM", zone).string(from: d) }
     static func time(_ iso: String, zone: TimeZone = .current) -> String { ISO8601.date(iso).map { fmt("HH:mm", zone).string(from: $0) } ?? "" }
@@ -57,10 +60,29 @@ enum StartText {
 final class StartModel {
     private(set) var rows: [BoardRow]?
     private let board: () async throws -> [BoardRow]
+    private let dismiss: ([String]) async throws -> Void
+    private let seenAll: () async throws -> Void
 
-    init(board: @escaping () async throws -> [BoardRow]) { self.board = board }
+    init(board: @escaping () async throws -> [BoardRow], dismiss: @escaping ([String]) async throws -> Void = { _ in }, seenAll: @escaping () async throws -> Void = {}) {
+        self.board = board
+        self.dismiss = dismiss
+        self.seenAll = seenAll
+    }
 
     func load() async { if let r = try? await board() { rows = r } }
+
+    /** A line stays until it is ticked off; it goes at once, the server catches up. */
+    func seen(_ r: BoardRow) async {
+        rows = rows?.filter { $0.id != r.id }
+        try? await dismiss(r.keys)
+        await load()
+    }
+
+    func seenEverything() async {
+        rows = []
+        try? await seenAll()
+        await load()
+    }
     func onLive(_ e: LiveEvent) async { if e != .meals { await load() } }
 }
 
@@ -166,7 +188,15 @@ struct StartView<Banner: View, Today: View>: View {
             HStack(alignment: .lastTextBaseline) {
                 Text(StartText.board).font(Fonts.title(19, style: .headline)).foregroundStyle(p.boardInk.color).accessibilityAddTraits(.isHeader)
                 Spacer()
-                Text(StartText.count(rows.count)).font(.swSmall).foregroundStyle(p.boardSoft.color)
+                if rows.isEmpty {
+                    Text(StartText.count(0)).font(.swSmall).foregroundStyle(p.boardSoft.color)
+                } else {
+                    Button(StartText.seenAll) { Task { await model.seenEverything(); Haptic.done() } }
+                        .font(.swSmall).foregroundStyle(p.boardSoft.color)
+                        .padding(.horizontal, 12).frame(minHeight: 36)
+                        .overlay(Capsule().stroke(p.boardRule.color))
+                        .buttonStyle(.plain)
+                }
             }
             .padding(.bottom, 10)
             Rectangle().fill(p.boardRule.color).frame(height: 1)
@@ -175,20 +205,27 @@ struct StartView<Banner: View, Today: View>: View {
             }
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
                 if i > 0 { Rectangle().fill(p.boardRule.color).frame(height: 1) }
-                Button { onOpen(target(r)) } label: {
-                    HStack(spacing: 12) {
-                        Text(StartText.time(r.latestAt)).font(Fonts.body(16, weight: 700, style: .headline)).foregroundStyle(p.boardInk.color).frame(width: 52, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(StartText.line(r)).font(.swLabel).foregroundStyle(p.boardInk.color)
-                            Text(StartText.area(r)).font(.swSmall).foregroundStyle(p.boardSoft.color)
+                HStack(spacing: 10) {
+                    Button { onOpen(target(r)) } label: {
+                        HStack(spacing: 12) {
+                            Text(StartText.time(r.latestAt)).font(Fonts.body(16, weight: 700, style: .headline)).foregroundStyle(p.boardInk.color).frame(width: 52, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(StartText.line(r)).font(.swLabel).foregroundStyle(p.boardInk.color)
+                                Text(StartText.area(r)).font(.swSmall).foregroundStyle(p.boardSoft.color)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        Spacer()
-                        Text(StartText.new).font(Fonts.body(13, weight: 700, style: .caption1)).foregroundStyle(p.changeInk.color)
-                            .padding(.horizontal, 8).padding(.vertical, 4).background(p.change.color, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.vertical, 11).contentShape(Rectangle())
                     }
-                    .padding(.vertical, 11).contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    // A tick, not a word: on a small phone the line itself needs the room.
+                    Button { Task { await model.seen(r); Haptic.tap() } } label: {
+                        Image(systemName: "checkmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.boardInk.color)
+                            .frame(width: 44, height: 44).overlay(Circle().stroke(p.boardRule.color))
+                    }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(StartText.seenLabel(StartText.line(r)))
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 14)
