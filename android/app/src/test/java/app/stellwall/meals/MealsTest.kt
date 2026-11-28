@@ -52,13 +52,17 @@ class FakeMeals : MealsApi {
     override suspend fun saveMeal(date: String, body: MealBody) = Meal(date, body.recipe, body.text, body.cookId, body.servings, "me").also { calls += "save:$date:${body.recipe?.slug}:${body.text}:${body.servings}" }
     override suspend fun deleteMeal(date: String) { calls += "delete:$date" }
     override suspend fun recipes(q: String): List<RecipeSummary> { searchFails?.let { throw it }; return listOf(RecipeSummary("r2", "pfannkuchen", "Pfannkuchen", 2, false)) }
-    override suspend fun recipe(slug: String) = Recipe("r1", slug, "Gemüsepfanne", 4, true, listOf(Ingredient(200.0, "g", "Reis", ""), Ingredient(null, null, "Salz", "")), listOf("Reis kochen.", "Würzen."))
+    override suspend fun recipe(slug: String) = Recipe("r1", slug, "Gemüsepfanne", 4, true, listOf(Ingredient(200.0, "g", "Reis", ""), Ingredient(null, null, "Salz", "")), listOf("Reis kochen.", "Würzen."), servingsKnown = !bakingSheet)
     override suspend fun recipeImage(id: String) = ByteArray(0)
     override suspend fun shopPreview(dates: List<String>, servings: Int?) = ShopPreview("l1", "Wocheneinkauf", listOf(ShopLine("Paprika", "1×", "1")), listOf(ShopLine("Reis", "100 g", "100 g")), emptyList()).also { calls += "preview:$dates:$servings" }
     override suspend fun shopCommit(lines: List<ShopLine>) = CommitResult(lines.size, "l1", "Wocheneinkauf").also { calls += "commit:${lines.map { it.food }}" }
     override suspend fun pantry() = listOf(Staple("s1", "Salz", emptyList()))
     override suspend fun addStaple(name: String) = Staple("s2", name, emptyList())
     override suspend fun deleteStaple(id: String) { calls += "deleteStaple:$id" }
+    var bakingSheet = false
+    override suspend fun shopRecipe(slug: String, servings: Int) = ShopPreview("l1", "Wocheneinkauf", emptyList(), listOf(ShopLine("Reis", "200 g", "200 g")), emptyList()).also { calls += "shopRecipe:$slug:$servings" }
+    override suspend fun importRecipe(url: String?, text: String?, images: List<app.stellwall.api.ImportImage>?) =
+        RecipeSummary("r9", "neu", "Aus dem Netz", 4, false).also { calls += "import:$url:$text:${images?.size}" }
 }
 
 class MealsModelTest {

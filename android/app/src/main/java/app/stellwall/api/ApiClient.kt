@@ -96,6 +96,9 @@ interface MealsApi {
     suspend fun recipe(slug: String): Recipe
     suspend fun recipeImage(id: String): ByteArray
     suspend fun shopPreview(dates: List<String>, servings: Int?): ShopPreview
+    /** The defaults stand in for test doubles that do not need the recipe book. */
+    suspend fun shopRecipe(slug: String, servings: Int): ShopPreview = throw UnsupportedOperationException()
+    suspend fun importRecipe(url: String? = null, text: String? = null, images: List<ImportImage>? = null): RecipeSummary = throw UnsupportedOperationException()
     suspend fun shopCommit(lines: List<ShopLine>): CommitResult
     suspend fun pantry(): List<Staple>
     suspend fun addStaple(name: String): Staple
@@ -284,6 +287,12 @@ class ApiClient(private val base: HttpUrl, store: CookieStore) : Backend, Shoppi
 
     override suspend fun shopPreview(dates: List<String>, servings: Int?) =
         call("POST", "api/meals/shopping/preview", encode(ShopRequest.serializer(), ShopRequest(dates, servings))).decode(ShopPreview.serializer())
+
+    override suspend fun shopRecipe(slug: String, servings: Int) =
+        call("POST", "api/meals/shopping/preview", encode(RecipeShopRequest.serializer(), RecipeShopRequest(RecipeServings(slug, servings)))).decode(ShopPreview.serializer())
+
+    override suspend fun importRecipe(url: String?, text: String?, images: List<ImportImage>?) =
+        call("POST", "api/recipes/import", encode(ImportRequest.serializer(), ImportRequest(url, text, images))).decode(RecipeSummary.serializer())
 
     override suspend fun shopCommit(lines: List<ShopLine>) =
         call("POST", "api/meals/shopping/commit", encode(CommitRequest.serializer(), CommitRequest(lines.map { CommitLine(it.food, it.quantity) }))).decode(CommitResult.serializer())
