@@ -7,13 +7,14 @@ struct MealsArea: View {
     let onOpenList: (String) -> Void
     @State private var page: Page = .week
 
-    enum Page: Equatable { case week, cook(CookTarget), pantry }
+    enum Page: Equatable { case week, cook(CookTarget), pantry, recipes }
 
     var body: some View {
         Group {
             switch page {
-            case .week: MealsView(model: model, onCook: { page = .cook($0) }, onPantry: { page = .pantry }, onOpenList: onOpenList)
-            case let .cook(c): RecipeView(api: model.api, target: c, onBack: { page = .week }, onOpenList: onOpenList).backSwipe { page = .week }
+            case .week: MealsView(model: model, onCook: { page = .cook($0) }, onPantry: { page = .pantry }, onOpenList: onOpenList, onRecipes: { page = .recipes })
+            case let .cook(c): RecipeView(api: model.api, target: c, onBack: { page = c.date == nil ? .recipes : .week }, onOpenList: onOpenList).backSwipe { page = c.date == nil ? .recipes : .week }
+            case .recipes: RecipesView(api: model.api, onOpen: { page = .cook(CookTarget(slug: $0, servings: nil, date: nil)) }, onBack: { page = .week }).backSwipe { page = .week }
             case .pantry: PantryView(model: PantryModel(api: model.api), onBack: { page = .week }).backSwipe { page = .week }
             }
         }
@@ -22,13 +23,15 @@ struct MealsArea: View {
 }
 
 /** A recipe to cook: its slug, the planned servings and the day. */
-struct CookTarget: Equatable { let slug: String; let servings: Int; let date: Day }
+/** No date: opened from the recipe book, servings from the recipe. */
+struct CookTarget: Equatable { let slug: String; let servings: Int?; let date: Day? }
 
 struct MealsView: View {
     @Bindable var model: MealsModel
     let onCook: (CookTarget) -> Void
     let onPantry: () -> Void
     let onOpenList: (String) -> Void
+    var onRecipes: () -> Void = {}
     @State private var editing: EditDay?
     @State private var shopping: [Day]?
     @Environment(\.palette) private var p
@@ -55,6 +58,7 @@ struct MealsView: View {
                     }
                 }
                 PrimaryButton(MealText.shopWeek) { shopping = model.days }
+                GhostButton(MealText.recipes, action: onRecipes)
                 GhostButton(MealText.staples, action: onPantry)
             }
             .padding(16)
@@ -238,9 +242,11 @@ struct RecipeView: View {
     let onOpenList: (String) -> Void
     @State private var recipe: Recipe?
     @State private var error: String?
-    @State private var servings: Int
+    @State private var servings: Int?
     @State private var ticked: Set<String> = []
     @State private var shop = false
+    @State private var planning = false
+    @State private var planned: String?
     @Environment(\.palette) private var p
 
     init(api: MealsAPI, target: CookTarget, onBack: @escaping () -> Void, onOpenList: @escaping (String) -> Void) {
@@ -257,16 +263,23 @@ struct RecipeView: View {
                 BackLink(parent: MealText.page, action: onBack)
                 if let e = error { Notice(e) }
                 if let r = recipe {
-                    PageHead(title: r.name, sub: MealText.dayName(target.date))
+                    PageHead(title: r.name, sub: target.date.map(MealText.dayName) ?? MealText.recipes)
                     if r.hasImage { RecipeImage(api: api, id: r.id).frame(height: 200) }
                     Text(MealText.awake).font(.swSmall).foregroundStyle(p.inkSoft.color)
-                    Stepper(value: $servings, in: 1...50) { Text("\(MealText.servings): \(servings)").font(.swLabel) }
+                    // Without servings in Mealie (a baking sheet) the amounts stay as written.
+                    if r.servingsKnown == false {
+                        Text(MealText.asWritten).font(.swLabel).foregroundStyle(p.inkSoft.color)
+                    } else {
+                        Stepper(value: Binding(get: { n(r) }, set: { servings = $0 }), in: 1...50) { Text("\(MealText.servings): \(n(r))").font(.swLabel) }
+                    }
+                    GhostButton(MealText.planRecipe) { planning = true }
+                    if let planned { Text(planned).font(.swBody) }
                     SectionHead(title: MealText.ingredients)
                     BoxCard {
                         ForEach(Array(r.ingredients.enumerated()), id: \.offset) { i, ing in
                             if i > 0 { RowDivider() }
                             tick("i\(i)") {
-                                Text(Amounts.line(ing, factor: Double(servings) / Double(max(1, r.servings)))).font(.swLabel).frame(minWidth: 70, alignment: .leading)
+                                Text(Amounts.line(ing, factor: Double(n(r)) / Double(max(1, r.servings)))).font(.swLabel).frame(minWidth: 70, alignment: .leading)
                                 Text([ing.food, ing.note].filter { !$0.isEmpty }.joined(separator: ", ")).font(.swBody)
                             }
                         }
@@ -293,9 +306,33 @@ struct RecipeView: View {
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .sheet(isPresented: $shop) {
-            ShopSheet(api: api, dates: [target.date], servings: servings, onOpenList: { id in shop = false; onOpenList(id) }).environment(\.palette, p)
+            if let r = recipe {
+                if let date = target.date {
+                    ShopSheet(api: api, dates: [date], servings: n(r), onOpenList: { id in shop = false; onOpenList(id) }).environment(\.palette, p)
+                } else {
+                    ShopSheet(api: api, dates: [], servings: nil, recipe: (r.slug, n(r)), onOpenList: { id in shop = false; onOpenList(id) }).environment(\.palette, p)
+                }
+            }
+        }
+        .sheet(isPresented: $planning) {
+            PlanSheet { day in
+                guard let r = recipe else { return }
+                do {
+                    try await api.saveMeal(date: day.description, recipe: RecipeRef(id: r.id, slug: r.slug, name: r.name), text: nil, cookId: nil, servings: n(r))
+                    planning = false
+                    planned = MealText.planned(MealText.dayName(day))
+                    Haptic.done()
+                } catch {
+                    self.error = MealText.error(error)
+                }
+            }
+            .environment(\.palette, p)
+            .presentationDetents([.medium, .large])
         }
     }
+
+    /** The servings shown: chosen, planned, or the recipe's own; as written for a baking sheet. */
+    private func n(_ r: Recipe) -> Int { r.servingsKnown == false ? r.servings : servings ?? r.servings }
 
     private func tick<Content: View>(_ key: String, @ViewBuilder _ content: () -> Content) -> some View {
         let on = ticked.contains(key)
@@ -323,9 +360,12 @@ struct ShopSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.palette) private var p
 
-    init(api: MealsAPI, dates: [Day], servings: Int?, onOpenList: @escaping (String) -> Void) {
+    var recipe: (slug: String, servings: Int)? = nil
+
+    init(api: MealsAPI, dates: [Day], servings: Int?, recipe: (slug: String, servings: Int)? = nil, onOpenList: @escaping (String) -> Void) {
         self.dates = dates
         self.servings = servings
+        self.recipe = recipe
         self.onOpenList = onOpenList
         _model = State(initialValue: ShopModel(api: api))
     }
@@ -355,7 +395,7 @@ struct ShopSheet: View {
                 GhostButton(MealText.cancel) { dismiss() }
             }
         }
-        .task { await model.load(dates, servings: servings) }
+        .task { await model.load(dates, servings: servings, recipe: recipe) }
     }
 
     private func line(_ l: ShopLine, _ key: String) -> some View {
@@ -409,6 +449,152 @@ struct PantryView: View {
         Task {
             error = await model.add(n)
             if error == nil { name = "" }
+        }
+    }
+}
+
+
+/** Which day the recipe goes on: the next 14 days to tap. */
+struct PlanSheet: View {
+    let onPlan: (Day) async -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.palette) private var p
+
+    var body: some View {
+        SheetBody(title: MealText.planFor) {
+            ForEach(0..<14, id: \.self) { k in
+                let d = Day.today().plus(days: k)
+                Button { Task { await onPlan(d) } } label: {
+                    Text(MealText.dayName(d)).font(.swBody).foregroundStyle(p.ink.color)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading).padding(.horizontal, 14)
+                        .background(p.field.color, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+            GhostButton(MealText.cancel) { dismiss() }
+        }
+    }
+}
+
+/** Every recipe in Mealie, to look at, cook or shop for without planning it for a day. */
+struct RecipesView: View {
+    let api: MealsAPI
+    let onOpen: (String) -> Void
+    let onBack: () -> Void
+    @State private var q = ""
+    @State private var list: [RecipeSummary]?
+    @State private var error: String?
+    @State private var adding = false
+    @Environment(\.palette) private var p
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                BackLink(parent: MealText.page, action: onBack)
+                PageHead(title: MealText.recipes, sub: MealText.page)
+                PrimaryButton(MealText.addRecipe) { adding = true }
+                Field(label: MealText.search, text: $q, submit: .search)
+                if let error { Notice(error) }
+                if let list, list.isEmpty { Text(q.isEmpty ? MealText.noRecipes : MealText.searchEmpty).font(.swBody).foregroundStyle(p.inkSoft.color) }
+                if let list, !list.isEmpty {
+                    BoxCard {
+                        ForEach(Array(list.enumerated()), id: \.element.id) { i, r in
+                            if i > 0 { RowDivider() }
+                            Button { onOpen(r.slug) } label: {
+                                HStack(spacing: 12) {
+                                    RecipeImage(api: api, id: r.hasImage ? r.id : nil).frame(width: 52, height: 52)
+                                    Text(r.name).font(.swLabel).foregroundStyle(p.ink.color)
+                                    Spacer()
+                                }
+                                .padding(8).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(p.ground.color.ignoresSafeArea())
+        .task(id: q) {
+            try? await Task.sleep(for: .milliseconds(200))
+            do { list = try await api.recipes(q.trimmingCharacters(in: .whitespaces)); error = nil } catch { self.error = MealText.error(error) }
+        }
+        .sheet(isPresented: $adding) {
+            AddRecipeSheet(api: api) { made in adding = false; onOpen(made.slug) }.environment(\.palette, p)
+        }
+    }
+}
+
+/** A new recipe in Mealie: from photographed pages (Mealie's AI reads them), a link, or typed in. */
+struct AddRecipeSheet: View {
+    let api: MealsAPI
+    let onMade: (RecipeSummary) -> Void
+    @State private var way = "photo"
+    @State private var pages: [Data] = []
+    @State private var url = ""
+    @State private var text = ""
+    @State private var scanning = false
+    @State private var busy = false
+    @State private var error: String?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.palette) private var p
+
+    private var ready: Bool {
+        switch way {
+        case "photo": !pages.isEmpty
+        case "link": url.trimmingCharacters(in: .whitespaces).range(of: "^https?://\\S+$", options: .regularExpression) != nil
+        default: !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    var body: some View {
+        SheetBody(title: MealText.addRecipe) {
+            WrapLayout(spacing: 8) {
+                ForEach(MealText.ways, id: \.0) { key, label in Chip(text: label, on: way == key) { way = key } }
+            }
+            if way == "photo" {
+                GhostButton(MealText.scan) { scanning = true }
+                if !pages.isEmpty { Text(MealText.pages(pages.count)).font(.swBody) }
+                Text(MealText.photosHint).font(.swSmall).foregroundStyle(p.inkSoft.color)
+            } else if way == "link" {
+                Field(label: MealText.link, text: $url, keyboard: .URL, capitalization: .never, autocorrect: false)
+            } else {
+                Text(MealText.recipeText).font(.swSmall).foregroundStyle(p.inkSoft.color)
+                TextEditor(text: $text).font(.swBody).frame(minHeight: 160).padding(8)
+                    .scrollContentBackground(.hidden).background(p.surface.color, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.rule.color))
+                    .accessibilityLabel(MealText.recipeText)
+                Text(MealText.recipeTextHint).font(.swSmall).foregroundStyle(p.inkSoft.color)
+            }
+            if busy { Text(MealText.importing).font(.swBody).foregroundStyle(p.inkSoft.color) }
+            if let error { Notice(error) }
+            PrimaryButton(MealText.importButton, enabled: ready && !busy) {
+                busy = true
+                error = nil
+                Task {
+                    do {
+                        let made = try await api.importRecipe(
+                            url: way == "link" ? url.trimmingCharacters(in: .whitespaces) : nil,
+                            text: way == "text" ? text.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+                            images: way == "photo" ? pages : [])
+                        Haptic.done()
+                        onMade(made)
+                    } catch {
+                        self.error = MealText.error(error)
+                    }
+                    busy = false
+                }
+            }
+            GhostButton(MealText.cancel) { dismiss() }
+        }
+        .fullScreenCover(isPresented: $scanning) {
+            RecipeScanner { scanned in
+                scanning = false
+                if let scanned { pages = scanned }
+            }
+            .ignoresSafeArea()
         }
     }
 }

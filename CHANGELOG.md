@@ -4,6 +4,15 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Added
+
+- Recipe book (web, Android, iPhone): every Mealie recipe under Essen → Rezepte, with search; a recipe page without a planned day shops its ingredients (with the pantry check) and can be planned for a day; recipes without servings keep their amounts as written.
+- Adding recipes to Mealie from Stellwall: photographed pages (Mealie's AI reads them), a link, or typed text.
+
+### Changed
+
+- Recipe lines like "450 g Mehl und Mehl zum Arbeiten" put only "Mehl" on the shopping list.
+
 ### Fixed
 
 - iPhone app: the event, birthday and shopping windows show the colour world the page shows, also right after changing it.

@@ -2,9 +2,10 @@ import Foundation
 import Observation
 
 struct RecipeRef: Codable, Equatable, Hashable { let id: String; let slug: String; let name: String }
-struct RecipeSummary: Codable, Equatable, Identifiable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool }
+/** servingsKnown false: Mealie has no servings (a baking sheet); the amounts are as written. */
+struct RecipeSummary: Codable, Equatable, Identifiable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; var servingsKnown: Bool? = nil }
 struct Ingredient: Codable, Equatable, Hashable { let quantity: Double?; let unit: String?; let food: String; let note: String }
-struct Recipe: Codable, Equatable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; let ingredients: [Ingredient]; let steps: [String] }
+struct Recipe: Codable, Equatable { let id: String; let slug: String; let name: String; let servings: Int; let hasImage: Bool; let ingredients: [Ingredient]; let steps: [String]; var servingsKnown: Bool? = nil }
 
 /** Lunch on one day: a recipe from Mealie or a free text. */
 struct Meal: Codable, Equatable { let date: String; let recipe: RecipeRef?; let text: String?; let cookId: String?; let servings: Int; let updatedBy: String }
@@ -45,6 +46,14 @@ protocol MealsAPI {
     func pantry() async throws -> [Staple]
     func addStaple(_ name: String) async throws
     func deleteStaple(_ id: String) async throws
+    func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview
+    func importRecipe(url: String?, text: String?, images: [Data]) async throws -> RecipeSummary
+}
+
+/** Stand-ins for test doubles that do not need the recipe book; the server client has its own. */
+extension MealsAPI {
+    func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview { throw APIError(status: 500, code: "unsupported") }
+    func importRecipe(url: String?, text: String?, images: [Data]) async throws -> RecipeSummary { throw APIError(status: 500, code: "unsupported") }
 }
 
 extension APIClient: MealsAPI {
@@ -66,6 +75,20 @@ extension APIClient: MealsAPI {
         var b: [String: Any] = ["dates": dates]
         if let servings { b["servings"] = servings }
         return try APIClient.decoder.decode(ShopPreview.self, from: try await send("POST", "api/meals/shopping/preview", body: try JSONSerialization.data(withJSONObject: b)))
+    }
+
+    func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview {
+        let b: [String: Any] = ["recipe": ["slug": slug, "servings": servings]]
+        return try APIClient.decoder.decode(ShopPreview.self, from: try await send("POST", "api/meals/shopping/preview", body: try JSONSerialization.data(withJSONObject: b)))
+    }
+
+    /** A link, or typed text and/or photographed pages for Mealie's AI. */
+    func importRecipe(url: String?, text: String?, images: [Data]) async throws -> RecipeSummary {
+        var b: [String: Any] = [:]
+        if let url { b["url"] = url }
+        if let text { b["text"] = text }
+        if !images.isEmpty { b["images"] = images.map { ["data": $0.base64EncodedString(), "type": "image/jpeg"] } }
+        return try APIClient.decoder.decode(RecipeSummary.self, from: try await send("POST", "api/recipes/import", body: try JSONSerialization.data(withJSONObject: b), timeout: 200))
     }
 
     func shopCommit(_ lines: [ShopLine]) async throws -> CommitResult {
@@ -138,6 +161,22 @@ enum MealText {
     static let steps = "So geht es"
     static let awake = "Der Bildschirm bleibt an, solange das Rezept offen ist. Erledigtes einfach antippen."
     static let staples = "Grundvorrat"
+    static let recipes = "Rezepte"
+    static let noRecipes = "In Mealie sind noch keine Rezepte."
+    static let addRecipe = "Rezept hinzufügen"
+    static let ways = [("photo", "Foto"), ("link", "Link"), ("text", "Eintippen")]
+    static let scan = "Rezept fotografieren"
+    static let photosHint = "Bis zu vier Seiten, zum Beispiel aus einem Kochbuch. Mealie liest sie mit seiner KI."
+    static let link = "Link zum Rezept"
+    static let recipeText = "Rezept"
+    static let recipeTextHint = "Zutaten und Schritte, so wie sie im Rezept stehen. Mealie macht daraus ein Rezept."
+    static let importing = "Mealie liest das Rezept. Das kann bis zu einer Minute dauern."
+    static let importButton = "Rezept anlegen"
+    static let asWritten = "Mengen wie im Rezept"
+    static let planRecipe = "Einplanen"
+    static let planFor = "Für welchen Tag?"
+    static func planned(_ day: String) -> String { "Für \(day) eingeplant." }
+    static func pages(_ n: Int) -> String { n == 1 ? "1 Seite fotografiert" : "\(n) Seiten fotografiert" }
     static let staplesLead = "Was bei euch meistens da ist. Diese Zutaten fragt Stellwall beim Einkaufen nach, statt sie gleich auf die Liste zu setzen."
     static let stapleAdd = "Zum Grundvorrat"
     static let stapleName = "Neue Grundzutat"
@@ -153,6 +192,7 @@ enum MealText {
         "mealie_auth": "Mealie hat den Schlüssel abgelehnt. Die Verwaltung muss ihn unter Mehr → Mealie erneuern.",
         "mealie_unreachable": "Mealie antwortet gerade nicht. Freier Text geht trotzdem.",
         "mealie_bad": "Mealie hat eine unerwartete Antwort geschickt.",
+        "mealie_import_failed": "Mealie konnte daraus kein Rezept machen. Ein schärferes Foto oder ein anderer Link hilft oft.",
         "meal_list_hidden": "Du siehst die Einkaufsliste für den Essensplan nicht. Die Verwaltung kann sie freigeben.",
     ]
 
@@ -261,9 +301,15 @@ final class ShopModel {
         return p.special.filter { picked.contains(Self.key("s:", $0)) } + p.pantry.filter { picked.contains(Self.key("p:", $0)) }
     }
 
-    func load(_ dates: [Day], servings: Int?) async {
+    /** The planned [dates], or one recipe from the recipe book at its servings. */
+    func load(_ dates: [Day], servings: Int?, recipe: (slug: String, servings: Int)? = nil) async {
         do {
-            let p = try await api.shopPreview(dates: dates.map(\.description), servings: servings)
+            let p: ShopPreview
+            if let recipe {
+                p = try await api.shopRecipe(slug: recipe.slug, servings: recipe.servings)
+            } else {
+                p = try await api.shopPreview(dates: dates.map(\.description), servings: servings)
+            }
             preview = p
             picked = Set(p.special.map { Self.key("s:", $0) })
             error = nil
