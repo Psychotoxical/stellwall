@@ -113,7 +113,7 @@ class ShoppingModelTest {
         assertEquals("Das hat nicht geklappt. Bitte noch einmal versuchen.", m.state.value.error)
     }
 
-    @Test fun `what others added stays marked until the page is left`() = runTest {
+    @Test fun `what others added stays marked while the page is open, and leaving does not mark it seen`() = runTest {
         val f = fake().apply { board = listOf(BoardRow.Shopping("sam", "Sam", "l1", "Einkauf", 1, "2026-11-27T10:00:00.000Z", listOf("b"))) }
         val m = ShoppingModel(f, me)
         m.load()
@@ -122,7 +122,8 @@ class ShoppingModelTest {
         m.onLive(LiveEvent.List("l1"))
         assertEquals(setOf("b"), m.state.value.unseen)
         m.leave()
-        assertEquals(1, f.seen)
+        // Seen is ticked off on the start page now, not by looking at the list.
+        assertEquals(0, f.seen)
     }
 
     @Test fun `a hint for the open list reloads it, others only the counts`() = runTest {

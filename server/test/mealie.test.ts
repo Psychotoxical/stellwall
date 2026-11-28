@@ -49,6 +49,21 @@ describe("Mealie connection", () => {
     expect(img.headers["content-type"]).toContain("image/webp");
   });
 
+  it("lets the browser ask again for a recipe picture, so one changed in Mealie shows up", async () => {
+    const { app, f, mealie, put } = await start();
+    await put(f.alex.cookie, { url: mealie.url, token: TOKEN });
+    const url = "/api/recipes/11111111-1111-4111-8111-111111111111/image";
+    const first = await app.inject({ method: "GET", url, headers: { cookie: f.sam.cookie } });
+    expect(first.headers["cache-control"]).toBe("private, no-cache");
+    const tag = first.headers.etag as string;
+    expect(tag).toMatch(/^"[0-9a-f]+"$/);
+    const same = await app.inject({ method: "GET", url, headers: { cookie: f.sam.cookie, "if-none-match": tag } });
+    expect(same.statusCode).toBe(304);
+    expect(same.body).toBe("");
+    const other = await app.inject({ method: "GET", url, headers: { cookie: f.sam.cookie, "if-none-match": '"old"' } });
+    expect(other.statusCode).toBe(200);
+  });
+
   it("caches the recipe list for a while", async () => {
     const { app, f, mealie, put } = await start();
     await put(f.alex.cookie, { url: mealie.url, token: TOKEN });

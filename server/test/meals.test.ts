@@ -179,3 +179,45 @@ describe("the recipe book", () => {
   });
 });
 
+describe("recipe categories", () => {
+  async function withMealie(opts: Parameters<typeof startFakeMealie>[0] = {}) {
+    const s = await start();
+    const mealie = await startFakeMealie(opts);
+    closers.push(mealie.close);
+    await s.put(s.f.alex.cookie, "/api/settings/mealie", { url: mealie.url, token: TOKEN });
+    return { ...s, mealie, sam: as(s.app, s.f.sam.cookie) };
+  }
+
+  it("each recipe in the book carries its Mealie categories, sorted by name", async () => {
+    const { sam } = await withMealie();
+    const book = (await sam.get("/api/recipes?q=")).json() as { slug: string; categories: { name: string }[] }[];
+    expect(book.find((r) => r.slug === "pfannkuchen")!.categories.map((c) => c.name)).toEqual(["Backen", "Hauptgericht"]);
+    expect(book.find((r) => r.slug === "testrezept-1")!.categories).toEqual([]);
+  });
+
+  it("lists every category, also those without recipes", async () => {
+    const { sam } = await withMealie();
+    expect(((await sam.get("/api/recipe-categories")).json() as { name: string }[]).map((c) => c.name)).toEqual(["Backen", "Hauptgericht", "Indisch"]);
+  });
+
+  it("anyone in the family changes a recipe's categories, and the book shows it at once", async () => {
+    const { sam } = await withMealie();
+    await sam.get("/api/recipes?q=");
+    const r = await sam.put("/api/recipes/testrezept-1/categories", { ids: ["c-indisch", "c-haupt"] });
+    expect(r.statusCode).toBe(200);
+    expect((r.json() as { categories: { slug: string }[] }).categories.map((c) => c.slug)).toEqual(["hauptgericht", "indisch"]);
+    const book = (await sam.get("/api/recipes?q=")).json() as { slug: string; categories: unknown[] }[];
+    expect(book.find((x) => x.slug === "testrezept-1")!.categories.length).toBe(2);
+    expect((await sam.put("/api/recipes/testrezept-1/categories", { ids: [] })).json().categories).toEqual([]);
+  });
+
+  it("refuses unknown or doubled categories and a Mealie user who may only read", async () => {
+    const { sam } = await withMealie();
+    expect((await sam.put("/api/recipes/testrezept-1/categories", { ids: ["c-gibtsnicht"] })).statusCode).toBe(404);
+    expect((await sam.put("/api/recipes/testrezept-1/categories", { ids: ["c-haupt", "c-haupt"] })).statusCode).toBe(400);
+    expect((await sam.put("/api/recipes/gibtsnicht/categories", { ids: [] })).statusCode).toBe(404);
+    const ro = await withMealie({ readOnly: true });
+    expect((await ro.sam.put("/api/recipes/testrezept-1/categories", { ids: [] })).json()).toEqual({ error: "mealie_auth" });
+  });
+});
+

@@ -6,6 +6,7 @@
     "name": "Aus dem Text",
     "servings": 4,
     "servingsKnown": false,
-    "hasImage": false
+    "hasImage": false,
+    "categories": []
   }
 }

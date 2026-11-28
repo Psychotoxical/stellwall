@@ -154,6 +154,51 @@ describe("recipe book", () => {
     expect(screen.getByRole("button", { name: de.meals.shopRecipe })).toBeInTheDocument();
   });
 
+  it("filters the book by category, fullest first, and finds recipes in none", async () => {
+    const haupt = { id: "c1", slug: "hauptgericht", name: "Hauptgericht" };
+    const backen = { id: "c2", slug: "backen", name: "Backen" };
+    fakeApi(base([], {
+      "GET /api/recipes?*": () => ({ status: 200, body: [
+        { ...veg, servings: 4, hasImage: false, categories: [haupt] },
+        { id: "r2", slug: "pfannkuchen", name: "Pfannkuchen", servings: 2, hasImage: false, categories: [backen, haupt] },
+        { id: "r3", slug: "brot", name: "Brot", servings: 1, hasImage: false, categories: [] },
+      ] }),
+    }));
+    renderAt("/essen/rezepte");
+    const group = await screen.findByRole("group", { name: de.meals.categoryFilter });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Hauptgericht", "Backen", de.meals.noCategory]);
+    fireEvent.click(within(group).getByRole("button", { name: "Backen" }));
+    fireEvent.click(within(group).getByRole("button", { name: "Hauptgericht" }));
+    expect(screen.getAllByRole("link", { name: /Pfannkuchen|Gemüsepfanne|Brot/ }).map((l) => l.textContent)).toEqual(["Pfannkuchen"]);
+    fireEvent.click(within(group).getByRole("button", { name: de.meals.noCategory }));
+    expect(screen.getAllByRole("link", { name: /Pfannkuchen|Gemüsepfanne|Brot/ }).map((l) => l.textContent)).toEqual(["Brot"]);
+  });
+
+  it("changes a recipe's categories from its page", async () => {
+    const cats = [{ id: "c1", slug: "hauptgericht", name: "Hauptgericht" }, { id: "c3", slug: "indisch", name: "Indisch" }];
+    const calls = fakeApi(base([], {
+      [`GET /api/recipes/${veg.slug}`]: () => ({ status: 200, body: { ...recipe, categories: [cats[0]] } }),
+      "GET /api/recipe-categories": () => ({ status: 200, body: cats }),
+      [`PUT /api/recipes/${veg.slug}/categories`]: () => ({ status: 200, body: { ...recipe, categories: cats } }),
+    }));
+    renderAt(`/essen/rezept/${veg.slug}`);
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.categories }));
+    const group = await screen.findByRole("group", { name: de.meals.categoriesTitle });
+    expect(await within(group).findByRole("button", { name: "Hauptgericht" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "Indisch" }));
+    fireEvent.click(screen.getByRole("button", { name: de.members.save }));
+    await waitFor(() => expect(calls.find((c) => c.key === `PUT /api/recipes/${veg.slug}/categories`)?.body).toEqual({ ids: ["c1", "c3"] }));
+    expect(await screen.findByText("Hauptgericht, Indisch")).toBeInTheDocument();
+  });
+
+  it("shows bold in a step as bold, without the stars", async () => {
+    fakeApi(base([], { [`GET /api/recipes/${veg.slug}`]: () => ({ status: 200, body: { ...recipe, steps: ["Mit **250 g Butter** verrühren."] } }) }));
+    renderAt(`/essen/rezept/${veg.slug}`);
+    const strong = await screen.findByText("250 g Butter");
+    expect(strong.tagName).toBe("STRONG");
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+
   it("shops for the recipe itself, at the servings set", async () => {
     const calls = fakeApi(base([], { "POST /api/meals/shopping/preview": () => ({ status: 200, body: preview }) }));
     renderAt(`/essen/rezept/${veg.slug}`);

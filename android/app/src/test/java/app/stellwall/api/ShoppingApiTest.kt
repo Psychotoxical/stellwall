@@ -6,9 +6,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -108,6 +110,16 @@ class ShoppingApiTest {
         val shop = rows[2] as BoardRow.Shopping
         assertEquals(2, shop.count)
         assertEquals(2, shop.itemIds.size)
+        assertEquals(shop.itemIds.map { "item:$it" }, shop.keys)
+        assertTrue(event.keys.single().startsWith("event:"))
+    }
+
+    @Test fun `a board line is ticked off with its keys`() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body("{\"ok\":true}").build())
+        api().boardDismiss(listOf("item:a", "item:b"))
+        val req = server.takeRequest()
+        assertEquals("/api/board/dismiss", req.url.encodedPath)
+        assertEquals("""{"keys":["item:a","item:b"]}""", req.body?.utf8())
     }
 
     @Test fun `a board kind this app does not know is skipped`() = runTest {

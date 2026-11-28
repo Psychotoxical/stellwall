@@ -1,6 +1,7 @@
 package app.stellwall.start
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,6 +78,7 @@ fun StartScreen(
     onOpen: (Target) -> Unit,
 ) {
     val rows by model.rows.collectAsStateWithLifecycle()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     LaunchedEffect(model) { model.load() }
     LaunchedEffect(model, live) { live.collect { model.onLive(it) } }
     if (mine != null) {
@@ -99,7 +101,7 @@ fun StartScreen(
         }
         Column(Modifier.padding(top = 14.dp)) { PageHead(title = StartText.hello(member.displayName, hour), sub = StartText.today(today)) }
         banner()
-        Box(Modifier.padding(top = 10.dp)) { Board(rows.orEmpty(), onOpen) }
+        Box(Modifier.padding(top = 10.dp)) { Board(rows.orEmpty(), onOpen, onSeen = { r -> scope.launch { model.seen(r) } }, onSeenAll = { scope.launch { model.seenEverything() } }) }
         if (mine != null) MyToday(mine, today, onOpen)
         SectionHead(StartText.AREAS)
         BoxCard {
@@ -124,12 +126,13 @@ fun StartScreen(
 }
 
 @Composable
-private fun Board(rows: List<BoardRow>, onOpen: (Target) -> Unit) {
+private fun Board(rows: List<BoardRow>, onOpen: (Target) -> Unit, onSeen: (BoardRow) -> Unit, onSeenAll: () -> Unit) {
     val p = LocalPalette.current
     Column(Modifier.fillMaxWidth().clip(RadiusMd).background(p.board).padding(horizontal = 16.dp, vertical = 14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(StartText.BOARD, style = MaterialTheme.typography.titleLarge.copy(fontSize = 19.sp), color = p.boardInk, modifier = Modifier.weight(1f).semantics { heading() })
-            Text(StartText.count(rows.size), style = MaterialTheme.typography.bodySmall, color = p.boardSoft)
+            if (rows.isEmpty()) Text(StartText.count(0), style = MaterialTheme.typography.bodySmall, color = p.boardSoft)
+            else BoardChip(StartText.SEEN_ALL, StartText.SEEN_ALL, soft = true, onClick = onSeenAll)
         }
         HorizontalDivider(color = p.boardRule)
         if (rows.isEmpty()) Text(StartText.BOARD_EMPTY, style = MaterialTheme.typography.bodyLarge, color = p.boardSoft, modifier = Modifier.padding(top = 12.dp, bottom = 2.dp))
@@ -140,25 +143,36 @@ private fun Board(rows: List<BoardRow>, onOpen: (Target) -> Unit) {
                 is BoardRow.Todo -> Target(Tab.Todos)
                 is BoardRow.Event -> Target(Tab.Kalender, date = java.time.Instant.parse(r.start).atZone(java.time.ZoneId.systemDefault()).toLocalDate())
             }
-            Row(
-                Modifier.fillMaxWidth().clickable(role = Role.Button) { onOpen(target) }.padding(vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(StartText.time(r.latestAt), style = MaterialTheme.typography.titleMedium, color = p.boardInk, modifier = Modifier.width(52.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(StartText.line(r), style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), color = p.boardInk)
-                    Text(StartText.area(r), style = MaterialTheme.typography.bodySmall, color = p.boardSoft)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    Modifier.weight(1f).clickable(role = Role.Button) { onOpen(target) }.padding(vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(StartText.time(r.latestAt), style = MaterialTheme.typography.titleMedium, color = p.boardInk, modifier = Modifier.width(52.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(StartText.line(r), style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), color = p.boardInk)
+                        Text(StartText.area(r), style = MaterialTheme.typography.bodySmall, color = p.boardSoft)
+                    }
                 }
-                Text(
-                    StartText.NEW, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp), color = p.changeInk,
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(p.change).padding(horizontal = 8.dp, vertical = 4.dp),
-                )
+                // A tick, not a word: on a small phone the line itself needs the room.
+                BoardChip("✓", StartText.seenLabel(StartText.line(r)), soft = false, round = true) { onSeen(r) }
             }
         }
     }
 }
 
+
+/** A small round button on the board: "Gesehen" on a line, "Alle gesehen" at the top. */
+@Composable
+private fun BoardChip(text: String, label: String, soft: Boolean, round: Boolean = false, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    Box(
+        Modifier.heightIn(min = 44.dp).then(if (round) Modifier.size(44.dp) else Modifier).clip(RoundedCornerShape(50)).border(1.dp, p.boardRule, RoundedCornerShape(50))
+            .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label }.padding(horizontal = if (round) 0.dp else 12.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, style = MaterialTheme.typography.labelMedium.copy(fontSize = if (round) 20.sp else 14.sp), color = if (soft) p.boardSoft else p.boardInk) }
+}
 
 @Composable
 private fun MyToday(model: TodayModel, today: LocalDate, onOpen: (Target) -> Unit) {

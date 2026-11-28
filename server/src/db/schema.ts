@@ -102,6 +102,19 @@ export const boardSeen = pgTable("board_seen", {
   seenAt: timestamp("seen_at", { withTimezone: true }).notNull(),
 });
 
+/** Lines on the board one member ticked off as seen; "all seen" moves boardSeen and clears these. */
+export const boardDismissed = pgTable(
+  "board_dismissed",
+  {
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.memberId, t.key] })],
+);
+
 export const todos = pgTable("todos", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),

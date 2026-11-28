@@ -6,6 +6,7 @@ import { expect } from "vitest";
 /** Example responses the native apps parse in their own tests (repo folder `contract/`). */
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "contract");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const IN_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 
 /** Ids become stable placeholders, so the files only change when the shape does. */
 function stable(value: unknown, ids: Map<string, string>): unknown {
@@ -13,6 +14,8 @@ function stable(value: unknown, ids: Map<string, string>): unknown {
     if (!ids.has(value)) ids.set(value, `00000000-0000-4000-8000-${String(ids.size + 1).padStart(12, "0")}`);
     return ids.get(value);
   }
+  // Ids inside a longer text, such as the board's "todo:<id>:<time>".
+  if (typeof value === "string" && IN_TEXT.test(value)) return value.replace(new RegExp(IN_TEXT.source, "g"), (id) => stable(id, ids) as string);
   if (Array.isArray(value)) return value.map((v) => stable(v, ids));
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stable(v, ids)]));
   return value;

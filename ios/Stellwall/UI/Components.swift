@@ -166,10 +166,18 @@ struct Field: View {
 }
 
 /** A sheet with a title; content scrolls and stays above the keyboard. */
-struct SheetBody<Content: View>: View {
+struct SheetBody<Content: View, Footer: View>: View {
     let title: String
     @ViewBuilder let content: Content
+    /** Save and cancel: they stay at the bottom while a long list scrolls behind them. */
+    @ViewBuilder let footer: Footer
     @Environment(\.palette) private var p
+
+    init(title: String, @ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {
+        self.title = title
+        self.content = content()
+        self.footer = footer()
+    }
 
     var body: some View {
         ScrollView {
@@ -180,8 +188,22 @@ struct SheetBody<Content: View>: View {
             .padding(20)
         }
         .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if Footer.self != EmptyView.self {
+                VStack(spacing: 10) { footer }
+                    .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+                    .background(p.ground.color.ignoresSafeArea(edges: .bottom))
+                    .overlay(alignment: .top) { Rectangle().fill(p.rule.color).frame(height: 1) }
+            }
+        }
         .background(p.ground.color.ignoresSafeArea())
         .presentationDragIndicator(.visible)
+    }
+}
+
+extension SheetBody where Footer == EmptyView {
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.init(title: title, content: content, footer: { EmptyView() })
     }
 }
 

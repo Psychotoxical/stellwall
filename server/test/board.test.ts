@@ -43,4 +43,34 @@ describe("board", () => {
     expect((await as(app, f.alex.cookie).post("/api/board/seen")).statusCode).toBe(200);
     expect((await as(app, f.alex.cookie).get("/api/board")).json()).toEqual([]);
   });
+
+  it("one line goes away when it is ticked as seen; the others stay, also for the rest of the family", async () => {
+    const { app } = await createTestApp();
+    const f = await setupFamily(app);
+    const alex = as(app, f.alex.cookie);
+    const listId = ((await alex.get("/api/lists")).json() as { id: string }[])[0]!.id;
+    await as(app, f.sam.cookie).post(`/api/lists/${listId}/items`, { name: "Milch" });
+    await as(app, f.sam.cookie).post(`/api/lists/${listId}/items`, { name: "Brot" });
+    await as(app, f.kim.cookie).post(`/api/lists/${listId}/items`, { name: "Käse" });
+    const rows = (await alex.get("/api/board")).json() as (Row & { keys: string[] })[];
+    expect(rows).toHaveLength(2);
+    const sams = rows.find((r) => r.who === f.sam.id)!;
+    expect(sams.keys).toHaveLength(2);
+    expect((await alex.post("/api/board/dismiss", { keys: sams.keys })).statusCode).toBe(200);
+    expect(((await alex.get("/api/board")).json() as Row[]).map((r) => r.who)).toEqual([f.kim.id]);
+    expect(((await as(app, f.kim.cookie).get("/api/board")).json() as Row[]).map((r) => r.who)).toEqual([f.sam.id]);
+    // Something new from Sam shows up again on its own.
+    await as(app, f.sam.cookie).post(`/api/lists/${listId}/items`, { name: "Eier" });
+    const again = ((await alex.get("/api/board")).json() as Row[]).find((r) => r.who === f.sam.id)!;
+    expect(again.count).toBe(1);
+  });
+
+  it("refuses odd keys", async () => {
+    const { app } = await createTestApp();
+    const f = await setupFamily(app);
+    const alex = as(app, f.alex.cookie);
+    expect((await alex.post("/api/board/dismiss", { keys: [] })).statusCode).toBe(400);
+    expect((await alex.post("/api/board/dismiss", { keys: ["x".repeat(300)] })).statusCode).toBe(400);
+    expect((await alex.post("/api/board/dismiss", {})).statusCode).toBe(400);
+  });
 });

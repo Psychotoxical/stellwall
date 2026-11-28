@@ -13,3 +13,4 @@ export * from "./calendar/expand.ts";
 export * from "./calendar/birthdays.ts";
 export * from "./meals/ingredients.ts";
 export * from "./notify/times.ts";
+export * from "./meals/markdown.ts";

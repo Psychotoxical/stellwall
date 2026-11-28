@@ -145,3 +145,39 @@ class CookMarksTest {
         assertFalse(store.map.keys.any { it.endsWith("2026-12-02") })
     }
 }
+
+class StepTextTest {
+    @Test fun `a step shows bold without the stars, as in shared`() {
+        val s = stepText("Mit **250 g Butter** und *kalter* Milch")
+        assertEquals("Mit 250 g Butter und kalter Milch", s.text)
+        val bold = s.spanStyles.filter { it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold }.map { s.text.substring(it.start, it.end) }
+        assertEquals(listOf("250 g Butter"), bold)
+        val italic = s.spanStyles.filter { it.item.fontStyle == androidx.compose.ui.text.font.FontStyle.Italic }.map { s.text.substring(it.start, it.end) }
+        assertEquals(listOf("kalter"), italic)
+        assertEquals("2 * 3 Teile, **offen", stepText("2 * 3 Teile, **offen").text)
+    }
+}
+
+class CategoryFilterTest {
+    private val haupt = app.stellwall.api.RecipeCategory("c1", "hauptgericht", "Hauptgericht")
+    private val backen = app.stellwall.api.RecipeCategory("c2", "backen", "Backen")
+    private val book = listOf(
+        RecipeSummary("r1", "pfanne", "Pfanne", 4, false, categories = listOf(haupt)),
+        RecipeSummary("r2", "kuchen", "Kuchen", 4, false, categories = listOf(backen, haupt)),
+        RecipeSummary("r3", "brot", "Brot", 4, false),
+    )
+
+    @Test fun `chips are the categories with recipes, fullest first, as on the web`() {
+        assertEquals(listOf("Hauptgericht", "Backen"), CategoryFilter.chips(book).map { it.name })
+    }
+
+    @Test fun `chips narrow together, and without category stands alone`() {
+        var picked = CategoryFilter.flip(emptyList(), "backen")
+        picked = CategoryFilter.flip(picked, "hauptgericht")
+        assertEquals(listOf("kuchen"), CategoryFilter.shown(book, picked).map { it.slug })
+        picked = CategoryFilter.flip(picked, CategoryFilter.WITHOUT)
+        assertEquals(listOf(CategoryFilter.WITHOUT), picked)
+        assertEquals(listOf("brot"), CategoryFilter.shown(book, picked).map { it.slug })
+        assertEquals(3, CategoryFilter.shown(book, emptyList()).size)
+    }
+}

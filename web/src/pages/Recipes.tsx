@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api.ts";
@@ -17,6 +17,19 @@ export function Recipes() {
     return () => clearTimeout(t);
   }, [q]);
   const list = useRecipeSearch(debounced, true);
+  const [picked, setPicked] = useState<string[]>([]);
+  // Categories that hold recipes, fullest first; "without" stands for recipes in none.
+  const chips = useMemo(() => {
+    const count = new Map<string, { name: string; n: number }>();
+    for (const r of list.data ?? []) for (const c of r.categories ?? []) count.set(c.slug, { name: c.name, n: (count.get(c.slug)?.n ?? 0) + 1 });
+    return [...count.entries()].sort((a, b) => b[1].n - a[1].n || a[1].name.localeCompare(b[1].name, "de")).map(([slug, v]) => ({ slug, name: v.name }));
+  }, [list.data]);
+  const anyWithout = (list.data ?? []).some((r) => !r.categories?.length);
+  const flip = (slug: string) =>
+    setPicked((p) => (slug === WITHOUT ? (p.includes(WITHOUT) ? [] : [WITHOUT]) : p.includes(slug) ? p.filter((x) => x !== slug) : [...p.filter((x) => x !== WITHOUT), slug]));
+  const shown = (list.data ?? []).filter((r) =>
+    picked.includes(WITHOUT) ? !r.categories?.length : picked.every((s) => r.categories?.some((c) => c.slug === s)),
+  );
   const ids = useId();
   const code = list.error instanceof ApiError ? list.error.code : null;
 
@@ -31,11 +44,22 @@ export function Recipes() {
         <label htmlFor={ids + "q"}>{de.meals.search}</label>
         <input id={ids + "q"} value={q} maxLength={100} autoComplete="off" onChange={(e) => setQ(e.target.value)} />
       </div>
+      {(chips.length > 0 || picked.length > 0) && (
+        <div className="catchips" role="group" aria-label={de.meals.categoryFilter}>
+          {chips.map((c) => (
+            <button key={c.slug} type="button" className="catchip" aria-pressed={picked.includes(c.slug)} onClick={() => flip(c.slug)}>{c.name}</button>
+          ))}
+          {anyWithout && (
+            <button type="button" className="catchip" aria-pressed={picked.includes(WITHOUT)} onClick={() => flip(WITHOUT)}>{de.meals.noCategory}</button>
+          )}
+        </div>
+      )}
       {code && <Notice>{de.meals.errors[code] ?? de.errors.generic}</Notice>}
       {list.data && list.data.length === 0 && <p className="muted">{debounced ? de.meals.searchEmpty : de.meals.noRecipes}</p>}
-      {list.data && list.data.length > 0 && (
+      {list.data && list.data.length > 0 && shown.length === 0 && <p className="muted">{de.meals.categoryEmpty}</p>}
+      {shown.length > 0 && (
         <ul className="box recipelist">
-          {list.data.map((r) => (
+          {shown.map((r) => (
             <li key={r.id}>
               <Link to={`/essen/rezept/${r.slug}`}>
                 {r.hasImage ? <img src={recipeImage(r.id)} alt="" loading="lazy" /> : <span className="noimg" aria-hidden="true" />}
@@ -49,6 +73,8 @@ export function Recipes() {
     </div>
   );
 }
+
+const WITHOUT = "(ohne)";
 
 const MAX_SIDE = 2000;
 
@@ -99,7 +125,8 @@ function AddRecipe({ onClose }: { onClose: () => void }) {
       const body = way === "photo" ? { images: await Promise.all(files.slice(0, 4).map(photoData)) } : way === "link" ? { url: url.trim() } : { text: text.trim() };
       const r = await api<RecipeSummary>("/api/recipes/import", { method: "POST", body });
       await qc.invalidateQueries({ queryKey: ["recipes"] });
-      nav(`/essen/rezept/${r.slug}`);
+      // Straight to choosing categories, so the new recipe does not end up in none by mistake.
+      nav(`/essen/rezept/${r.slug}?kategorien=1`);
     } catch (e) {
       const code = e instanceof ApiError ? e.code : "";
       setError(de.meals.errors[code] ?? de.errors.generic);

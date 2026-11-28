@@ -123,15 +123,22 @@ fun LinkButton(text: String, onClick: () -> Unit) {
 /** A bottom sheet with a title; its content scrolls and stays above the keyboard. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(title: String, onClose: () -> Unit, footer: (@Composable ColumnScope.() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPalette.current
     ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = p.ground) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = p.ink, modifier = Modifier.semantics { heading() })
-            content()
+        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = if (footer == null) 20.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge, color = p.ink, modifier = Modifier.semantics { heading() })
+                content()
+            }
+            // Save and cancel stay at the bottom while a long list scrolls above them.
+            if (footer != null) {
+                androidx.compose.material3.HorizontalDivider(color = p.rule)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = footer)
+            }
         }
     }
 }

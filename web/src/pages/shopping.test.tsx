@@ -157,7 +157,7 @@ describe("shopping", () => {
   });
 
   it("unseen items of others are highlighted", async () => {
-    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: milk.addedAt, itemIds: ["i1"] }] }) });
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: milk.addedAt, itemIds: ["i1"], keys: ["item:i1"] }] }) });
     renderAt("/einkauf");
     const name = await screen.findByText("Milch");
     await waitFor(() => expect(name.closest(".item")).toHaveClass("is-new"));
@@ -166,10 +166,28 @@ describe("shopping", () => {
 
 describe("home board", () => {
   it("lists what others added and links to the list", async () => {
-    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 3, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a", "b", "c"] }] }) });
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 3, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a", "b", "c"], keys: ["item:a", "item:b", "item:c"] }] }) });
     renderAt("/");
     const link = await screen.findByRole("link", { name: new RegExp(de.board.added("Sam", 3, "Einkauf")) });
     expect(link).toHaveAttribute("href", "/einkauf?liste=l1");
+  });
+
+  it("a line stays until it is ticked as seen, and goes at once then", async () => {
+    const row = { kind: "shopping", who: "s1", whoName: "Sam", listId: "l1", listName: "Einkauf", count: 1, latestAt: "2026-11-26T09:12:00Z", itemIds: ["a"], keys: ["item:a"] };
+    let rows = [row];
+    const calls = fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: rows }), "POST /api/board/dismiss": () => ((rows = []), { status: 200, body: { ok: true } }) });
+    renderAt("/");
+    fireEvent.click(await screen.findByRole("button", { name: de.board.seenLabel(de.board.added("Sam", 1, "Einkauf")) }));
+    await waitFor(() => expect(screen.queryByRole("link", { name: new RegExp(de.board.added("Sam", 1, "Einkauf")) })).toBeNull());
+    expect(calls.find((c) => c.key === "POST /api/board/dismiss")?.body).toEqual({ keys: ["item:a"] });
+  });
+
+  it("looking at the shopping list no longer marks the start page as seen", async () => {
+    const calls = fakeApi({ ...base(), "POST /api/board/seen": () => ({ status: 200, body: { ok: true } }) });
+    const { unmount } = renderAt("/einkauf");
+    await screen.findByText("Milch");
+    unmount();
+    expect(calls.some((c) => c.key === "POST /api/board/seen")).toBe(false);
   });
 });
 

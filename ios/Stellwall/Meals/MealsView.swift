@@ -14,7 +14,7 @@ struct MealsArea: View {
             switch page {
             case .week: MealsView(model: model, onCook: { page = .cook($0) }, onPantry: { page = .pantry }, onOpenList: onOpenList, onRecipes: { page = .recipes })
             case let .cook(c): RecipeView(api: model.api, target: c, onBack: { page = c.date == nil ? .recipes : .week }, onOpenList: onOpenList).backSwipe { page = c.date == nil ? .recipes : .week }
-            case .recipes: RecipesView(api: model.api, onOpen: { page = .cook(CookTarget(slug: $0, servings: nil, date: nil)) }, onBack: { page = .week }).backSwipe { page = .week }
+            case .recipes: RecipesView(api: model.api, onOpen: { page = .cook(CookTarget(slug: $0, servings: nil, date: nil)) }, onMade: { page = .cook(CookTarget(slug: $0, servings: nil, date: nil, sortNow: true)) }, onBack: { page = .week }).backSwipe { page = .week }
             case .pantry: PantryView(model: PantryModel(api: model.api), onBack: { page = .week }).backSwipe { page = .week }
             }
         }
@@ -24,7 +24,8 @@ struct MealsArea: View {
 
 /** A recipe to cook: its slug, the planned servings and the day. */
 /** No date: opened from the recipe book, servings from the recipe. */
-struct CookTarget: Equatable { let slug: String; let servings: Int?; let date: Day? }
+/** sortNow: a recipe just made, its categories are asked for at once. */
+struct CookTarget: Equatable { let slug: String; let servings: Int?; let date: Day?; var sortNow = false }
 
 struct MealsView: View {
     @Bindable var model: MealsModel
@@ -193,6 +194,7 @@ struct MealSheet: View {
                 Field(label: MealText.text, text: $d.text, hint: MealText.textHint)
             }
             if let error { Notice(error) }
+        } footer: {
             PrimaryButton(MealText.save) {
                 var x = d
                 x.useText = showText
@@ -247,6 +249,7 @@ struct RecipeView: View {
     @State private var shop = false
     @State private var planning = false
     @State private var planned: String?
+    @State private var sorting = false
     @Environment(\.palette) private var p
 
     init(api: MealsAPI, target: CookTarget, onBack: @escaping () -> Void, onOpenList: @escaping (String) -> Void) {
@@ -273,6 +276,8 @@ struct RecipeView: View {
                         Stepper(value: Binding(get: { n(r) }, set: { servings = $0 }), in: 1...50) { Text("\(MealText.servings): \(n(r))").font(.swLabel) }
                     }
                     GhostButton(MealText.planRecipe) { planning = true }
+                    GhostButton(MealText.categories) { sorting = true }
+                    if let c = r.categories, !c.isEmpty { Text(c.map(\.name).joined(separator: ", ")).font(.swSmall).foregroundStyle(p.inkSoft.color) }
                     if let planned { Text(planned).font(.swBody) }
                     SectionHead(title: MealText.ingredients)
                     BoxCard {
@@ -280,7 +285,7 @@ struct RecipeView: View {
                             if i > 0 { RowDivider() }
                             tick("i\(i)") {
                                 Text(Amounts.line(ing, factor: Double(n(r)) / Double(max(1, r.servings)))).font(.swLabel).frame(minWidth: 70, alignment: .leading)
-                                Text([ing.food, ing.note].filter { !$0.isEmpty }.joined(separator: ", ")).font(.swBody)
+                                Text(MealText.foodLine(ing)).font(.swBody)
                             }
                         }
                     }
@@ -291,7 +296,7 @@ struct RecipeView: View {
                             if i > 0 { RowDivider() }
                             tick("s\(i)") {
                                 Text("\(i + 1).").font(.swLabel).frame(width: 28, alignment: .leading)
-                                Text(s).font(.swBody)
+                                Text(MealText.step(s)).font(.swBody)
                             }
                         }
                     }
@@ -301,7 +306,15 @@ struct RecipeView: View {
         }
         .background(p.ground.color.ignoresSafeArea())
         .task {
-            do { recipe = try await api.recipe(target.slug) } catch { self.error = MealText.error(error) }
+            do {
+                recipe = try await api.recipe(target.slug)
+                if target.sortNow { sorting = true }
+            } catch { self.error = MealText.error(error) }
+        }
+        .sheet(isPresented: $sorting) {
+            if let r = recipe {
+                CategorySheet(api: api, recipe: r) { recipe = $0; sorting = false }.environment(\.palette, p)
+            }
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
@@ -390,6 +403,11 @@ struct ShopSheet: View {
                         Text(MealText.pantryHint).font(.swSmall).foregroundStyle(p.inkSoft.color)
                         ForEach(pv.pantry, id: \.self) { l in line(l, ShopModel.key("p:", l)) }
                     }
+                }
+            }
+        } footer: {
+            if model.done == nil {
+                if let pv = model.preview {
                     PrimaryButton(MealText.putOn(model.lines.count, pv.listName), enabled: !model.lines.isEmpty && !model.busy) { Task { await model.commit() } }
                 }
                 GhostButton(MealText.cancel) { dismiss() }
@@ -480,17 +498,20 @@ struct PlanSheet: View {
 struct RecipesView: View {
     let api: MealsAPI
     let onOpen: (String) -> Void
+    var onMade: ((String) -> Void)? = nil
     let onBack: () -> Void
     @State private var q = ""
     @State private var list: [RecipeSummary]?
+    @State private var picked: [String] = []
     @State private var error: String?
     @State private var adding = false
     @Environment(\.palette) private var p
 
     /** [list]: what to show before the first answer (pictures in tests). */
-    init(api: MealsAPI, list: [RecipeSummary]? = nil, onOpen: @escaping (String) -> Void, onBack: @escaping () -> Void) {
+    init(api: MealsAPI, list: [RecipeSummary]? = nil, onOpen: @escaping (String) -> Void, onMade: ((String) -> Void)? = nil, onBack: @escaping () -> Void) {
         self.api = api
         self.onOpen = onOpen
+        self.onMade = onMade
         self.onBack = onBack
         _list = State(initialValue: list)
     }
@@ -502,9 +523,24 @@ struct RecipesView: View {
                 PageHead(title: MealText.recipes, sub: MealText.page)
                 PrimaryButton(MealText.addRecipe) { adding = true }
                 Field(label: MealText.search, text: $q, submit: .search)
+                if let list {
+                    let chips = CategoryFilter.chips(list)
+                    if !chips.isEmpty || !picked.isEmpty {
+                        WrapLayout(spacing: 8) {
+                            ForEach(chips, id: \.slug) { c in Chip(text: c.name, on: picked.contains(c.slug)) { picked = CategoryFilter.flip(picked, c.slug) } }
+                            if list.contains(where: { $0.categories?.isEmpty ?? true }) {
+                                Chip(text: MealText.noCategory, on: picked.contains(CategoryFilter.without)) { picked = CategoryFilter.flip(picked, CategoryFilter.without) }
+                            }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(MealText.categoryFilter)
+                    }
+                }
                 if let error { Notice(error) }
                 if let list, list.isEmpty { Text(q.isEmpty ? MealText.noRecipes : MealText.searchEmpty).font(.swBody).foregroundStyle(p.inkSoft.color) }
-                if let list, !list.isEmpty {
+                if let all = list, !all.isEmpty, CategoryFilter.shown(all, picked).isEmpty { Text(MealText.categoryEmpty).font(.swBody).foregroundStyle(p.inkSoft.color) }
+                if let all = list, !CategoryFilter.shown(all, picked).isEmpty {
+                    let list = CategoryFilter.shown(all, picked)
                     BoxCard {
                         ForEach(Array(list.enumerated()), id: \.element.id) { i, r in
                             if i > 0 { RowDivider() }
@@ -530,7 +566,7 @@ struct RecipesView: View {
             do { list = try await api.recipes(q.trimmingCharacters(in: .whitespaces)); error = nil } catch { self.error = MealText.error(error) }
         }
         .sheet(isPresented: $adding) {
-            AddRecipeSheet(api: api) { made in adding = false; onOpen(made.slug) }.environment(\.palette, p)
+            AddRecipeSheet(api: api) { made in adding = false; (onMade ?? onOpen)(made.slug) }.environment(\.palette, p)
         }
     }
 }
@@ -603,6 +639,61 @@ struct AddRecipeSheet: View {
                 if let scanned { pages = scanned }
             }
             .ignoresSafeArea()
+        }
+    }
+}
+
+/** The recipe's categories in Mealie: every category as a chip, the current ones on. */
+struct CategorySheet: View {
+    let api: MealsAPI
+    let recipe: Recipe
+    let onSaved: (Recipe) -> Void
+    @State private var all: [RecipeCategory]?
+    @State private var on: Set<String>
+    @State private var busy = false
+    @State private var error: String?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.palette) private var p
+
+    /** [preset]: the categories to show before Mealie answers (pictures in tests). */
+    init(api: MealsAPI, recipe: Recipe, preset: [RecipeCategory]? = nil, onSaved: @escaping (Recipe) -> Void) {
+        self.api = api
+        self.recipe = recipe
+        self.onSaved = onSaved
+        _all = State(initialValue: preset)
+        _on = State(initialValue: Set((recipe.categories ?? []).map(\.id)))
+    }
+
+    var body: some View {
+        SheetBody(title: MealText.categories) {
+            Text(MealText.categoriesHint).font(.swSmall).foregroundStyle(p.inkSoft.color)
+            if let all, all.isEmpty { Text(MealText.categoriesNone).font(.swBody).foregroundStyle(p.inkSoft.color) }
+            if let all {
+                WrapLayout(spacing: 8) {
+                    ForEach(all) { c in Chip(text: c.name, on: on.contains(c.id)) { if on.contains(c.id) { on.remove(c.id) } else { on.insert(c.id) } } }
+                }
+            }
+            if let error { Notice(error) }
+        } footer: {
+            PrimaryButton(MealText.save, enabled: all != nil && !busy) {
+                busy = true
+                Task {
+                    do {
+                        // In the order Mealie lists them, so the request is the same each time.
+                        let ids = (all ?? []).map(\.id).filter { on.contains($0) }
+                        onSaved(try await api.setCategories(slug: recipe.slug, ids: ids))
+                        Haptic.done()
+                    } catch {
+                        self.error = MealText.error(error)
+                    }
+                    busy = false
+                }
+            }
+            GhostButton(MealText.cancel) { dismiss() }
+        }
+        .task {
+            guard all == nil else { return }
+            do { all = try await api.categories() } catch { self.error = MealText.error(error) }
         }
     }
 }

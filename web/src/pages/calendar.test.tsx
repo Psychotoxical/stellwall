@@ -104,7 +104,7 @@ describe("calendar import", () => {
 
 describe("home with calendar", () => {
   it("the board says who entered an event for me", async () => {
-    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "event", who: "s1", whoName: "Sam", eventId: "e1", title: "Zahnarzt", start: local("15:30"), allDay: false, latestAt: new Date().toISOString() }] }) });
+    fakeApi({ ...base(), "GET /api/board": () => ({ status: 200, body: [{ kind: "event", who: "s1", whoName: "Sam", eventId: "e1", title: "Zahnarzt", start: local("15:30"), allDay: false, latestAt: new Date().toISOString(), keys: ["event:e1:1"] }] }) });
     renderAt("/");
     expect(await screen.findByText(new RegExp("Sam hat dir einen Termin eingetragen: Zahnarzt"))).toBeInTheDocument();
   });

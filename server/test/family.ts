@@ -24,6 +24,7 @@ export function as(app: FastifyInstance, cookie: string) {
     get: (url: string) => app.inject({ method: "GET", url, headers: { cookie } }),
     post: (url: string, payload?: unknown) => app.inject({ method: "POST", url, headers: { ...H, cookie }, payload: payload as object }),
     patch: (url: string, payload: unknown) => app.inject({ method: "PATCH", url, headers: { ...H, cookie }, payload: payload as object }),
+    put: (url: string, payload: unknown) => app.inject({ method: "PUT", url, headers: { ...H, cookie }, payload: payload as object }),
     del: (url: string) => app.inject({ method: "DELETE", url, headers: { ...H, cookie } }),
   };
 }

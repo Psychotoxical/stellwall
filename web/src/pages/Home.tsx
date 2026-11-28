@@ -4,7 +4,7 @@ import { Icon } from "../icons.ts";
 import { Wordmark } from "../components/Wordmark.tsx";
 import { useMe } from "../session.ts";
 import { de } from "../text/de.ts";
-import { useBoard, useMembers, useTodos } from "../shopping-api.ts";
+import { useBoard, useMembers, useTodos, type BoardRow } from "../shopping-api.ts";
 import { TodoRow } from "./Todos.tsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
@@ -98,44 +98,51 @@ export function Home() {
 
 function Board() {
   const rows = useBoard().data ?? [];
+  const qc = useQueryClient();
   const time = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  // A line stays until it is ticked off here; the board shows the change at once.
+  const tick = async (path: string, body?: object, keys?: string[]) => {
+    if (keys) qc.setQueryData<BoardRow[]>(["board"], (old) => old?.filter((r) => !r.keys.some((k) => keys.includes(k))));
+    else qc.setQueryData<BoardRow[]>(["board"], []);
+    await api(path, { method: "POST", body }).catch(() => {});
+    await qc.invalidateQueries({ queryKey: ["board"] });
+  };
+  const line = (r: BoardRow) =>
+    r.kind === "shopping"
+      ? { to: `/einkauf?liste=${r.listId}`, text: de.board.added(r.whoName, r.count, r.listName), area: de.board.area }
+      : r.kind === "event"
+        ? { to: `/kalender?tag=${ymd(new Date(r.start))}`, text: de.board.entered(r.whoName, r.title, shortDay(ymd(new Date(r.start))) + (r.allDay ? "" : " " + hhmm(r.start))), area: de.board.calendarArea }
+        : { to: "/todos", text: de.board.gave(r.whoName, r.title), area: de.board.todoArea };
   return (
     <section className="board" aria-labelledby="board-h">
       <div className="board-head">
         <h2 id="board-h">{de.home.board}</h2>
-        <span>{de.board.count(rows.length)}</span>
+        {rows.length > 0 ? (
+          <button type="button" className="seenall" onClick={() => void tick("/api/board/seen")}>
+            {de.board.seenAll}
+          </button>
+        ) : (
+          <span>{de.board.count(0)}</span>
+        )}
       </div>
       {rows.length === 0 && <p className="board-empty">{de.home.boardEmpty}</p>}
-      {rows.map((r) =>
-        r.kind === "shopping" ? (
-          <Link key={"s" + r.who + r.listId} to={`/einkauf?liste=${r.listId}`} className="brow">
-            <span className="tm">{time(r.latestAt)}</span>
-            <span className="what">
-              {de.board.added(r.whoName, r.count, r.listName)}
-              <em>{de.board.area}</em>
-            </span>
-            <span className="tag">{de.board.tag}</span>
-          </Link>
-        ) : r.kind === "event" ? (
-          <Link key={"e" + r.eventId} to={`/kalender?tag=${ymd(new Date(r.start))}`} className="brow">
-            <span className="tm">{time(r.latestAt)}</span>
-            <span className="what">
-              {de.board.entered(r.whoName, r.title, shortDay(ymd(new Date(r.start))) + (r.allDay ? "" : " " + hhmm(r.start)))}
-              <em>{de.board.calendarArea}</em>
-            </span>
-            <span className="tag">{de.board.tag}</span>
-          </Link>
-        ) : (
-          <Link key={"t" + r.todoId} to="/todos" className="brow">
-            <span className="tm">{time(r.latestAt)}</span>
-            <span className="what">
-              {de.board.gave(r.whoName, r.title)}
-              <em>{de.board.todoArea}</em>
-            </span>
-            <span className="tag">{de.board.tag}</span>
-          </Link>
-        ),
-      )}
+      {rows.map((r) => {
+        const l = line(r);
+        return (
+          <div key={r.keys.join()} className="brow">
+            <Link to={l.to}>
+              <span className="tm">{time(r.latestAt)}</span>
+              <span className="what">
+                {l.text}
+                <em>{l.area}</em>
+              </span>
+            </Link>
+            <button type="button" className="seen" aria-label={de.board.seenLabel(l.text)} onClick={() => void tick("/api/board/dismiss", { keys: r.keys }, r.keys)}>
+              <span aria-hidden="true">✓</span>
+            </button>
+          </div>
+        );
+      })}
     </section>
   );
 }

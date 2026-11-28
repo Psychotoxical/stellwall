@@ -76,6 +76,8 @@ sealed interface BoardRow {
     val who: String
     val whoName: String
     val latestAt: String
+    /** What /api/board/dismiss takes to tick this line off. */
+    val keys: List<String>
 
     @Serializable
     data class Shopping(
@@ -86,10 +88,11 @@ sealed interface BoardRow {
         val count: Int,
         override val latestAt: String,
         val itemIds: List<String>,
+        override val keys: List<String> = emptyList(),
     ) : BoardRow
 
     @Serializable
-    data class Todo(override val who: String, override val whoName: String, val todoId: String, val title: String, override val latestAt: String) : BoardRow
+    data class Todo(override val who: String, override val whoName: String, val todoId: String, val title: String, override val latestAt: String, override val keys: List<String> = emptyList()) : BoardRow
 
     @Serializable
     data class Event(
@@ -100,6 +103,7 @@ sealed interface BoardRow {
         val start: String,
         val allDay: Boolean,
         override val latestAt: String,
+        override val keys: List<String> = emptyList(),
     ) : BoardRow
 }
 

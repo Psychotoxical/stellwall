@@ -58,6 +58,21 @@ class MealsApiTest {
         assertTrue(app.stellwall.meals.MealText.error(e).startsWith("Mealie konnte daraus kein Rezept machen"))
     }
 
+    @Test fun `categories are listed and set as the server has them`() = runTest {
+        server.enqueue(Contract.response("recipe-categories"))
+        assertEquals(listOf("Backen", "Hauptgericht", "Indisch"), api().categories().map { it.name })
+        server.takeRequest()
+        server.enqueue(Contract.response("recipes"))
+        assertTrue(api().recipes("pf").any { it.categories.isNotEmpty() })
+        server.takeRequest()
+        server.enqueue(Contract.response("recipe-categories-set"))
+        val r = api().setCategories("testrezept-2", listOf("c-backen"))
+        val req = server.takeRequest()
+        assertEquals("PUT", req.method)
+        assertEquals("""{"ids":["c-backen"]}""", req.body?.utf8())
+        assertEquals(listOf("Backen"), r.categories.map { it.name })
+    }
+
     @Test fun `without Mealie the search says so`() = runTest {
         server.enqueue(Contract.response("recipes-not-configured"))
         try {
