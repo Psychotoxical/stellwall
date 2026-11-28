@@ -16,7 +16,11 @@ const recipeRef = z.object({ id: z.string().regex(/^[0-9a-f-]{8,64}$/), slug: z.
 const mealBody = z
   .object({ recipe: recipeRef.nullable().optional(), text: z.string().trim().max(120).nullable().optional(), cookId: z.uuid().nullable(), servings: z.number().int().min(1).max(50) })
   .refine((b) => !!b.recipe !== !!b.text, "recipe or text");
-const previewBody = z.object({ dates: z.array(dateSchema).min(1).max(14), servings: z.number().int().min(1).max(50).optional() });
+// The planned days, or one recipe from the recipe book at the servings asked for.
+const previewBody = z.union([
+  z.object({ dates: z.array(dateSchema).min(1).max(14), servings: z.number().int().min(1).max(50).optional() }).strict(),
+  z.object({ recipe: z.object({ slug: z.string().regex(/^[a-z0-9-]{1,200}$/), servings: z.number().int().min(1).max(50) }) }).strict(),
+]);
 const commitBody = z.object({ lines: z.array(z.object({ food: z.string().trim().min(1).max(80), quantity: z.string().trim().max(30) })).min(1).max(200) });
 const pantryBody = z.object({ name: z.string().trim().min(1).max(80), variants: z.array(z.string().trim().min(1).max(80)).max(20).default([]) });
 const idParam = z.object({ id: z.uuid() });
@@ -104,16 +108,28 @@ export async function mealRoutes(app: FastifyInstance, opts: { db: Db; now: () =
     if (!b.success) return reply.code(400).send({ error: "invalid_input" });
     const target = await mealList(req.member!.id);
     if ("error" in target) return reply.code(409).send({ error: target.error });
-    const meals = await db.select().from(mealPlan).where(inArray(mealPlan.date, b.data.dates));
-    meals.sort((a, c) => a.date.localeCompare(c.date));
     const all: Ingredient[] = [];
     const missing: string[] = [];
+    if ("recipe" in b.data) {
+      const asked = b.data.recipe;
+      try {
+        const r = await mealie.recipe(asked.slug);
+        all.push(...r.ingredients.map((i) => scaleIngredient(i, asked.servings / r.servings)));
+      } catch (e) {
+        if (e instanceof MealieError) return reply.code(e.code === "not_found" ? 404 : 502).send({ error: e.code });
+        throw e;
+      }
+    }
+    const meals = "dates" in b.data ? await db.select().from(mealPlan).where(inArray(mealPlan.date, b.data.dates)) : [];
+    meals.sort((a, c) => a.date.localeCompare(c.date));
+    const dates = "dates" in b.data ? b.data.dates : [];
+    const askedServings = "dates" in b.data ? b.data.servings : undefined;
     for (const m of meals) {
       if (!m.recipeSlug) continue;
       try {
         const r = await mealie.recipe(m.recipeSlug);
         // The recipe page may shop for other servings than planned; that only applies to its one day.
-        const servings = b.data.servings && b.data.dates.length === 1 ? b.data.servings : m.servings;
+        const servings = askedServings && dates.length === 1 ? askedServings : m.servings;
         all.push(...r.ingredients.map((i) => scaleIngredient(i, servings / r.servings)));
       } catch (e) {
         if (e instanceof MealieError && e.code !== "not_found") return reply.code(502).send({ error: e.code });

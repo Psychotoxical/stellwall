@@ -6,6 +6,7 @@
       "slug": "gemuese-pfanne",
       "name": "Gemüsepfanne",
       "servings": 4,
+      "servingsKnown": true,
       "hasImage": true
     },
     {
@@ -13,6 +14,7 @@
       "slug": "pfannkuchen",
       "name": "Pfannkuchen",
       "servings": 2,
+      "servingsKnown": true,
       "hasImage": false
     }
   ]

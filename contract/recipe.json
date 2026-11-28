@@ -5,6 +5,7 @@
     "slug": "gemuese-pfanne",
     "name": "Gemüsepfanne",
     "servings": 4,
+    "servingsKnown": true,
     "hasImage": true,
     "ingredients": [
       {

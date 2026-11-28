@@ -110,3 +110,72 @@ describe("shopping for the meal plan", () => {
     expect((r.json() as { pantry: { food: string; quantity: string }[] }).pantry.map((l) => [l.food, l.quantity])).toEqual([["Mehl", "250 g"], ["Eier", "3×"], ["Öl", "1 EL"]]);
   });
 });
+
+describe("the recipe book", () => {
+  async function withMealie(opts: Parameters<typeof startFakeMealie>[0] = {}) {
+    const s = await start();
+    const mealie = await startFakeMealie(opts);
+    closers.push(mealie.close);
+    const a = as(s.app, s.f.alex.cookie);
+    const list = (await a.post("/api/lists", { name: "Wocheneinkauf", visibility: { everyone: true, memberIds: [] } })).json().id as string;
+    await s.put(s.f.alex.cookie, "/api/settings/mealie", { url: mealie.url, token: TOKEN, listId: list });
+    return { ...s, mealie };
+  }
+
+  it("shops for a recipe without a planned day, at the servings asked for", async () => {
+    const { app, f } = await withMealie();
+    const r = await as(app, f.sam.cookie).post("/api/meals/shopping/preview", { recipe: { slug: "pfannkuchen", servings: 4 } });
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as { pantry: { food: string; quantity: string }[]; special: unknown[] };
+    expect(body.pantry.map((l) => [l.food, l.quantity])).toEqual([["Mehl", "500 g"], ["Eier", "6×"], ["Öl", "2 EL"]]);
+    expect((await as(app, f.sam.cookie).post("/api/meals/shopping/preview", { recipe: { slug: "pfannkuchen", servings: 4 }, dates: ["2026-11-30"] })).statusCode).toBe(400);
+    expect((await as(app, f.sam.cookie).post("/api/meals/shopping/preview", { recipe: { slug: "gibt-es-nicht", servings: 2 } })).statusCode).toBe(404);
+  });
+
+  const PHOTO = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString("base64");
+
+  it("a photo becomes a recipe through Mealie's AI and shows up at once", async () => {
+    const { app, f, mealie } = await withMealie();
+    const a = as(app, f.sam.cookie);
+    expect(((await a.get("/api/recipes?q=Foto")).json() as unknown[]).length).toBe(0);
+    const r = await a.post("/api/recipes/import", { images: [{ data: PHOTO, type: "image/jpeg" }] });
+    expect(r.statusCode).toBe(201);
+    // A baking sheet has no servings: the amounts stay as written.
+    expect(r.json()).toMatchObject({ slug: "neu-0", name: "Aus dem Foto", servings: 4, servingsKnown: false });
+    expect(mealie.created).toEqual([{ kind: "ai", content: undefined, images: 1 }]);
+    // The new recipe is in the book right away, not after the cache runs out.
+    expect(((await a.get("/api/recipes?q=Foto")).json() as { slug: string }[]).map((x) => x.slug)).toEqual(["neu-0"]);
+    // Its lines are read by Stellwall even though Mealie did not parse them.
+    const recipe = (await a.get("/api/recipes/neu-0")).json() as { ingredients: { food: string; quantity: number | null; unit: string | null }[] };
+    expect(recipe.ingredients[0]).toMatchObject({ food: "Mehl", quantity: 450, unit: "g", note: "und Mehl zum Arbeiten" });
+  });
+
+  it("a link goes to Mealie's importer, typed text to its AI", async () => {
+    const { app, f, mealie } = await withMealie();
+    const a = as(app, f.sam.cookie);
+    expect((await a.post("/api/recipes/import", { url: "https://example.com/rezept" })).statusCode).toBe(201);
+    expect((await a.post("/api/recipes/import", { text: "Pfannkuchen: 250 g Mehl, 3 Eier. Verrühren und backen." })).statusCode).toBe(201);
+    expect(mealie.created.map((c) => [c.kind, c.url ?? c.content])).toEqual([["url", "https://example.com/rezept"], ["ai", "Pfannkuchen: 250 g Mehl, 3 Eier. Verrühren und backen."]]);
+  });
+
+  it("refuses empty or odd input, and says why Mealie could not", async () => {
+    const { app, f } = await withMealie();
+    const a = as(app, f.sam.cookie);
+    expect((await a.post("/api/recipes/import", {})).statusCode).toBe(400);
+    expect((await a.post("/api/recipes/import", { url: "file:///etc/passwd" })).statusCode).toBe(400);
+    expect((await a.post("/api/recipes/import", { images: [{ data: PHOTO, type: "text/html" }] })).statusCode).toBe(400);
+    const bad = await a.post("/api/recipes/import", { url: "https://example.com/kaputt" });
+    expect(bad.statusCode).toBe(422);
+    expect(bad.json()).toEqual({ error: "mealie_import_failed" });
+  });
+
+  it("an AI that fails or a Mealie user who may only read are told apart", async () => {
+    const ai = await withMealie({ failAi: true });
+    expect((await as(ai.app, ai.f.sam.cookie).post("/api/recipes/import", { text: "Brot" })).json()).toEqual({ error: "mealie_import_failed" });
+    const ro = await withMealie({ readOnly: true });
+    const r = await as(ro.app, ro.f.sam.cookie).post("/api/recipes/import", { text: "Brot" });
+    expect(r.statusCode).toBe(502);
+    expect(r.json()).toEqual({ error: "mealie_auth" });
+  });
+});
+

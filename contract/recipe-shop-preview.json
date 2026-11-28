@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "listId": "00000000-0000-4000-8000-000000000001",
+    "listName": "Wocheneinkauf",
+    "special": [],
+    "pantry": [
+      {
+        "food": "Mehl",
+        "quantity": "500 g",
+        "display": "500 g"
+      },
+      {
+        "food": "Eier",
+        "quantity": "6×",
+        "display": "6"
+      },
+      {
+        "food": "Öl",
+        "quantity": "2 EL",
+        "display": "2 EL"
+      }
+    ],
+    "missing": []
+  }
+}

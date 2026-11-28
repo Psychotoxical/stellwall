@@ -34,6 +34,9 @@ describe("contract: meals and to-dos", () => {
     contract("meals-shop-preview", preview);
     contract("meals-shop-commit", await alex.post("/api/meals/shopping/commit", { lines: [{ food: "Paprika", quantity: "1×" }, { food: "Reis", quantity: "100 g" }] }));
     contract("meal-deleted", await alex.del("/api/meals/2026-12-02"));
+    contract("recipe-shop-preview", await alex.post("/api/meals/shopping/preview", { recipe: { slug: "pfannkuchen", servings: 4 } }));
+    contract("recipe-imported", await alex.post("/api/recipes/import", { text: "Pfannkuchen: 250 g Mehl, 3 Eier." }));
+    contract("recipe-import-failed", await alex.post("/api/recipes/import", { url: "https://example.com/kaputt" }));
   });
 
   it("writes the to-do examples the apps parse", async () => {

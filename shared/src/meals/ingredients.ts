@@ -27,6 +27,8 @@ export function normalizeUnit(u: string | null | undefined): string | null {
 const VAGUE = /^(etwas|ein wenig|ein paar|nach belieben)\s+/i;
 const ABOUT = /^(ca\.|circa|etwa|ungefähr)\s*/i;
 const TO_TASTE = /\s+(nach belieben)$/i;
+/** What a cookbook says something is for ("zum Arbeiten", "für die Form"). */
+const PURPOSE = /\s(?:zum|zur|für die|für den|für das)\s/i;
 
 /** Reads a free-text recipe line such as "1 ½ EL Öl" or "1 Dose Tomaten (400 g)". */
 export function parseIngredient(text: string): Ingredient {
@@ -56,6 +58,14 @@ export function parseIngredient(text: string): Ingredient {
   if (taste) {
     notes.push(taste[1]!);
     s = s.slice(0, s.length - taste[0].length);
+  }
+  // "Mehl und Mehl zum Arbeiten", "Butter und Fett für die Form": the kitchen's extra is not bought.
+  const purpose = s.search(PURPOSE);
+  if (purpose > 0) {
+    const and = s.slice(0, purpose).lastIndexOf(" und ");
+    const cut = and > 0 ? and : purpose;
+    notes.push(s.slice(cut).trim());
+    s = s.slice(0, cut);
   }
   // "500g" and "2 – 3" / "2 bis 3" are read like "500 g" and "2-3".
   s = s.replace(/^(\d+(?:[.,]\d+)?)(?=[a-zA-ZäöüÄÖÜß])/, "$1 ").replace(/^(\d+(?:[.,]\d+)?)\s*(?:–|—|-|bis)\s*(?=\d)/, "$1-");
