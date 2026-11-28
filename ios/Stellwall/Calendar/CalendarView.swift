@@ -13,6 +13,7 @@ struct CalendarView: View {
         Group {
             if showBirthdays {
                 BirthdaysView(model: birthdays) { showBirthdays = false }
+                    .backSwipe { showBirthdays = false }
             } else {
                 page
             }
@@ -23,7 +24,7 @@ struct CalendarView: View {
             await model.load()
         }
         .sheet(item: $form) { f in
-            EventSheet(model: model, form: f).themed(world: model.me.world, dark: p.ground.luminance < 0.18)
+            EventSheet(model: model, form: f).themed(like: p)
         }
     }
 
@@ -76,6 +77,8 @@ struct CalendarView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
     }
 
     private func open(_ i: CalendarInstance) {

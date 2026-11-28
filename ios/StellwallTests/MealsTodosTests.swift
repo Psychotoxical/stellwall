@@ -19,6 +19,11 @@ final class FakeMeals: MealsAPI {
     func pantry() async throws -> [Staple] { [] }
     func addStaple(_ name: String) async throws {}
     func deleteStaple(_ id: String) async throws {}
+    var shopped: [String] = []
+    func shopRecipe(slug: String, servings: Int) async throws -> ShopPreview {
+        shopped.append("\(slug):\(servings)")
+        return try JSONDecoder().decode(ShopPreview.self, from: Contract.load("recipe-shop-preview").body)
+    }
 }
 
 @MainActor
@@ -83,6 +88,41 @@ final class MealsTodosTests: XCTestCase {
         XCTAssertNotNil(try? JSONDecoder().decode(TodoRule.self, from: Contract.load("todo").body))
         XCTAssertNotNil(try? JSONDecoder().decode([Meal].self, from: Contract.load("meals").body))
         XCTAssertNotNil(try? JSONDecoder().decode(Recipe.self, from: Contract.load("recipe").body))
+    }
+
+    func testARecipeFromTheBookShopsOnItsOwn() async {
+        let f = FakeMeals()
+        let shop = ShopModel(api: f)
+        await shop.load([], servings: nil, recipe: ("pfannkuchen", 4))
+        XCTAssertEqual(f.shopped, ["pfannkuchen:4"])
+        XCTAssertNotNil(shop.preview)
+    }
+
+    func testTheRecipeBookAsTheServerSendsIt() async throws {
+        let made = try APIClient.decoder.decode(RecipeSummary.self, from: Contract.load("recipe-imported").body)
+        XCTAssertEqual(made.slug, "neu-0")
+        XCTAssertEqual(made.servingsKnown, false)
+        XCTAssertEqual(try APIClient.decoder.decode(Recipe.self, from: Contract.load("recipe").body).servingsKnown, true)
+        StubProtocol.reset()
+        StubProtocol.enqueue("recipe-imported")
+        _ = try await StubProtocol.client().importRecipe(url: nil, text: "Pfannkuchen: 250 g Mehl, 3 Eier.", images: [])
+        XCTAssertEqual(StubProtocol.bodyJSON(0) as NSDictionary, ["text": "Pfannkuchen: 250 g Mehl, 3 Eier."] as NSDictionary)
+        StubProtocol.enqueue("recipe-import-failed")
+        do {
+            _ = try await StubProtocol.client().importRecipe(url: "https://example.com/kaputt", text: nil, images: [])
+            XCTFail("Mealie said no")
+        } catch {
+            XCTAssertTrue(MealText.error(error).hasPrefix("Mealie konnte daraus kein Rezept machen"))
+        }
+        StubProtocol.enqueue("recipe-shop-preview")
+        _ = try await StubProtocol.client().shopRecipe(slug: "pfannkuchen", servings: 4)
+        XCTAssertEqual(StubProtocol.bodyJSON(2) as NSDictionary, ["recipe": ["slug": "pfannkuchen", "servings": 4]] as NSDictionary)
+    }
+
+    func testTheRecipeBookPictures() async {
+        let book = [RecipeSummary(id: "r1", slug: "gemuese-pfanne", name: "Gemüsepfanne", servings: 4, hasImage: false), RecipeSummary(id: "r2", slug: "zimtecken", name: "Zimtecken vom Blech", servings: 4, hasImage: false, servingsKnown: false)]
+        snap(RecipesView(api: FakeMeals(), list: book, onOpen: { _ in }, onBack: {}), world: "salbei", named: "recipes")
+        snap(AddRecipeSheet(api: FakeMeals()) { _ in }, world: "psysonic", dark: true, named: "add-recipe-dark")
     }
 
     func testMealsPicture() async {

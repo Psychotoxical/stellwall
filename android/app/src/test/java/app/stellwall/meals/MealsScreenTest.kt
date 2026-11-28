@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import app.stellwall.api.Member
 import app.stellwall.calendar.FakeCalendar
 import app.stellwall.start.StartModel
@@ -48,6 +49,29 @@ class MealsScreenTest {
         // The picture before the tap: a tap leaves a ripple that differs between machines.
         compose.onRoot().captureRoboImage("src/test/screenshots/recipe.png")
         compose.onNode(hasText("Reis kochen.") and androidx.compose.ui.test.isToggleable()).performClick().assertIsOn()
+    }
+
+    @Test fun `the recipe book opens a recipe without a day, shops for it and plans it`() {
+        val f = FakeMeals()
+        val m = MealsModel(f, today = { day })
+        compose.setContent { StellwallTheme(world = "salbei", dark = false) { MealsArea(m, f) } }
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText(MealText.RECIPES)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(MealText.RECIPES).performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Pfannkuchen")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().captureRoboImage("src/test/screenshots/recipes.png")
+        compose.onNodeWithText("Pfannkuchen").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText(MealText.SHOP_RECIPE)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(MealText.SHOP_RECIPE).performScrollTo().performClick()
+        // The sheet takes a moment to open in tests; then it asks for the recipe's own shopping.
+        compose.waitUntil(10_000) { compose.onAllNodes(hasText(MealText.SHOP_TITLE)).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { "shopRecipe:pfannkuchen:4" in f.calls }
+    }
+
+    @Test fun `a baking sheet keeps its amounts as written`() {
+        val f = FakeMeals().apply { bakingSheet = true }
+        compose.setContent { StellwallTheme(world = "salbei", dark = false) { RecipeScreen(f, MealPage.Cook("zimtecken", null, null, fromBook = true), onBack = {}, onOpenList = {}) } }
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText(MealText.AS_WRITTEN)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(MealText.SERVINGS).assertDoesNotExist()
     }
 
     @Test fun `to-dos and today on Start`() {

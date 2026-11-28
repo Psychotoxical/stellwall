@@ -13,6 +13,8 @@ struct AppShell: View {
     @State private var target: Target?
     @State private var more = false
     @State private var documents = false
+    /** Counts taps on the tab that is already open: each one starts that tab afresh, at its top. */
+    @State private var again: [Tab: Int] = [:]
     @State private var start: StartModel
     @State private var shopping: ShoppingModel
     @State private var calendar: CalendarModel
@@ -50,9 +52,13 @@ struct AppShell: View {
     }
 
     var body: some View {
-        TabView(selection: Binding(get: { tab }, set: { t in tab = t; more = false; documents = false; if t == .einkauf { listId = nil } })) {
+        TabView(selection: Binding(get: { tab }, set: { t in
+            if t == tab { again[t, default: 0] += 1 }
+            tab = t; more = false; documents = false; if t == .einkauf { listId = nil }
+        })) {
             ForEach(Tab.allCases, id: \.self) { t in
                 area(t)
+                    .id(again[t, default: 0])
                     .tabItem { Label { Text(t.rawValue) } icon: { t.icon.image } }
                     .tag(t)
             }
@@ -91,9 +97,11 @@ struct AppShell: View {
     @ViewBuilder private func area(_ t: Tab) -> some View {
         if t == .start && documents {
             DocumentsArea(model: docs, startId: target?.documentId) { documents = false }
+                .backSwipe { documents = false }
                 .id(target?.documentId ?? "")
         } else if t == .start && more {
             MoreView(api: api, member: me, webUrl: webUrl, theme: $theme, onMemberChanged: onMemberChanged, onSignOut: onSignOut, onBack: { more = false })
+                .backSwipe { more = false }
         } else {
             switch t {
             case .start:

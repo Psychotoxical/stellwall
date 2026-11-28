@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 data class RecipeRef(val id: String, val slug: String, val name: String)
 
 @Serializable
-data class RecipeSummary(val id: String, val slug: String, val name: String, val servings: Int, val hasImage: Boolean)
+/** servingsKnown false: Mealie has no servings (a baking sheet); the amounts are as written. */
+data class RecipeSummary(val id: String, val slug: String, val name: String, val servings: Int, val hasImage: Boolean, val servingsKnown: Boolean = true)
 
 @Serializable
 data class Ingredient(val quantity: Double?, val unit: String?, val food: String, val note: String)
@@ -20,6 +21,7 @@ data class Recipe(
     val hasImage: Boolean,
     val ingredients: List<Ingredient>,
     val steps: List<String>,
+    val servingsKnown: Boolean = true,
 )
 
 /** Lunch on one day: a recipe from Mealie or a free text. */
@@ -44,6 +46,20 @@ data class Staple(val id: String, val name: String, val variants: List<String>)
 
 @Serializable
 internal data class ShopRequest(val dates: List<String>, val servings: Int? = null)
+
+/** One recipe from the recipe book, at the servings asked for. */
+@Serializable
+internal data class RecipeShopRequest(val recipe: RecipeServings)
+
+@Serializable
+internal data class RecipeServings(val slug: String, val servings: Int)
+
+/** A new recipe for Mealie: a link, or typed text and/or photos for its AI. */
+@Serializable
+internal data class ImportRequest(val url: String? = null, val text: String? = null, val images: List<ImportImage>? = null)
+
+@Serializable
+data class ImportImage(val data: String, val type: String)
 
 @Serializable
 internal data class CommitLine(val food: String, val quantity: String)

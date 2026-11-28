@@ -5,6 +5,7 @@ import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -39,6 +40,22 @@ class MealsApiTest {
         val req = server.takeRequest()
         assertEquals("PUT", req.method)
         assertEquals("""{"recipe":null,"text":"Reste","cookId":null,"servings":4}""", req.body?.utf8())
+    }
+
+    @Test fun `the recipe book shops for one recipe and adds new ones to Mealie`() = runTest {
+        server.enqueue(Contract.response("recipe-shop-preview"))
+        val p = api().shopRecipe("pfannkuchen", 4)
+        assertEquals("""{"recipe":{"slug":"pfannkuchen","servings":4}}""", server.takeRequest().body?.utf8())
+        assertTrue(p.pantry.isNotEmpty())
+        server.enqueue(Contract.response("recipe-imported"))
+        val made = api().importRecipe(text = "Pfannkuchen: 250 g Mehl, 3 Eier.")
+        assertEquals("""{"text":"Pfannkuchen: 250 g Mehl, 3 Eier."}""", server.takeRequest().body?.utf8())
+        assertEquals("neu-0", made.slug)
+        assertEquals(false, made.servingsKnown)
+        server.enqueue(Contract.response("recipe-import-failed"))
+        val e = runCatching { api().importRecipe(url = "https://example.com/kaputt") }.exceptionOrNull() as ApiException
+        assertEquals("mealie_import_failed", e.code)
+        assertTrue(app.stellwall.meals.MealText.error(e).startsWith("Mealie konnte daraus kein Rezept machen"))
     }
 
     @Test fun `without Mealie the search says so`() = runTest {

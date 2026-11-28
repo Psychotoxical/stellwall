@@ -95,13 +95,22 @@ enum ThemeChoice: String, CaseIterable {
 
 /** Gives everything below the person's colour world, light or dark. */
 struct Themed: ViewModifier {
-    let world: String
-    let dark: Bool
+    let palette: Palette
     /** Set when the person chose light or dark; nil follows the system. */
     let scheme: ColorScheme?
 
+    init(world: String, dark: Bool, scheme: ColorScheme?) {
+        palette = Palette.of(world: world, dark: dark)
+        self.scheme = scheme
+    }
+
+    init(palette: Palette, scheme: ColorScheme?) {
+        self.palette = palette
+        self.scheme = scheme
+    }
+
     func body(content: Content) -> some View {
-        let p = Palette.of(world: world, dark: dark)
+        let p = palette
         content
             .environment(\.palette, p)
             .tint(p.primary.color)
@@ -111,6 +120,8 @@ struct Themed: ViewModifier {
 }
 
 extension View {
+    /** A sheet in the colours of the page that opens it: whatever colour world and light or dark it shows now. */
+    func themed(like p: Palette) -> some View { modifier(Themed(palette: p, scheme: p.ground.luminance < 0.18 ? .dark : .light)) }
     func themed(world: String, dark: Bool) -> some View { modifier(Themed(world: world, dark: dark, scheme: dark ? .dark : .light)) }
     func themed(world: String, choice: ThemeChoice, system: ColorScheme) -> some View {
         let forced: ColorScheme? = choice == .system ? nil : (choice == .dark ? .dark : .light)

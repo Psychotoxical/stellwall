@@ -48,6 +48,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import app.stellwall.ui.RefreshPage
 
 /** Where a tap on Start leads. */
 data class Target(val tab: Tab, val listId: String? = null, val date: java.time.LocalDate? = null, val birthdays: Boolean = false, val cook: app.stellwall.meals.MealPage.Cook? = null, val more: Boolean = false, val documents: Boolean = false, val documentId: String? = null)
@@ -83,7 +84,8 @@ fun StartScreen(
         LaunchedEffect(mine, live) { live.collect { mine.onLive(it) } }
     }
     val p = LocalPalette.current
-    Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp)) {
+    RefreshPage({ model.load() }) {
+        Column(Modifier.fillMaxSize().background(p.ground).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { Wordmark(size = 22) }
             // The round picture top right leads to Mehr, as in the web app.
@@ -117,6 +119,7 @@ fun StartScreen(
                 }
             }
         }
+    }
     }
 }
 

@@ -17,6 +17,7 @@ struct DocumentsArea: View {
         Group {
             if let id = openId, let doc = model.items.first(where: { $0.id == id }) ?? single {
                 DocumentView(model: model, doc: doc, today: today) { openId = nil }
+                    .backSwipe { openId = nil }
             } else {
                 DocumentsView(model: model, today: today, onOpen: { openId = $0.id }, onBack: onBack)
             }
@@ -80,6 +81,8 @@ struct DocumentsView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
         .task(id: q) {
             if q == model.query { return }
             try? await Task.sleep(for: .milliseconds(250))

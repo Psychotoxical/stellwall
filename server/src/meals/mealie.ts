@@ -11,13 +11,16 @@ const RECIPE_TTL_MS = 60 * 60_000;
 const MAX_CACHE = 200;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 20;
+/** Reading a photo with AI takes Mealie a while. */
+const IMPORT_TIMEOUT_MS = 180_000;
 
-export type RecipeSummary = { id: string; slug: string; name: string; servings: number; hasImage: boolean };
+/** servingsKnown false: Mealie has no servings ("für 1 Backblech"); 4 stands in, so amounts are as written. */
+export type RecipeSummary = { id: string; slug: string; name: string; servings: number; servingsKnown: boolean; hasImage: boolean };
 export type Recipe = RecipeSummary & { ingredients: Ingredient[]; steps: string[] };
 
 /** Why Mealie could not help; the code goes to the page, never the key or Mealie's own text. */
 export class MealieError extends Error {
-  code: "mealie_not_configured" | "mealie_auth" | "mealie_unreachable" | "mealie_bad" | "not_found";
+  code: "mealie_not_configured" | "mealie_auth" | "mealie_unreachable" | "mealie_bad" | "not_found" | "mealie_import_failed";
   constructor(code: MealieError["code"]) {
     super(code);
     this.code = code;
@@ -29,7 +32,8 @@ type MealieRecipe = { id?: string; slug?: string; name?: string; recipeServings?
 
 function summary(r: MealieRecipe): RecipeSummary {
   if (!r.id || !r.slug || !r.name) throw new MealieError("mealie_bad");
-  return { id: r.id, slug: r.slug, name: r.name, servings: r.recipeServings && r.recipeServings > 0 ? r.recipeServings : 4, hasImage: !!r.image };
+  const known = !!r.recipeServings && r.recipeServings > 0;
+  return { id: r.id, slug: r.slug, name: r.name, servings: known ? r.recipeServings! : 4, servingsKnown: known, hasImage: !!r.image };
 }
 
 /** Mealie's structured fields when it parsed the line, Stellwall's own reading when it did not. */
@@ -77,6 +81,31 @@ export function createMealie(db: Db, timeoutMs: number) {
     if (!res.ok) throw new MealieError("mealie_unreachable");
     return res;
   }
+  /** A recipe Mealie makes from a link or with its AI; the answer is the new recipe's slug. */
+  async function create(path: string, body: BodyInit, contentType?: string): Promise<string> {
+    const { url, token } = await config();
+    let res: Response;
+    try {
+      res = await fetch(url + path, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, accept: "application/json", ...(contentType ? { "content-type": contentType } : {}) },
+        body,
+        signal: AbortSignal.timeout(IMPORT_TIMEOUT_MS),
+        redirect: "error",
+      });
+    } catch {
+      throw new MealieError("mealie_unreachable");
+    }
+    if (res.status === 401 || res.status === 403) throw new MealieError("mealie_auth");
+    // Mealie could not read the link or its AI failed: the person can try another source.
+    if (res.status >= 400 && res.status < 600 && res.status !== 502 && res.status !== 503 && res.status !== 504) throw new MealieError("mealie_import_failed");
+    if (!res.ok) throw new MealieError("mealie_unreachable");
+    const slug = await res.json().catch(() => null);
+    if (typeof slug !== "string" || !/^[a-z0-9-]{1,200}$/.test(slug)) throw new MealieError("mealie_bad");
+    cache.clear();
+    return slug;
+  }
+
   const json = async <T>(path: string): Promise<T> => {
     const res = await call(path);
     try {
@@ -88,6 +117,13 @@ export function createMealie(db: Db, timeoutMs: number) {
 
   return {
     clear: () => cache.clear(),
+    importUrl: (link: string) => create("/api/recipes/create/url", JSON.stringify({ url: link, includeTags: false }), "application/json"),
+    importAi: (input: { text?: string; images: { data: Buffer; type: string }[] }) => {
+      const form = new FormData();
+      if (input.text) form.append("content", input.text);
+      input.images.forEach((img, i) => form.append("images", new Blob([new Uint8Array(img.data)], { type: img.type }), `photo-${i + 1}.${img.type.split("/")[1]}`));
+      return create("/api/recipes/create/ai", form);
+    },
     search: (q: string) =>
       cached(`s:${q.toLowerCase()}`, LIST_TTL_MS, async () => {
         // Every page, so that browsing without a search word shows the whole collection.
@@ -139,7 +175,17 @@ const settingsBody = z.object({
   listId: z.uuid().nullable().optional(),
 });
 
-const STATUS: Record<MealieError["code"], number> = { mealie_not_configured: 409, mealie_auth: 502, mealie_unreachable: 502, mealie_bad: 502, not_found: 404 };
+const STATUS: Record<MealieError["code"], number> = { mealie_not_configured: 409, mealie_auth: 502, mealie_unreachable: 502, mealie_bad: 502, not_found: 404, mealie_import_failed: 422 };
+
+/** A new recipe from a link, or from photos and/or typed text through Mealie's AI. */
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"] as const;
+const importBody = z
+  .object({
+    url: z.string().trim().max(2000).regex(/^https?:\/\/[^\s]+$/).optional(),
+    text: z.string().trim().min(1).max(20_000).optional(),
+    images: z.array(z.object({ data: z.base64().max(14_000_000), type: z.enum(IMAGE_TYPES) })).min(1).max(4).optional(),
+  })
+  .refine((b) => (b.url ? !b.text && !b.images : !!(b.text || b.images)), { message: "a link, or text and/or photos" });
 
 export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie: Mealie }) {
   const { db, mealie } = opts;
@@ -183,6 +229,20 @@ export async function mealieRoutes(app: FastifyInstance, opts: { db: Db; mealie:
     if (!q.success) return reply.code(400).send({ error: "invalid_input" });
     try {
       return await mealie.search(q.data.q.trim());
+    } catch (e) {
+      return fail(reply, e);
+    }
+  });
+
+  app.post("/api/recipes/import", { preHandler: requireMember, bodyLimit: 60_000_000 }, async (req, reply) => {
+    const b = importBody.safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: "invalid_input" });
+    try {
+      const slug = b.data.url
+        ? await mealie.importUrl(b.data.url)
+        : await mealie.importAi({ text: b.data.text, images: (b.data.images ?? []).map((i) => ({ data: Buffer.from(i.data, "base64"), type: i.type })) });
+      const r = await mealie.recipe(slug);
+      return reply.code(201).send({ id: r.id, slug: r.slug, name: r.name, servings: r.servings, servingsKnown: r.servingsKnown, hasImage: r.hasImage });
     } catch (e) {
       return fail(reply, e);
     }

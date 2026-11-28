@@ -141,3 +141,66 @@ describe("review fixes", () => {
     await waitFor(() => expect(calls.find((c) => c.key === "POST /api/meals/shopping/preview")?.body).toEqual({ dates: [monday], servings: 6 }));
   });
 });
+
+describe("recipe book", () => {
+  const preview = { listId: "l1", listName: "Wocheneinkauf", special: [{ food: "Paprika", quantity: "1×", display: "" }], pantry: [{ food: "Reis", quantity: "200 g", display: "200 g" }], missing: [] };
+
+  it("lists every recipe and opens one without a planned day", async () => {
+    fakeApi(base());
+    renderAt("/essen");
+    fireEvent.click(await screen.findByRole("link", { name: de.meals.recipes }));
+    fireEvent.click(await screen.findByRole("link", { name: /Gemüsepfanne/ }));
+    expect(await screen.findByRole("heading", { name: "Gemüsepfanne" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: de.meals.shopRecipe })).toBeInTheDocument();
+  });
+
+  it("shops for the recipe itself, at the servings set", async () => {
+    const calls = fakeApi(base([], { "POST /api/meals/shopping/preview": () => ({ status: 200, body: preview }) }));
+    renderAt(`/essen/rezept/${veg.slug}`);
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.shopRecipe }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/meals/shopping/preview")?.body).toEqual({ recipe: { slug: veg.slug, servings: 4 } }));
+  });
+
+  it("a recipe goes on a chosen day", async () => {
+    const calls = fakeApi(base([], { "PUT /api/meals/2026-12-05": (b) => ({ status: 200, body: b }) }));
+    renderAt(`/essen/rezept/${veg.slug}`);
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.planRecipe }));
+    const box = await screen.findByRole("dialog", { name: de.meals.planRecipe });
+    fireEvent.change(within(box).getByLabelText(de.meals.planFor), { target: { value: "2026-12-05" } });
+    fireEvent.click(within(box).getByRole("button", { name: de.meals.planRecipe }));
+    await waitFor(() => expect(calls.find((c) => c.key === "PUT /api/meals/2026-12-05")?.body).toEqual({ recipe: veg, text: null, cookId: null, servings: 4 }));
+    expect(await screen.findByText(/eingeplant/)).toBeInTheDocument();
+  });
+
+  it("a baking sheet without servings keeps its amounts as written", async () => {
+    fakeApi(base([], { [`GET /api/recipes/${veg.slug}`]: () => ({ status: 200, body: { ...recipe, servingsKnown: false } }) }));
+    renderAt(`/essen/rezept/${veg.slug}`);
+    expect(await screen.findByText(de.meals.asWritten)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mehr|weniger/i })).toBeNull();
+  });
+
+  it("a recipe added from a link opens right after Mealie made it", async () => {
+    const calls = fakeApi(base([], {
+      "POST /api/recipes/import": () => ({ status: 201, body: { ...veg, servings: 4, servingsKnown: true, hasImage: false } }),
+    }));
+    renderAt("/essen/rezepte");
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.addRecipe }));
+    const box = await screen.findByRole("dialog", { name: de.meals.addRecipe });
+    fireEvent.click(within(box).getByRole("button", { name: de.meals.addWays.link }));
+    fireEvent.change(within(box).getByLabelText(de.meals.link), { target: { value: "https://example.com/rezept" } });
+    fireEvent.click(within(box).getByRole("button", { name: de.meals.importButton }));
+    await waitFor(() => expect(calls.find((c) => c.key === "POST /api/recipes/import")?.body).toEqual({ url: "https://example.com/rezept" }));
+    expect(await screen.findByRole("heading", { name: "Gemüsepfanne" })).toBeInTheDocument();
+  });
+
+  it("says plainly when Mealie could not make a recipe", async () => {
+    fakeApi(base([], { "POST /api/recipes/import": () => ({ status: 422, body: { error: "mealie_import_failed" } }) }));
+    renderAt("/essen/rezepte");
+    fireEvent.click(await screen.findByRole("button", { name: de.meals.addRecipe }));
+    const box = await screen.findByRole("dialog", { name: de.meals.addRecipe });
+    fireEvent.click(within(box).getByRole("button", { name: de.meals.addWays.text }));
+    fireEvent.change(within(box).getByLabelText(de.meals.recipeText), { target: { value: "Brot backen" } });
+    fireEvent.click(within(box).getByRole("button", { name: de.meals.importButton }));
+    expect(await within(box).findByText(de.meals.errors.mealie_import_failed!)).toBeInTheDocument();
+  });
+});

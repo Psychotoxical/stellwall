@@ -45,8 +45,9 @@ struct BirthdaysView: View {
             .padding(16)
         }
         .background(p.ground.color.ignoresSafeArea())
+        .refreshable { await model.load() }
         .task { await model.load() }
-        .sheet(item: $form) { f in BirthdaySheet(model: model, birthday: f.birthday).themed(world: model.me.world, dark: p.ground.luminance < 0.18) }
+        .sheet(item: $form) { f in BirthdaySheet(model: model, birthday: f.birthday).themed(like: p) }
     }
 }
 

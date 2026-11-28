@@ -36,6 +36,8 @@ enum ShopText {
     static let name = "Name"
     static let category = "Bereich im Laden"
     static let deleteItem = "Eintrag löschen"
+    static let tick = "Abhaken"
+    static let untick = "Wieder offen"
     static let renameList = "Liste umbenennen"
     static let deleteList = "Liste löschen"
     static let clearList = "Liste leeren"

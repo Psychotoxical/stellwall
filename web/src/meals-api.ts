@@ -3,7 +3,8 @@ import type { Ingredient } from "@stellwall/shared";
 import { api } from "./api.ts";
 
 export type RecipeRef = { id: string; slug: string; name: string };
-export type RecipeSummary = RecipeRef & { servings: number; hasImage: boolean };
+/** servingsKnown false: Mealie has no servings (a baking sheet); the amounts are as written. */
+export type RecipeSummary = RecipeRef & { servings: number; servingsKnown?: boolean; hasImage: boolean };
 export type Recipe = RecipeSummary & { ingredients: Ingredient[]; steps: string[] };
 export type Meal = { date: string; recipe: RecipeRef | null; text: string | null; cookId: string | null; servings: number; updatedBy: string };
 export type ShopLine = { food: string; quantity: string; display: string };

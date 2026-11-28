@@ -15,6 +15,13 @@ describe("parseIngredient", () => {
     ["0,5 l Milch", { quantity: 0.5, unit: "l", food: "Milch", note: "" }],
     ["2 Esslöffel Zucker", { quantity: 2, unit: "EL", food: "Zucker", note: "" }],
     ["1 Prise Muskat", { quantity: 1, unit: "Prise", food: "Muskat", note: "" }],
+    // Cookbook lines that add something for the kitchen: only the first part is bought.
+    ["450 g Mehl und Mehl zum Arbeiten", { quantity: 450, unit: "g", food: "Mehl", note: "und Mehl zum Arbeiten" }],
+    ["400 g Butter und Fett für die Form", { quantity: 400, unit: "g", food: "Butter", note: "und Fett für die Form" }],
+    ["Puderzucker zum Bestäuben", { quantity: null, unit: null, food: "Puderzucker", note: "zum Bestäuben" }],
+    ["3 Eigelb (Eier: Größe M)", { quantity: 3, unit: null, food: "Eigelb", note: "Eier: Größe M" }],
+    // An "und" that belongs to the food stays.
+    ["200 g Salz und Pfeffer", { quantity: 200, unit: "g", food: "Salz und Pfeffer", note: "" }],
   ])("%s", (text, expected) => {
     expect(parseIngredient(text)).toEqual(expected);
   });

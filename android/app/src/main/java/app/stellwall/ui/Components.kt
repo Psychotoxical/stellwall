@@ -35,6 +35,22 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.stellwall.theme.LocalPalette
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import kotlinx.coroutines.launch
 
 val RadiusMd = RoundedCornerShape(16.dp)
 val RadiusSm = RoundedCornerShape(12.dp)
@@ -127,4 +143,59 @@ fun BackLink(parent: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Zurück zu $parent" }) {
         Text("‹ $parent", style = MaterialTheme.typography.labelLarge, color = p.ink)
     }
+}
+
+
+/** Pull the page down to load it again, as everywhere on Android. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RefreshPage(onRefresh: suspend () -> Unit, content: @Composable () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
+    PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = { scope.launch { refreshing = true; try { onRefresh() } finally { refreshing = false } } },
+        modifier = Modifier.fillMaxSize(),
+    ) { content() }
+}
+
+/**
+ * Swipe a row: to the right for [onStart] (tick off), to the left for [onEnd] (delete). The row springs
+ * back afterwards; the list shows the change. Talkback gets both as actions.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeRow(
+    onStart: (() -> Unit)?, startLabel: String, onEnd: (() -> Unit)? = null, endLabel: String = "",
+    content: @Composable () -> Unit,
+) {
+    val p = LocalPalette.current
+    val haptic = LocalHapticFeedback.current
+    val state = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
+        when (v) {
+            SwipeToDismissBoxValue.StartToEnd -> onStart?.let { haptic.performHapticFeedback(HapticFeedbackType.LongPress); it() }
+            SwipeToDismissBoxValue.EndToStart -> onEnd?.let { haptic.performHapticFeedback(HapticFeedbackType.LongPress); it() }
+            SwipeToDismissBoxValue.Settled -> Unit
+        }
+        false
+    })
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = onStart != null,
+        enableDismissFromEndToStart = onEnd != null,
+        modifier = Modifier.semantics {
+            customActions = listOfNotNull(
+                onStart?.let { CustomAccessibilityAction(startLabel) { it(); true } },
+                onEnd?.let { CustomAccessibilityAction(endLabel) { it(); true } },
+            )
+        },
+        backgroundContent = {
+            val toStart = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+            val danger = !toStart
+            Box(
+                Modifier.fillMaxSize().background(if (danger) p.changeSoft else p.field).padding(horizontal = 22.dp),
+                contentAlignment = if (toStart) Alignment.CenterStart else Alignment.CenterEnd,
+            ) { Text(if (toStart) "✓" else "✕", style = MaterialTheme.typography.titleLarge, color = if (danger) p.changeInk else p.primary) }
+        },
+    ) { content() }
 }

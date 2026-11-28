@@ -179,7 +179,146 @@ struct SheetBody<Content: View>: View {
             }
             .padding(20)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(p.ground.color.ignoresSafeArea())
         .presentationDragIndicator(.visible)
+    }
+}
+
+
+/**
+ * Swipe from the left edge to go back, as on any iPhone page with a back button: the page follows the
+ * finger and goes when let go past a third of the width or with a quick flick, else it springs back.
+ */
+struct BackSwipe: ViewModifier {
+    let action: () -> Void
+    @State private var offset: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        GeometryReader { geo in
+            content
+                .offset(x: offset)
+                .overlay(alignment: .leading) {
+                    Color.clear
+                        .frame(width: 24)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                                .onChanged { v in offset = max(0, v.translation.width) }
+                                .onEnded { v in
+                                    let far = v.translation.width > geo.size.width / 3 || v.predictedEndTranslation.width > geo.size.width / 2
+                                    if far {
+                                        withAnimation(.easeOut(duration: 0.18)) { offset = geo.size.width }
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                            Haptic.tap()
+                                            action()
+                                            offset = 0
+                                        }
+                                    } else {
+                                        withAnimation(.spring(duration: 0.25)) { offset = 0 }
+                                    }
+                                }
+                        )
+                        .accessibilityHidden(true)
+                }
+        }
+    }
+}
+
+extension View {
+    /** Swipe from the left edge goes back, like the page's back link. */
+    func backSwipe(_ action: @escaping () -> Void) -> some View { modifier(BackSwipe(action: action)) }
+}
+
+/** The small taps iPhones give when something is done. */
+@MainActor
+enum Haptic {
+    /** A tick, a page left, an item added. */
+    static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    /** Something was removed. */
+    static func removed() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+    /** Something worked that took a moment (saved, sent). */
+    static func done() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+}
+
+
+/** What a swipe on a row does: its label, symbol, colour, and the action. */
+struct SwipeAction {
+    let label: String
+    let symbol: String
+    let danger: Bool
+    let action: () -> Void
+}
+
+/**
+ * Swipe a row as in iOS lists: to the right for the leading action (tick off), to the left for the
+ * trailing one (delete). It only takes over when the finger moves clearly sideways, so scrolling stays.
+ * Swiped past the threshold, the action runs; the row springs back either way.
+ */
+struct SwipeRow: ViewModifier {
+    let leading: SwipeAction?
+    let trailing: SwipeAction?
+    @State private var offset: CGFloat = 0
+    @State private var sideways: Bool?
+    @Environment(\.palette) private var p
+    private let reach: CGFloat = 90
+
+    func body(content: Content) -> some View {
+        content
+            .background(p.surface.color)
+            .offset(x: offset)
+            .background {
+                HStack(spacing: 0) {
+                    if offset > 0, let leading { badge(leading, alignment: .leading) }
+                    Spacer(minLength: 0)
+                    if offset < 0, let trailing { badge(trailing, alignment: .trailing) }
+                }
+            }
+            .clipped()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 16)
+                    .onChanged { v in
+                        if sideways == nil { sideways = abs(v.translation.width) > abs(v.translation.height) * 1.6 }
+                        guard sideways == true else { return }
+                        let dx = v.translation.width
+                        if dx > 0, leading == nil { return }
+                        if dx < 0, trailing == nil { return }
+                        // Past the threshold the row slows down, so the finger feels where it counts.
+                        offset = abs(dx) <= reach ? dx : (dx > 0 ? 1 : -1) * (reach + (abs(dx) - reach) * 0.3)
+                    }
+                    .onEnded { _ in
+                        let run = sideways == true && abs(offset) >= reach
+                        let picked = offset > 0 ? leading : trailing
+                        sideways = nil
+                        withAnimation(.spring(duration: 0.25)) { offset = 0 }
+                        if run, let picked {
+                            if picked.danger { Haptic.removed() } else { Haptic.tap() }
+                            picked.action()
+                        }
+                    }
+            )
+            .accessibilityActions {
+                if let leading { Button(leading.label, action: leading.action) }
+                if let trailing { Button(trailing.label, action: trailing.action) }
+            }
+    }
+
+    private func badge(_ a: SwipeAction, alignment: Alignment) -> some View {
+        let full = abs(offset) >= reach
+        return ZStack(alignment: alignment) {
+            (a.danger ? p.changeSoft : p.field).color
+            Image(systemName: a.symbol).font(.system(size: 20, weight: .semibold))
+                .foregroundStyle((a.danger ? p.changeInk : p.primary).color)
+                .scaleEffect(full ? 1.15 : 0.9)
+                .padding(.horizontal, 22)
+        }
+        .animation(.spring(duration: 0.2), value: full)
+    }
+}
+
+extension View {
+    /** Swipe right for [leading], left for [trailing], as in iOS lists. */
+    func swipeRow(leading: SwipeAction? = nil, trailing: SwipeAction? = nil) -> some View {
+        modifier(SwipeRow(leading: leading, trailing: trailing))
     }
 }

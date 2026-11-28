@@ -98,7 +98,7 @@ struct ShoppingView: View {
                         ForEach(Array(g.items.enumerated()), id: \.element.id) { i, item in
                             if i > 0 { RowDivider() }
                             ItemRow(item: item, isNew: model.unseen.contains(item.id), meta: item.addedBy == model.me.id ? nil : ShopText.from(model.nameOf(item.addedBy)),
-                                    onToggle: { Task { await model.toggle(item) } }, onEdit: { sheet = .edit(item) })
+                                    onToggle: { Task { await model.toggle(item) } }, onEdit: { sheet = .edit(item) }, onDelete: { Task { await model.delete(item) } })
                         }
                     }
                 }
@@ -107,7 +107,7 @@ struct ShoppingView: View {
                     BoxCard {
                         ForEach(Array(model.checked.enumerated()), id: \.element.id) { i, item in
                             if i > 0 { RowDivider() }
-                            ItemRow(item: item, isNew: false, meta: ShopText.checkedBy(model.nameOf(item.checkedBy)), onToggle: { Task { await model.toggle(item) } }, onEdit: { sheet = .edit(item) })
+                            ItemRow(item: item, isNew: false, meta: ShopText.checkedBy(model.nameOf(item.checkedBy)), onToggle: { Task { await model.toggle(item) } }, onEdit: { sheet = .edit(item) }, onDelete: { Task { await model.delete(item) } })
                         }
                     }
                 }
@@ -116,12 +116,13 @@ struct ShoppingView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(p.ground.color.ignoresSafeArea())
+        .refreshable { await model.load(model.list?.id ?? listId) }
         .task(id: listId) { await model.load(listId) }
         .task(id: name) {
             try? await Task.sleep(for: .milliseconds(200))
             hints = await model.suggestions(name)
         }
-        .sheet(item: $sheet) { s in sheetView(s).themed(world: model.me.world, dark: p.ground.luminance < 0.18) }
+        .sheet(item: $sheet) { s in sheetView(s).themed(like: p) }
     }
 
     @ViewBuilder private func sheetView(_ s: SheetKind) -> some View {
@@ -141,14 +142,16 @@ struct ShoppingView: View {
             NameSheet(title: ShopText.renameList, initial: model.list?.name ?? "") { n in Task { await model.renameList(n) }; sheet = nil }
         case .clear:
             SheetBody(title: ShopText.clearListConfirm(model.list?.name ?? "")) {
-                GhostButton(ShopText.clearList, danger: true) { Task { await model.clearList() }; sheet = nil }
+                GhostButton(ShopText.clearList, danger: true) { Haptic.removed(); Task { await model.clearList() }; sheet = nil }
                 GhostButton(ShopText.cancel) { sheet = nil }
             }
+            .presentationDetents([.medium])
         case .delete:
             SheetBody(title: ShopText.deleteListConfirm(model.list?.name ?? "")) {
-                GhostButton(ShopText.deleteList, danger: true) { Task { await model.deleteList() }; sheet = nil }
+                GhostButton(ShopText.deleteList, danger: true) { Haptic.removed(); Task { await model.deleteList() }; sheet = nil }
                 GhostButton(ShopText.cancel) { sheet = nil }
             }
+            .presentationDetents([.medium])
         case .visibility:
             if let l = model.list {
                 VisibilitySheet(lead: l.name, value: l.visibility, members: model.members, meId: model.me.id, readOnly: l.createdBy != model.me.id) { v in Task { await model.setVisibility(v) } }
@@ -159,12 +162,14 @@ struct ShoppingView: View {
             AmountSheet(pick: pk) { q, c in
                 Task {
                     if await model.add(pk, quantity: q, category: c) {
+                        Haptic.tap()
                         name = ""
                         hints = []
                         sheet = nil
                     }
                 }
             }
+            .presentationDetents(pk.known ? [.medium, .large] : [.large])
         case let .edit(item):
             EditItemSheet(item: item) { n, q, c in Task { _ = await model.edit(item, name: n, quantity: q, category: c) } } onDelete: { Task { await model.delete(item) } }
         }
@@ -196,9 +201,24 @@ private struct ItemRow: View {
     let meta: String?
     let onToggle: () -> Void
     let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
     @Environment(\.palette) private var p
 
     var body: some View {
+        let done = item.checkedAt != nil
+        row
+            .swipeRow(
+                leading: SwipeAction(label: done ? ShopText.untick : ShopText.tick, symbol: done ? "arrow.uturn.backward" : "checkmark", danger: false, action: onToggle),
+                trailing: onDelete.map { SwipeAction(label: ShopText.deleteItem, symbol: "trash", danger: true, action: $0) }
+            )
+            .contextMenu {
+                Button(done ? ShopText.untick : ShopText.tick, systemImage: done ? "arrow.uturn.backward" : "checkmark", action: onToggle)
+                Button(ShopText.editItem, systemImage: "pencil", action: onEdit)
+                if let onDelete { Button(ShopText.deleteItem, systemImage: "trash", role: .destructive, action: onDelete) }
+            }
+    }
+
+    private var row: some View {
         HStack(spacing: 12) {
             Button(action: onEdit) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -217,7 +237,7 @@ private struct ItemRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(item.name) bearbeiten")
             Text(item.quantity).font(.swBody).foregroundStyle(p.inkSoft.color).frame(minWidth: 56, alignment: .trailing)
-            Button(action: onToggle) {
+            Button { Haptic.tap(); onToggle() } label: {
                 Image(systemName: item.checkedAt != nil ? "checkmark.square.fill" : "square")
                     .font(.system(size: 26)).foregroundStyle((item.checkedAt != nil ? p.primary : p.ink).color)
                     .frame(width: 44, height: 44)

@@ -81,6 +81,24 @@ object MealText {
     const val STEPS = "So geht es"
     const val AWAKE = "Der Bildschirm bleibt an, solange das Rezept offen ist. Erledigtes einfach antippen."
     const val STAPLES = "Grundvorrat"
+    const val RECIPES = "Rezepte"
+    const val NO_RECIPES = "In Mealie sind noch keine Rezepte."
+    const val ADD_RECIPE = "Rezept hinzufügen"
+    const val WAY_PHOTO = "Foto"
+    const val WAY_LINK = "Link"
+    const val WAY_TEXT = "Eintippen"
+    const val SCAN = "Rezept fotografieren"
+    const val PHOTOS_HINT = "Bis zu vier Seiten, zum Beispiel aus einem Kochbuch. Mealie liest sie mit seiner KI."
+    const val LINK = "Link zum Rezept"
+    const val RECIPE_TEXT = "Rezept"
+    const val RECIPE_TEXT_HINT = "Zutaten und Schritte, so wie sie im Rezept stehen. Mealie macht daraus ein Rezept."
+    const val IMPORTING = "Mealie liest das Rezept. Das kann bis zu einer Minute dauern."
+    const val IMPORT = "Rezept anlegen"
+    const val AS_WRITTEN = "Mengen wie im Rezept"
+    const val PLAN_RECIPE = "Einplanen"
+    const val PLAN_FOR = "Für welchen Tag?"
+    fun planned(day: String) = "Für $day eingeplant."
+    fun photos(n: Int) = if (n == 1) "1 Seite fotografiert" else "$n Seiten fotografiert"
     const val STAPLES_LEAD = "Was bei euch meistens da ist. Diese Zutaten fragt Stellwall beim Einkaufen nach, statt sie gleich auf die Liste zu setzen."
     const val STAPLE_ADD = "Zum Grundvorrat"
     const val STAPLE_NAME = "Neue Grundzutat"
@@ -96,6 +114,7 @@ object MealText {
         "mealie_auth" to "Mealie hat den Schlüssel abgelehnt. Die Verwaltung muss ihn unter Mehr → Mealie erneuern.",
         "mealie_unreachable" to "Mealie antwortet gerade nicht. Freier Text geht trotzdem.",
         "mealie_bad" to "Mealie hat eine unerwartete Antwort geschickt.",
+        "mealie_import_failed" to "Mealie konnte daraus kein Rezept machen. Ein schärferes Foto oder ein anderer Link hilft oft.",
         "meal_list_hidden" to "Du siehst die Einkaufsliste für den Essensplan nicht. Die Verwaltung kann sie freigeben.",
     )
 
@@ -196,9 +215,10 @@ class ShopModel(private val api: MealsApi) {
     private val _state = MutableStateFlow(ShopState())
     val state: StateFlow<ShopState> = _state
 
-    suspend fun load(dates: List<LocalDate>, servings: Int?) {
+    /** The planned [dates], or one [recipe] from the recipe book (slug to servings). */
+    suspend fun load(dates: List<LocalDate>, servings: Int?, recipe: Pair<String, Int>? = null) {
         try {
-            val p = api.shopPreview(dates.map { it.toString() }, servings)
+            val p = if (recipe != null) api.shopRecipe(recipe.first, recipe.second) else api.shopPreview(dates.map { it.toString() }, servings)
             _state.value = ShopState(preview = p, picked = p.special.map { ShopState.key("s:", it) }.toSet())
         } catch (e: Exception) {
             if (e is CancellationException) throw e

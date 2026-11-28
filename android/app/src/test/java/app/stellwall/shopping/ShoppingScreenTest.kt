@@ -20,6 +20,9 @@ import app.stellwall.start.StartScreen
 import app.stellwall.theme.StellwallTheme
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeLeft
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.time.LocalDate
 import org.junit.Rule
@@ -58,7 +61,8 @@ class SampleShopping : ShoppingApi {
         items = items.map { if (it.id == id) it.copy(checkedAt = if (change.checked == true) "2026-11-27T12:00:00.000Z" else null, checkedBy = "me") else it }
         return items.first { it.id == id }
     }
-    override suspend fun deleteItem(id: String) {}
+    val deleted = mutableListOf<String>()
+    override suspend fun deleteItem(id: String) { deleted += id; items = items.filter { it.id != id } }
     override suspend fun suggestions(q: String) = listOf(Suggestion("Milch", "Kühlregal"))
 }
 
@@ -91,6 +95,16 @@ class ShoppingScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText(ShopText.HOW_MANY)).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText(ShopText.SECTION_FOR).assertExists()
         compose.onRoot().captureRoboImage("src/test/screenshots/shopping-amount.png")
+    }
+
+    @Test fun `a row swiped right is ticked off, swiped left deleted`() {
+        val api = SampleShopping()
+        compose.setContent { StellwallTheme(world = "salbei", dark = false) { ShoppingScreen(ShoppingModel(api, api.me)) } }
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Bananen")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Bananen").performTouchInput { swipeRight() }
+        compose.waitUntil(5_000) { api.items.first { it.name == "Bananen" }.checkedAt != null }
+        compose.onNodeWithText("Milch").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) { api.deleted.isNotEmpty() }
     }
 
     @Test fun `start shows the board and the areas`() {

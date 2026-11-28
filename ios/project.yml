@@ -69,13 +69,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.stellwall.tests
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Stellwall.app/Stellwall
         BUNDLE_LOADER: $(TEST_HOST)
+  StellwallUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: StellwallUITests
+    dependencies:
+      - target: Stellwall
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.stellwall.uitests
+        TEST_TARGET_NAME: Stellwall
 schemes:
   Stellwall:
     build:
       targets:
         Stellwall: all
         StellwallTests: [test]
+        StellwallUITests: [test]
     test:
-      targets: [StellwallTests]
+      targets: [StellwallTests, StellwallUITests]
       environmentVariables:
         TZ: Europe/Berlin
