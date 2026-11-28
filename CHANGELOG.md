@@ -4,6 +4,10 @@ Every version has its own section. The section of a version becomes the text of 
 
 ## [Unreleased]
 
+### Fixed
+
+- Android builds fetch libraries from Google's copy of Maven Central first, so a busy Maven Central no longer stops a release.
+
 ## [0.1.16] - 2026-11-28
 
 ### Added
@@ -19,7 +23,6 @@ Every version has its own section. The section of a version becomes the text of 
 
 ### Fixed
 
-- Android builds fetch libraries from Google's copy of Maven Central first, so a busy Maven Central no longer stops a release.
 - Recipe steps (web, Android, iPhone): bold and italic text from Mealie shows as such, without the stars.
 - Web: a recipe picture changed in Mealie shows up at once instead of a day later.
 - Web: on a recipe page the step numbers stand by the first line of each step again, not the last.
